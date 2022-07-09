@@ -216,6 +216,15 @@
 		});
 	}
 
+	function textareaOnSelect(e: Event) {
+		const textarea = e.target as HTMLTextAreaElement;
+		if (textarea.textContent !== null) {
+			const charCode = textarea.value.charCodeAt(textarea.selectionStart);
+			const find = glyphs.find(({ glyph }) => glyph.unicode === charCode);
+			if (find !== undefined) selectedGlyph = find;
+		}
+	}
+
 	$: searchGlyph = search === '' ? glyphs : [glyphs.find((glyph) => glyph.glyph.unicode === search.charCodeAt(0))];
 </script>
 
@@ -225,7 +234,7 @@
 	{/if}
 	<div>
 		<h2><EditIcon size="30" />편집</h2>
-		<textarea bind:this={exampleArea} class="exampleArea testFont" placeholder="직접 폰트를 사용해보세요!" />
+		<textarea bind:this={exampleArea} class="exampleArea testFont" placeholder="직접 폰트를 사용해보세요!" on:select={textareaOnSelect} />
 		<div class="buttons">
 			<DetailButton title="모두 정사각형으로" on:click={toAllSqure}>
 				<p>모든 글자에 적당한 여백을 넣어 똑같은 크기로 만듭니다</p>
@@ -236,7 +245,7 @@
 			<DetailButton title="폰트 다운로드" on:click={() => font?.download()}>
 				<p class="wordSafe">작업한 폰트를 저장합니다</p>
 			</DetailButton>
-			<p>버튼에 마우스를 올리면 설명이 나옵니다.</p>
+			<p style="margin-left: auto">드래그 한 첫부분의 문자가 선택됩니다.</p>
 		</div>
 		<div>
 			<button on:click={() => tab(0)}>세부사항</button>
