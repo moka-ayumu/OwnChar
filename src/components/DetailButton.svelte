@@ -1,8 +1,9 @@
 <script lang="ts">
 	export let title = '';
+	export let disabled = false;
 </script>
 
-<button on:click>
+<button on:click {disabled}>
 	{title}
 	<div><slot /></div>
 </button>

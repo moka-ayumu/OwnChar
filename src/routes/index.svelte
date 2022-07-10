@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { animate } from 'popmotion';
-	
+
 	import type { IImages } from 'src/types/Types';
 	import FileLoad from '../tabs/FileLoad.svelte';
 	import ImageView from '../tabs/ImageView.svelte';
@@ -43,41 +43,25 @@
 	</button>
 	<div>
 		<div style={`margin-left: ${tabLeft}%`} />
-		<FileLoad
-			bind:images
-			bind:font
-			on:complete={({ detail: { type } }) => (type === 'zip' ? nextTab() : nextTab(3))}
-		/>
+		<FileLoad bind:images bind:font on:complete={({ detail: { type } }) => (type === 'zip' ? nextTab() : nextTab(3))} />
 		<ImageView bind:images />
-		<Process
-			bind:images
-			on:complete={(e) => {
-				font = e.detail.font;
-				nextTab();
+		<Process bind:images bind:font on:complete={() => nextTab()} />
+		<FontEdit
+			bind:font
+			on:newFilePull={() => {
+				posTab = 0;
+				document.getElementById('file')?.click();
+				moveTab();
 			}}
 		/>
-		<FontEdit bind:font />
 	</div>
-	<button
-		type="button"
-		on:click={() => nextTab()}
-		class="tabButton rightBtn"
-		disabled={posTab === 3}
-	>
+	<button type="button" on:click={() => nextTab()} class="tabButton rightBtn" disabled={posTab === 3}>
 		<ChevronRightIcon size="60" />
 	</button>
 </div>
-<p class="top center title">OwnChar</p>
-<p class="bottom center" style={`opacity: ${posTab === 0 ? 1 : 0}`}>
-	본 사이트는 크롬에 맞춰 제작되었습니다.
-</p>
-<a
-	class="bottomRight"
-	style={`opacity: ${posTab === 0 ? 1 : 0}`}
-	href="/license"
-	target="_blank"
-	rel="noopener noreferrer">License</a
->
+<!-- <p class="top center title">OwnChar</p> -->
+<p class="bottom center" style={`opacity: ${posTab === 0 ? 1 : 0}`}>본 사이트는 크롬에 맞춰 제작되었습니다.</p>
+<a class="bottomRight" style={`opacity: ${posTab === 0 ? 1 : 0}`} href="/license" target="_blank" rel="noopener noreferrer">License</a>
 
 <style lang="scss">
 	:root {

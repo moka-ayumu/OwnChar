@@ -27,15 +27,17 @@ function loadZip(zip: Blob): Promise<ImageBitmap[]> {
 			console.log(info);
 			for (let i = 0; i < files.length; i++) {
 				const file = files[i];
-				file.blob().then((blob) => {
-					createImageBitmap(blob).then((bitmap) => {
-						datas.push(bitmap);
-						successCount++;
-						if (successCount === files.length) {
-							resolve(datas);
-						}
+				if (file.name.endsWith('.jpg') || file.name.endsWith('.png')) {
+					file.blob().then((blob) => {
+						createImageBitmap(blob).then((bitmap) => {
+							datas.push(bitmap);
+							successCount++;
+							if (successCount === files.length) {
+								resolve(datas);
+							}
+						});
 					});
-				});
+				}
 			}
 		});
 	});

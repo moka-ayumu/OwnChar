@@ -5,23 +5,23 @@
 	import opentype from 'opentype.js';
 	import type ImageTracer from 'imagetracerjs';
 	import adobekr9 from '../Adobe-KR-9_ordering.json';
-	import TraceWorker from '../lib/worker/Trace?worker';
+	import TraceWorker from '../lib/worker/Trace?worker&inline';
 	import { animate } from 'popmotion';
 	import { LayersIcon } from 'svelte-feather-icons';
 	import NoFile from '../components/NoFile.svelte';
 
 	const dispatch = createEventDispatcher();
 
+	export let font: opentype.Font | undefined;
 	let allCount = 0;
 	let comCount = 0;
-	let glyphs: opentype.Glyph[] = [
-		new opentype.Glyph({
-			name: '.notdef',
-			unicode: 0,
-			advanceWidth: 200,
-			path: new opentype.Path()
-		})
-	];
+	const notdef = new opentype.Glyph({
+		name: '.notdef',
+		unicode: 0,
+		advanceWidth: 200,
+		path: new opentype.Path()
+	});
+	let glyphs: opentype.Glyph[] = [notdef];
 	let traceWorker: Worker;
 	let dashOffset = 0;
 	let isProgress = false;
@@ -34,9 +34,7 @@
 			switch (data.type) {
 				case 'tracedata':
 					const res: ImageTracer.ITraceData = data.data;
-					const blackPalettePos = res.palette.findIndex(
-						(pal: any) => pal.r === 0 && pal.g === 0 && pal.b === 0 && pal.a === 255
-					);
+					const blackPalettePos = res.palette.findIndex((pal: any) => pal.r === 0 && pal.g === 0 && pal.b === 0 && pal.a === 255);
 					const blackLayer = res.layers[blackPalettePos];
 					if (blackLayer.length > 0) {
 						const path = new opentype.Path();
@@ -51,11 +49,7 @@
 							},
 							[...blackLayer[0].boundingbox]
 						);
-						maxLen = Math.max(
-							maxLen,
-							boundingbox[2] - boundingbox[0],
-							boundingbox[3] - boundingbox[1]
-						);
+						maxLen = Math.max(maxLen, boundingbox[2] - boundingbox[0], boundingbox[3] - boundingbox[1]);
 
 						for (let k = 0; k < blackLayer.length; k++) {
 							const segment = blackLayer[k].segments;
@@ -72,12 +66,7 @@
 											path.lineTo(e.x1 - boundingbox[0], Math.abs(e.y1 - boundingbox[3]));
 											break;
 										case 'Q':
-											path.quadTo(
-												e.x3 - boundingbox[0],
-												Math.abs(e.y3 - boundingbox[3]),
-												e.x2 - boundingbox[0],
-												Math.abs(e.y2 - boundingbox[3])
-											);
+											path.quadTo(e.x3 - boundingbox[0], Math.abs(e.y3 - boundingbox[3]), e.x2 - boundingbox[0], Math.abs(e.y2 - boundingbox[3]));
 											break;
 										default:
 											break;
@@ -97,12 +86,7 @@
 											path.lineTo(e.x2 - boundingbox[0], Math.abs(e.y2 - boundingbox[3]));
 											break;
 										case 'Q':
-											path.quadTo(
-												e.x2 - boundingbox[0],
-												Math.abs(e.y2 - boundingbox[3]),
-												e.x3 - boundingbox[0],
-												Math.abs(e.y3 - boundingbox[3])
-											);
+											path.quadTo(e.x2 - boundingbox[0], Math.abs(e.y2 - boundingbox[3]), e.x3 - boundingbox[0], Math.abs(e.y3 - boundingbox[3]));
 											break;
 										default:
 											break;
@@ -136,19 +120,37 @@
 					console.log('maxlen: ' + maxLen);
 
 					if (allCount === comCount) {
-						const font = new opentype.Font({
-							familyName: 'Font',
-							styleName: 'Medium',
-							unitsPerEm: getUnitsPerEm(), // 크기
-							ascender: 800,
-							descender: -200,
-							manufacturer: 'OwnChar',
-							glyphs
-						});
+						if (font === undefined) {
+							font = new opentype.Font({
+								familyName: 'Font',
+								styleName: 'Medium',
+								unitsPerEm: getUnitsPerEm(),
+								ascender: 800,
+								descender: -200,
+								manufacturer: 'OwnChar',
+								glyphs
+							});
+						} else {
+							for (let i = 0; i < font.glyphs.length; i++) {
+								const oldGlyph = font.glyphs.get(i);
+								if (glyphs.findIndex((glyph) => glyph.unicode === oldGlyph.unicode) === -1) {
+									glyphs.push(oldGlyph);
+								}
+							}
+							const newFont = new opentype.Font({
+								familyName: 'Font',
+								styleName: 'Medium',
+								unitsPerEm: font.unitsPerEm,
+								ascender: font.ascender,
+								descender: font.descender,
+								manufacturer: 'OwnChar',
+								glyphs
+							});
+							newFont.names = font.names;
+							font = newFont;
+						}
 						console.log('font: ', font);
-						dispatch('complete', {
-							font
-						});
+						dispatch('complete');
 						isProgress = false;
 					}
 					break;
@@ -165,6 +167,7 @@
 			maxLen = 0;
 			allCount = 0;
 			comCount = 0;
+			glyphs = [notdef];
 			const canvas = document.createElement('canvas');
 			canvas.width = images[0].data.width;
 			canvas.height = images[0].data.height;
@@ -198,8 +201,7 @@
 									((1318 * image.scale) / 11) * 0.68
 								);
 								allCount++;
-								const original: IChar =
-									adobekr9[dataType[0] as 0 | 9][pos - dataType[3] + dataType[2]];
+								const original: IChar = adobekr9[dataType[0] as 0 | 9][pos - dataType[3] + dataType[2]];
 								traceImageData(data, original.unicode, 10 * j + i);
 							}
 						}
@@ -239,13 +241,7 @@
 	<svg viewBox="0 0 400 400" on:click={trace}>
 		<text x="190" y="190" class="allText" dominant-baseline="middle">{allCount}</text>
 		<circle cx="200" cy="200" r="150" class="backcircle" />
-		<circle
-			cx="200"
-			cy="200"
-			r="150"
-			class="circle"
-			style={`stroke-dashoffset: ${942.9 + dashOffset}`}
-		/>
+		<circle cx="200" cy="200" r="150" class="circle" style={`stroke-dashoffset: ${942.9 + dashOffset}`} />
 		<circle cx="210" cy="210" r="30" class="outcircle" />
 		<circle cx="190" cy="190" r="30" class="incircle" />
 		<text x="210" y="210" class="comText" dominant-baseline="middle">{comCount}</text>

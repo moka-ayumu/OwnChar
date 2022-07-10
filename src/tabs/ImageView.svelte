@@ -1,26 +1,22 @@
 <script lang="ts">
 	import type { IImages } from 'src/types/Types';
-	import { beforeUpdate, onMount } from 'svelte';
+	import { beforeUpdate } from 'svelte';
 	import { SettingsIcon } from 'svelte-feather-icons';
 
 	import Bitmap from '../components/Bitmap.svelte';
 	import NoFile from '../components/NoFile.svelte';
 
 	export let images: IImages[];
+	let prevImages: IImages[] = [];
 	let selectedData: IImages;
 
 	let canvasSetDetail: HTMLCanvasElement;
 	let loaded = false;
 	let isGlobal = true;
-	// let scale: number = 1;
-	// let x: number = 20;
-	// let y: number = 120;
-
-	onMount(() => {});
 
 	beforeUpdate(() => {
-		// console.log(images);
-		if (images.length > 0 && selectedData === undefined) {
+		if (images.length > 0 && prevImages !== images) {
+			prevImages = images;
 			selectedData = images[0];
 		}
 		if (canvasSetDetail !== undefined && !loaded) {
@@ -37,12 +33,7 @@
 			ctx.fillRect(0, 0, canvasSetDetail.width, canvasSetDetail.height);
 			ctx.strokeStyle = '#ff4d4d';
 			ctx.lineWidth = 5;
-			ctx.strokeRect(
-				selectedData.x,
-				selectedData.y,
-				1000 * selectedData.scale,
-				1318 * selectedData.scale
-			);
+			ctx.strokeRect(selectedData.x, selectedData.y, 1000 * selectedData.scale, 1318 * selectedData.scale);
 
 			for (let i = 0; i < 10; i++) {
 				for (let j = 0; j < 11; j++) {
@@ -135,33 +126,15 @@
 				</div>
 				<div>
 					<label for="scale">크기</label>
-					<input
-						type="number"
-						on:change={settingUpdate}
-						bind:value={selectedData.scale}
-						id="scale"
-						step="0.1"
-					/>
+					<input type="number" on:change={settingUpdate} bind:value={selectedData.scale} id="scale" step="0.1" />
 				</div>
 				<div>
 					<label for="x">X 좌표</label>
-					<input
-						type="number"
-						on:change={settingUpdate}
-						bind:value={selectedData.x}
-						id="x"
-						step="1"
-					/>
+					<input type="number" on:change={settingUpdate} bind:value={selectedData.x} id="x" step="1" />
 				</div>
 				<div>
 					<label for="y">Y 좌표</label>
-					<input
-						type="number"
-						on:change={settingUpdate}
-						bind:value={selectedData.y}
-						id="y"
-						step="1"
-					/>
+					<input type="number" on:change={settingUpdate} bind:value={selectedData.y} id="y" step="1" />
 				</div>
 			</div>
 		{/if}

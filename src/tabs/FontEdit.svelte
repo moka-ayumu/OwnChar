@@ -1,19 +1,24 @@
 <script lang="ts">
-	import type opentype from 'opentype.js';
+	import opentype from 'opentype.js';
 	import { animate } from 'popmotion';
 	import type { IGlyph } from 'src/types/Types';
-	import { afterUpdate } from 'svelte';
-	import { ArrowLeftIcon, ArrowRightIcon, EditIcon } from 'svelte-feather-icons';
+	import { afterUpdate, createEventDispatcher } from 'svelte';
+	import { CornerUpLeftIcon, CornerUpRightIcon, EditIcon } from 'svelte-feather-icons';
 	import DetailButton from '../components/DetailButton.svelte';
 	import NoFile from '../components/NoFile.svelte';
 	// import Glyph from './Glyph.svelte';
 
+	const diapatch = createEventDispatcher();
+
 	export let font: opentype.Font | undefined;
 	let prevFont: opentype.Font | undefined;
 	let glyphs: IGlyph[] = [];
+	// let prevFontFace: FontFace | undefined = undefined;
 	let prevFontFace: FontFace | undefined = undefined;
+	let history: [ArrayBuffer, number[]][] = [];
+	let historyPos = -1;
 	let exampleArea: HTMLTextAreaElement;
-	let selectedGlyph: IGlyph | undefined = undefined;
+	let selectedGlyph: IGlyph[] = [];
 	let glyphTab = 0;
 	let glyphFullTab = 0;
 	let countPerTab = 101;
@@ -46,28 +51,54 @@
 						glyphs.push(data);
 						margin.left = Math.min(margin.left, data.left);
 						margin.right = Math.min(margin.right, data.right);
-						margin.y = Math.min(margin.y, data.y);
+						margin.y = Math.abs(margin.y) > Math.abs(data.y) ? data.y : margin.y;
 					}
 				}
+
+				if (margin.left === Number.MAX_VALUE) margin.left = 0;
+				if (margin.right === Number.MAX_VALUE) margin.right = 0;
+				if (margin.y === Number.MAX_VALUE) margin.y = 0;
+
 				for (let i = 0; i < glyphs.length; i++) {
 					glyphs[i].left -= margin.left;
 					glyphs[i].right -= margin.right;
 					glyphs[i].y -= margin.y;
 				}
+
 				glyphs.sort((a, b) => a.glyph.unicode - b.glyph.unicode);
-				selectedGlyph = glyphs[0];
 				// changeGlyphTab();
 
 				const arrayBuffer = font.toArrayBuffer();
-				if (prevFontFace !== undefined) {
-					(document.fonts as any).delete(prevFontFace);
+				if (history.length === 0) {
+					selectedGlyph = [glyphs[0]];
+					addHistory(arrayBuffer);
+				} else {
+					selectedGlyph = history[historyPos][1].map((i) => glyphs.find(({ glyph }) => glyph.unicode === i)) as IGlyph[];
 				}
-				prevFontFace = new FontFace('test', arrayBuffer);
-				prevFontFace.load().then((f) => {
-					(document.fonts as any).add(f);
-					exampleArea.style.fontFamily = 'test';
-				});
+				reloadFontFace(arrayBuffer);
 			}
+		} else {
+			history = [];
+			glyphs = [];
+			selectedGlyph = [];
+			historyPos = -1;
+			prevFont = undefined;
+
+			glyphTab = 0;
+			glyphFullTab = 0;
+
+			selectedStart = -1;
+			selectedEnd = -1;
+
+			margin = {
+				left: Number.MAX_VALUE,
+				right: Number.MAX_VALUE,
+				y: Number.MAX_VALUE
+			};
+
+			if (prevFontFace !== undefined) (document.fonts as any).delete(prevFontFace);
+
+			prevFontFace = undefined;
 		}
 	});
 
@@ -92,7 +123,7 @@
 				}
 			}
 			glyphs.sort((a, b) => a.glyph.unicode - b.glyph.unicode);
-			selectedGlyph = glyphs[0];
+			selectedGlyph = [glyphs[0]];
 		}
 	}
 
@@ -138,10 +169,20 @@
 		data.rotate = 0;
 	}
 
-	function updateGlyph(all = false) {
+	function updateGlyph(all = false, e?: Event) {
 		if (font !== undefined) {
 			console.log(font);
-			const list = all ? glyphs : selectedGlyph === undefined ? [] : [selectedGlyph];
+
+			if (e !== undefined && selectedGlyph.length > 1) {
+				const input = e.target as HTMLInputElement;
+				console.log(input.id, input.value);
+				for (let i = 0; i < selectedGlyph.length; i++) {
+					const glyph = selectedGlyph[i] as any;
+					if (input.value !== '') glyph[input.id] = Number(input.value);
+				}
+			}
+
+			const list = all ? glyphs : selectedGlyph;
 			for (let i = 0; i < list.length; i++) {
 				const glyph = list[i];
 				if (glyph.scale <= 0 || glyph.scale === undefined) glyph.scale = glyph.prevScale;
@@ -156,30 +197,99 @@
 				const sin = Math.sin(weightRotate);
 				glyph.prevScale = glyph.scale;
 				glyph.prevRotate = glyph.rotate;
-				const center: [number, number] = [(boundingBox.x2 + boundingBox.x1) / 2, (boundingBox.y2 + boundingBox.y1) / 2];
-				for (let i = 0; i < path.commands.length; i++) {
-					const command = path.commands[i] as any;
-					if (command.hasOwnProperty('x')) [command.x, command.y] = transform(command.x, command.y, center, weightLeft, weightY, weightScale, cos, sin);
-					if (command.hasOwnProperty('x1')) [command.x1, command.y1] = transform(command.x1, command.y1, center, weightLeft, weightY, weightScale, cos, sin);
-					if (command.hasOwnProperty('x2')) [command.x2, command.y2] = transform(command.x2, command.y2, center, weightLeft, weightY, weightScale, cos, sin);
-				}
+				// const center: [number, number] = [(boundingBox.x2 + boundingBox.x1) / 2, (boundingBox.y2 + boundingBox.y1) / 2];
+				const center: [number, number] = [boundingBox.x1, boundingBox.y1];
+				// for (let i = 0; i < path.commands.length; i++) {
+				// 	const command = path.commands[i] as any;
+				// 	if (command.hasOwnProperty('x')) [command.x, command.y] = transform(command.x, command.y, center, weightLeft, weightY, weightScale, cos, sin);
+				// 	if (command.hasOwnProperty('x1')) [command.x1, command.y1] = transform(command.x1, command.y1, center, weightLeft, weightY, weightScale, cos, sin);
+				// 	if (command.hasOwnProperty('x2')) [command.x2, command.y2] = transform(command.x2, command.y2, center, weightLeft, weightY, weightScale, cos, sin);
+				// }
+				transform(path.commands, center, weightLeft, weightY, weightScale, cos, sin);
 				boundingBox = glyph.glyph.getBoundingBox();
 				glyph.glyph.advanceWidth = boundingBox.x2 - boundingBox.x1 + margin.left + glyph.left + margin.right + glyph.right;
 			}
 			selectedGlyph = selectedGlyph;
-
 			const arrayBuffer = font.toArrayBuffer();
-			if (prevFontFace !== undefined) {
-				(document.fonts as any).delete(prevFontFace);
-			}
-			prevFontFace = new FontFace('test', arrayBuffer);
-			prevFontFace.load().then((f) => {
-				(document.fonts as any).add(f);
-			});
+			addHistory(arrayBuffer);
+			reloadFontFace(arrayBuffer);
 		}
 	}
 
-	function transform(x: number, y: number, center: [number, number], left: number, up: number, scale: number, cos: number, sin: number) {
+	function addHistory(arrayBuffer: ArrayBuffer) {
+		history = [...history.slice(0, historyPos + 1), [arrayBuffer, selectedGlyph.map((i) => i.glyph.unicode)]];
+		historyPos++;
+		if (history.length > 10) {
+			history = history.slice(1);
+			historyPos = 10;
+		}
+		console.log('history: ', history);
+	}
+
+	function prevHistory() {
+		if (historyPos > 0) {
+			historyPos--;
+			const h = history[historyPos];
+			font = opentype.parse(h[0]);
+			reloadFontFace(h[0]);
+		}
+	}
+
+	function nextHistory() {
+		if (historyPos < history.length - 1) {
+			historyPos++;
+			const h = history[historyPos];
+			font = opentype.parse(h[0]);
+			reloadFontFace(h[0]);
+		}
+	}
+
+	function reloadFontFace(arrayBuffer: ArrayBuffer) {
+		if (prevFontFace !== undefined) {
+			(document.fonts as any).delete(prevFontFace);
+		}
+		prevFontFace = new FontFace('test', arrayBuffer);
+		prevFontFace.load().then((f) => {
+			(document.fonts as any).add(f);
+		});
+	}
+
+	function getGlyphSameValue(data: IGlyph[]) {
+		let res;
+		const first = data[0];
+		if (selectedGlyph.length > 1) {
+			res = [true, true, true, true, true];
+			for (let i = 1; i < data.length; i++) {
+				const prev = data[i - 1];
+				const cur = data[i];
+				res[0] = res[0] && prev.left === cur.left;
+				res[1] = res[1] && prev.right === cur.right;
+				res[2] = res[2] && prev.y === cur.y;
+				res[3] = res[3] && prev.rotate === cur.rotate;
+				res[4] = res[4] && prev.scale === cur.scale;
+			}
+		} else {
+			res = [false, false, false, false, false];
+		}
+		return {
+			left: res[0] ? first.left : '',
+			right: res[1] ? first.right : '',
+			y: res[2] ? first.y : '',
+			rotate: res[3] ? first.rotate : '',
+			scale: res[4] ? first.scale : ''
+		};
+	}
+
+	function transform(commands: opentype.PathCommand[], center: [number, number], left: number, up: number, scale: number, cos: number, sin: number) {
+		for (let i = 0; i < commands.length; i++) {
+			const command = commands[i] as any;
+			if (command.hasOwnProperty('x')) [command.x, command.y] = transformCommand(command.x, command.y, center, left, up, scale, cos, sin);
+			if (command.hasOwnProperty('x1')) [command.x1, command.y1] = transformCommand(command.x1, command.y1, center, left, up, scale, cos, sin);
+			if (command.hasOwnProperty('x2')) [command.x2, command.y2] = transformCommand(command.x2, command.y2, center, left, up, scale, cos, sin);
+		}
+	}
+
+	function transformCommand(x: number, y: number, center: [number, number], left: number, up: number, scale: number, cos: number, sin: number) {
 		let newX = (x - center[0]) * scale;
 		let newY = (y - center[1]) * scale;
 
@@ -195,12 +305,23 @@
 
 	function applyName() {
 		if (font !== undefined) {
+			addHistory(font.toArrayBuffer());
+
 			const { names } = font;
 			names.fontFamily.en = names.fontFamily.en.replace(/[^a-z0-9\s]/gi, '');
 			names.fontSubfamily.en = names.fontSubfamily.en.replace(/[^a-z0-9\s]/gi, '');
-			font = font;
+			// font = font;
 			names.fullName.en = `${names.fontFamily.en} ${names.fontSubfamily.en}`;
 			names.postScriptName.en = `${names.fontFamily.en}${names.fontSubfamily.en}`;
+
+			const keyNames = Object.keys(names);
+			for (let i = 0; i < keyNames.length; i++) {
+				const keyL = Object.keys((names as any)[keyNames[i]]);
+				for (let j = 0; j < keyL.length; j++) {
+					console.log(keyNames[i], keyL[j], (names as any)[keyNames[i]][keyL[j]]);
+					if ((names as any)[keyNames[i]][keyL[j]] === '') (names as any)[keyNames[i]][keyL[j]] = ' ';
+				}
+			}
 		}
 	}
 
@@ -219,13 +340,57 @@
 	function textareaOnSelect(e: Event) {
 		const textarea = e.target as HTMLTextAreaElement;
 		if (textarea.textContent !== null) {
-			const charCode = textarea.value.charCodeAt(textarea.selectionStart);
-			const find = glyphs.find(({ glyph }) => glyph.unicode === charCode);
-			if (find !== undefined) selectedGlyph = find;
+			selectedGlyph = [];
+			for (let i = textarea.selectionStart; i < textarea.selectionEnd; i++) {
+				const charCode = textarea.value.charCodeAt(i);
+				const find = glyphs.find(({ glyph }) => glyph.unicode === charCode);
+				if (find !== undefined) selectedGlyph = [...selectedGlyph, find];
+			}
 		}
 	}
 
+	let selectedStart = -1;
+	let selectedEnd = -1;
+
+	function glyphOnClick(e: MouseEvent, i: number) {
+		if (e.shiftKey) {
+			if (selectedGlyph) {
+				if (selectedStart === -1) {
+					selectedStart = i;
+					selectedGlyph = [glyphs[i]];
+				} else if (selectedEnd === -1) {
+					selectedEnd = i;
+					if (selectedStart > selectedEnd) [selectedStart, selectedEnd] = [selectedEnd, selectedStart];
+					selectedGlyph = glyphs.slice(selectedStart, selectedEnd + 1);
+					[selectedStart, selectedEnd] = [-1, -1];
+				}
+			}
+		} else {
+			selectedStart = i;
+			selectedGlyph = [glyphs[i]];
+		}
+	}
+
+	function fixSelectedSameHeight() {
+		const maxHeight = selectedGlyph.reduce((prev, cur) => {
+			const boudingBox = cur.glyph.getBoundingBox();
+			const height = boudingBox.y2 - boudingBox.y1;
+			return prev < height ? height : prev;
+		}, 0);
+		for (let i = 0; i < selectedGlyph.length; i++) {
+			const glyph = selectedGlyph[i];
+			glyph.y = 0;
+			const boudingBox = glyph.glyph.getBoundingBox();
+			const height = boudingBox.y2 - boudingBox.y1;
+			const weight = maxHeight / height;
+			glyph.scale = weight;
+			// transform((glyph.glyph.path as opentype.Path).commands, [(boudingBox.x2 + boudingBox.x1) / 2, boudingBox.y2], 0, 0, weight, 0, 0);
+		}
+		updateGlyph();
+	}
+
 	$: searchGlyph = search === '' ? glyphs : [glyphs.find((glyph) => glyph.glyph.unicode === search.charCodeAt(0))];
+	$: selectedGlyphSameValue = getGlyphSameValue(selectedGlyph);
 </script>
 
 <div class="container">
@@ -242,12 +407,18 @@
 			<DetailButton title="초기화" on:click={allReset}>
 				<p class="wordSafe">모든 설정값을 초기화 합니다</p>
 			</DetailButton>
+			<DetailButton title="추가 파일 불러오기" on:click={() => diapatch('newFilePull')}>
+				<p class="wordSafe">추가로 작업한 jpg, png 파일을 불러옵니다.</p>
+			</DetailButton>
 			<DetailButton title="폰트 다운로드" on:click={() => font?.download()}>
 				<p class="wordSafe">작업한 폰트를 저장합니다</p>
 			</DetailButton>
-			<p style="margin-left: auto">드래그 한 첫부분의 문자가 선택됩니다.</p>
+			<button on:click={prevHistory} disabled={historyPos === 0}><CornerUpLeftIcon size="15" />실행취소</button>
+			<button on:click={nextHistory} disabled={historyPos === history.length - 1}><CornerUpRightIcon size="15" />실행복구</button>
+			<p>크기, 회전도 복구되지만 값은 복구되지 않습니다.</p>
+			<p style="margin-left: auto">드래그된 문자가 선택됩니다.</p>
 		</div>
-		<div>
+		<div class="buttons">
 			<button on:click={() => tab(0)}>세부사항</button>
 			<button on:click={() => tab(1)}>글자들</button>
 		</div>
@@ -273,20 +444,20 @@
 						</div> -->
 						<div>
 							<label for="designerEn">제작자(영어)</label>
-							<input type="text" id="designerEn" bind:value={font.names.designer.en} />
+							<input type="text" id="designerEn" bind:value={font.names.designer.en} on:change={applyName} />
 						</div>
 						<div>
 							<label for="designerKo">제작자(한국어)</label>
-							<input type="text" id="designerKo" bind:value={font.names.designer.ko} />
+							<input type="text" id="designerKo" bind:value={font.names.designer.ko} on:change={applyName} />
 						</div>
 						<!-- <div>
 							<label for="designerURL">제작자 주소</label>
 							<input type="text" id="designerURL" bind:value={font.names.designerURL.en} />
 						</div> -->
-						<div>
+						<!-- <div>
 							<label for="version">버전</label>
-							<input type="text" id="version" bind:value={font.names.version.en} />
-						</div>
+							<input type="text" id="version" bind:value={font.names.version.en} on:change={applyName} />
+						</div> -->
 					</div>
 				</div>
 				<div class="glyphsSetting">
@@ -295,10 +466,10 @@
 							<input type="text" bind:value={search} maxlength="1" id="saerch" placeholder="검색어" />
 						</div>
 						<div class="glyphs">
-							{#each searchGlyph as glyph}
+							{#each searchGlyph as glyph, i}
 								<!-- <Glyph {glyph} /> -->
 								{#if glyph !== undefined}
-									<div class="glyph" class:glyphSelected={selectedGlyph === glyph} on:click={() => (selectedGlyph = glyph)}>
+									<div class="glyph" class:glyphSelected={selectedGlyph.indexOf(glyph) !== -1} on:click={(e) => glyphOnClick(e, i)}>
 										<p class="testFont">
 											{String.fromCharCode(glyph.glyph.unicode)}
 										</p>
@@ -325,75 +496,104 @@
 					</div>
 					<div class="vert" />
 					<div class="settings">
-						{#if selectedGlyph !== undefined}
-							<h3>전체</h3>
+						<h3>전체</h3>
+						<div>
 							<div>
-								<div>
-									<label class="wordSafe" for="marginLeft">왼쪽 여백</label>
-									<input type="number" id="marginLeft" step="0.1" bind:value={margin.left} on:change={() => updateGlyph(true)} />
-								</div>
-								<div>
-									<label class="wordSafe" for="marginRight">오른쪽 여백</label>
-									<input type="number" id="marginRight" step="0.1" bind:value={margin.right} on:change={() => updateGlyph(true)} />
-								</div>
-								<div>
-									<label for="marginY">높이</label>
-									<input type="number" id="marginY" bind:value={margin.y} on:change={() => updateGlyph(true)} />
-								</div>
+								<label class="wordSafe" for="marginLeft">왼쪽 여백</label>
+								<input type="number" id="marginLeft" step="0.1" bind:value={margin.left} on:change={() => updateGlyph(true)} />
 							</div>
-							<div class="hori" />
+							<div>
+								<label class="wordSafe" for="marginRight">오른쪽 여백</label>
+								<input type="number" id="marginRight" step="0.1" bind:value={margin.right} on:change={() => updateGlyph(true)} />
+							</div>
+							<div>
+								<label for="marginY">높이</label>
+								<input type="number" id="marginY" bind:value={margin.y} on:change={() => updateGlyph(true)} />
+							</div>
+						</div>
+						<div class="hori" />
+						{#if selectedGlyph.length === 1}
 							<div class="preview">
 								<p class="testFont">
-									{String.fromCharCode(selectedGlyph.glyph.unicode)}
+									{String.fromCharCode(selectedGlyph[0].glyph.unicode)}
 								</p>
 								<div class="previewTop" />
-								<div class="previewLeft" style={`width: ${(margin.left + selectedGlyph.left) * 0.614}px`}>
-									<p>{margin.left + selectedGlyph.left}</p>
+								<div class="previewLeft" style={`width: ${(margin.left + selectedGlyph[0].left) * 0.614}px`}>
+									<p>{margin.left + selectedGlyph[0].left}</p>
 									<div />
 								</div>
-								<div class="previewRight" style={`width: ${(margin.right + selectedGlyph.right) * 0.614}px`}>
-									<p>{margin.right + selectedGlyph.right}</p>
+								<div class="previewRight" style={`width: ${(margin.right + selectedGlyph[0].right) * 0.614}px`}>
+									<p>{margin.right + selectedGlyph[0].right}</p>
 									<div />
 								</div>
-								<div class="previewY" style={`height: ${(margin.y + selectedGlyph.y) * 0.614}px`}>
-									<p>{margin.y + selectedGlyph.y}</p>
+								<div class="previewY" style={`height: ${(margin.y + selectedGlyph[0].y) * 0.614}px`}>
+									<p>{margin.y + selectedGlyph[0].y}</p>
 									<div />
 								</div>
 							</div>
 							<div>
 								<div>
 									<p class="wordSafe" style="font-weight: 600">기준 문자</p>
-									<p>{String.fromCharCode(selectedGlyph.glyph.unicode)}</p>
+									<p>{String.fromCharCode(selectedGlyph[0].glyph.unicode)}</p>
 								</div>
 								<div>
 									<p class="wordSafe" style="font-weight: 600">가로 길이</p>
-									<p class="wordBreak">{selectedGlyph.glyph.advanceWidth}</p>
+									<p class="wordBreak">{selectedGlyph[0].glyph.advanceWidth}</p>
 								</div>
 							</div>
 							<div>
 								<div>
 									<label class="wordSafe" for="left">왼쪽 여백</label>
-									<input type="number" id="left" step="0.1" bind:value={selectedGlyph.left} on:change={() => updateGlyph()} />
+									<input type="number" id="left" step="0.1" bind:value={selectedGlyph[0].left} on:change={() => updateGlyph()} />
 								</div>
 								<div>
 									<label class="wordSafe" for="right">오른쪽 여백</label>
-									<input type="number" id="right" step="0.1" bind:value={selectedGlyph.right} on:change={() => updateGlyph()} />
+									<input type="number" id="right" step="0.1" bind:value={selectedGlyph[0].right} on:change={() => updateGlyph()} />
 								</div>
 								<div>
 									<label for="y">높이</label>
-									<input type="number" id="y" bind:value={selectedGlyph.y} on:change={() => updateGlyph()} />
+									<input type="number" id="y" bind:value={selectedGlyph[0].y} on:change={() => updateGlyph()} />
 								</div>
 							</div>
 							<div>
 								<div>
 									<label for="scale">크기</label>
-									<input type="number" id="scale" step="0.05" min="0.1" bind:value={selectedGlyph.scale} on:change={() => updateGlyph()} />
+									<input type="number" id="scale" step="0.05" min="0.1" bind:value={selectedGlyph[0].scale} on:change={() => updateGlyph()} />
 								</div>
 								<div>
 									<label for="rotate">회전</label>
-									<input type="number" id="rotate" step="1" bind:value={selectedGlyph.rotate} on:change={() => updateGlyph()} />
+									<input type="number" id="rotate" step="1" bind:value={selectedGlyph[0].rotate} on:change={() => updateGlyph()} />
 								</div>
 							</div>
+						{:else if selectedGlyph.length > 1}
+							<h3>선택된 여러 문자</h3>
+							<div>
+								<div>
+									<label class="wordSafe" for="left">왼쪽 여백</label>
+									<input type="number" id="left" step="0.1" placeholder="다름" value={selectedGlyphSameValue.left} on:change={(e) => updateGlyph(false, e)} />
+								</div>
+								<div>
+									<label class="wordSafe" for="right">오른쪽 여백</label>
+									<input type="number" id="right" step="0.1" placeholder="다름" value={selectedGlyphSameValue.right} on:change={(e) => updateGlyph(false, e)} />
+								</div>
+								<div>
+									<label for="y">높이</label>
+									<input type="number" id="y" placeholder="다름" value={selectedGlyphSameValue.y} on:change={(e) => updateGlyph(false, e)} />
+								</div>
+							</div>
+							<div>
+								<div>
+									<label for="scale">크기</label>
+									<input type="number" id="scale" step="0.05" min="0.1" placeholder="다름" value={selectedGlyphSameValue.scale} on:change={(e) => updateGlyph(false, e)} />
+								</div>
+								<div>
+									<label for="rotate">회전</label>
+									<input type="number" id="rotate" step="1" placeholder="다름" value={selectedGlyphSameValue.rotate} on:change={(e) => updateGlyph(false, e)} />
+								</div>
+							</div>
+							<DetailButton title="모든 높이 맞추기" on:click={fixSelectedSameHeight}>
+								<p class="wordSafe">선택된 모든 글자들의 크기를 조정하여 높이를 맞춥니다.</p>
+							</DetailButton>
 						{/if}
 					</div>
 				</div>
@@ -431,6 +631,7 @@
 
 	.testFont {
 		font-family: 'test';
+		user-select: none;
 	}
 
 	.detail {
@@ -475,6 +676,10 @@
 		width: 100%;
 		box-sizing: border-box;
 		resize: none;
+
+		&::-webkit-scrollbar {
+			display: none;
+		}
 	}
 
 	h2 {
