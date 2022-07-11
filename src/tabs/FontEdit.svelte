@@ -365,6 +365,10 @@
 					[selectedStart, selectedEnd] = [-1, -1];
 				}
 			}
+		} else if (e.altKey) {
+			const pos = selectedGlyph.indexOf(glyphs[i]);
+			if (pos === -1) selectedGlyph = [...selectedGlyph, glyphs[i]];
+			else selectedGlyph = [...selectedGlyph.slice(0, pos), ...selectedGlyph.slice(pos + 1)];
 		} else {
 			selectedStart = i;
 			selectedGlyph = [glyphs[i]];
