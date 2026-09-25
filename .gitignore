@@ -1,8 +1,8 @@
 .DS_Store
 node_modules
-/build
-/.svelte-kit
-/package
+dist
+.vite
+*.tsbuildinfo
 .env
 .env.*
 !.env.example
