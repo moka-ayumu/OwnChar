@@ -1,5 +1,6 @@
 import { getStroke } from 'perfect-freehand'
 import { EndType, FillRule, JoinType, inflatePaths, union } from 'clipper2-ts'
+import { stabilizeStroke, type ConditionedStroke, type StabilizeMode } from './stroke-stabilizer'
 
 export interface RawStroke {
   id: string
@@ -22,58 +23,11 @@ export const STROKE_SIZE_FACTOR = 4.25
 
 type Point = [number, number]
 
-function arcLengths(points: readonly Point[]) {
-  const lengths = [0]
-  for (let index = 1; index < points.length; index += 1) {
-    lengths.push(lengths[index - 1] + Math.hypot(points[index][0] - points[index - 1][0], points[index][1] - points[index - 1][1]))
-  }
-  return lengths
-}
+export type { ConditionedStroke }
 
-function pointAtDistance(points: readonly Point[], lengths: readonly number[], distance: number): Point {
-  const target = Math.max(0, Math.min(lengths.at(-1) ?? 0, distance))
-  let right = 1
-  while (right < lengths.length && lengths[right] < target) right += 1
-  if (right >= lengths.length) return [...points.at(-1)!]
-  const left = right - 1
-  const span = lengths[right] - lengths[left]
-  const t = span > 0 ? (target - lengths[left]) / span : 0
-  return [
-    points[left][0] + (points[right][0] - points[left][0]) * t,
-    points[left][1] + (points[right][1] - points[left][1]) * t,
-  ]
-}
+/** `live-start` is the legacy name of `live`. */
+export type StrokeConditionMode = StabilizeMode | 'live-start'
 
-function valueAtDistance(values: readonly number[], lengths: readonly number[], distance: number) {
-  const target = Math.max(0, Math.min(lengths.at(-1) ?? 0, distance))
-  let right = 1
-  while (right < lengths.length && lengths[right] < target) right += 1
-  if (right >= lengths.length) return values.at(-1) ?? 1
-  const left = right - 1
-  const span = lengths[right] - lengths[left]
-  const t = span > 0 ? (target - lengths[left]) / span : 0
-  return (values[left] ?? 1) + ((values[right] ?? values[left] ?? 1) - (values[left] ?? 1)) * t
-}
-
-function normalized(vector: Point): Point | null {
-  const length = Math.hypot(vector[0], vector[1])
-  return length > 1e-4 ? [vector[0] / length, vector[1] / length] : null
-}
-
-function smoothstep(value: number) {
-  const t = Math.max(0, Math.min(1, value))
-  return t * t * (3 - 2 * t)
-}
-
-export interface ConditionedStroke {
-  points: Point[]
-  pressures: number[]
-  closed: boolean
-}
-
-export type StrokeConditionMode = 'live-start' | 'complete'
-
-/** Correct only lateral noise on a locally straight endpoint. */
 export function conditionStroke(
   points: readonly [number, number][],
   pressures: readonly number[],
@@ -81,84 +35,7 @@ export function conditionStroke(
   mode: StrokeConditionMode,
   strength = 1,
 ): ConditionedStroke {
-  const result = points.map(([x, y]) => [x, y] as [number, number])
-  const resultPressures = points.map((_, index) => Number.isFinite(pressures[index]) ? pressures[index] : 1)
-  if (points.length < 2 || diameter <= 0) return { points: result, pressures: resultPressures, closed: false }
-
-  const distances = arcLengths(points)
-  const total = distances.at(-1) ?? 0
-  const closed = Math.hypot(points[0][0] - points.at(-1)![0], points[0][1] - points.at(-1)![1]) <= diameter * 2
-  const amount = Math.max(0, Math.min(1, Number.isFinite(strength) ? strength : 1))
-  if (!amount || total < diameter * 4 || closed) return { points: result, pressures: resultPressures, closed }
-  const windowLength = Math.min(total * 0.12, diameter * 1.5)
-
-  const stabilizeEnd = (start: boolean) => {
-    const endpointDistance = start ? 0 : total
-    const sample = (fromEndpoint: number) => pointAtDistance(points, distances, start ? fromEndpoint : total - fromEndpoint)
-    const support = Array.from({ length: 8 }, (_, index) => sample(diameter * (1 + index * 2 / 7)))
-    const supportDirection = normalized([
-      support.at(-1)![0] - support[0][0], support.at(-1)![1] - support[0][1],
-    ])
-    if (!supportDirection) return
-    let tangent: Point = supportDirection
-    const expected: Point = start
-      ? [points[Math.min(1, points.length - 1)][0] - points[0][0], points[Math.min(1, points.length - 1)][1] - points[0][1]]
-      : [points.at(-1)![0] - points[Math.max(0, points.length - 2)][0], points.at(-1)![1] - points[Math.max(0, points.length - 2)][1]]
-    if (tangent[0] * expected[0] + tangent[1] * expected[1] < 0) tangent = [-tangent[0], -tangent[1]]
-
-    // Judge the stable support behind the contact/release region. Measuring the
-    // noisy endpoint itself would reject exactly the straight strokes that need
-    // conditioning.
-    const linearitySamples = support
-    const chord = Math.hypot(
-      linearitySamples.at(-1)![0] - linearitySamples[0][0],
-      linearitySamples.at(-1)![1] - linearitySamples[0][1],
-    )
-    const supportArc = arcLengths(linearitySamples).at(-1) ?? 0
-    if (chord / Math.max(supportArc, 1e-6) < 0.92) return
-    const directions = support.slice(1).map((point, index) => normalized([
-      point[0] - support[index][0], point[1] - support[index][1],
-    ])).filter((direction): direction is Point => Boolean(direction))
-    let directionChange = 0
-    for (let index = 1; index < directions.length; index += 1) {
-      directionChange += Math.acos(Math.max(-1, Math.min(1,
-        directions[index - 1][0] * directions[index][0] + directions[index - 1][1] * directions[index][1],
-      )))
-    }
-    if (directionChange > 25 * Math.PI / 180) return
-
-    const normal: Point = [-tangent[1], tangent[0]]
-    const normalOffsets = support.map((point) => point[0] * normal[0] + point[1] * normal[1]).sort((a, b) => a - b)
-    const normalOffset = normalOffsets[Math.floor(normalOffsets.length / 2)]
-    const supportPressures = Array.from({ length: 8 }, (_, index) => valueAtDistance(
-      resultPressures,
-      distances,
-      start ? diameter * (1 + index * 2 / 7) : total - diameter * (1 + index * 2 / 7),
-    )).sort((a, b) => a - b)
-    const stablePressure = Math.max(0.1, supportPressures[Math.floor(supportPressures.length / 2)] ?? 1)
-
-    points.forEach((point, index) => {
-      const fromEndpoint = Math.abs(distances[index] - endpointDistance)
-      if (fromEndpoint > windowLength) return
-      const currentOffset = point[0] * normal[0] + point[1] * normal[1]
-      const correction = Math.max(-diameter * 0.4, Math.min(diameter * 0.4, normalOffset - currentOffset))
-      const weight = smoothstep(1 - fromEndpoint / windowLength) * amount
-      result[index] = [
-        point[0] + normal[0] * correction * weight,
-        point[1] + normal[1] * correction * weight,
-      ]
-      // Pen hardware commonly emits a few near-zero samples immediately after
-      // contact and before release. Leaving those between a full-width body and
-      // the forced round cap creates a visible pinched neck / detached dot.
-      if (resultPressures[index] < 0.1) {
-        resultPressures[index] += (stablePressure - resultPressures[index]) * weight
-      }
-    })
-  }
-
-  stabilizeEnd(true)
-  if (mode === 'complete') stabilizeEnd(false)
-  return { points: result, pressures: resultPressures, closed }
+  return stabilizeStroke(points, pressures, diameter, mode === 'complete' ? 'complete' : 'live', strength)
 }
 
 export function stabilizeStrokePoints(points: readonly Point[], diameter: number, complete = true, strength = 1) {
@@ -180,7 +57,7 @@ export function strokePolygon(
   strength = 1,
 ): [number, number][] {
   if (!points.length) return []
-  const conditioned = conditionStroke(points, pressures, size, complete ? 'complete' : 'live-start', strength)
+  const conditioned = conditionStroke(points, pressures, size, complete ? 'complete' : 'live', strength)
   const input = conditioned.points.map(([x, y], index) => {
     let pressure = conditioned.pressures[index]
     if ((index === 0 || index === points.length - 1) && pressure < 0.1) {
@@ -188,12 +65,15 @@ export function strokePolygon(
       pressure = Math.max(0.1, neighbor ?? 0.1)
     }
     return [x, y, pressure]
-  })
+  }).filter((point, index, all) => index === 0 || Math.hypot(point[0] - all[index - 1][0], point[1] - all[index - 1][1]) > 1e-3)
+  // The stabilizer already removed hand jitter; a strong streamline on top of
+  // it would only lag behind the pen and round off intentional corners.
+  const amount = Math.max(0, Math.min(1, Number.isFinite(strength) ? strength : 1))
   return getStroke(input, {
     size,
     thinning: 1,
     smoothing: 0.1,
-    streamline: 0.5,
+    streamline: 0.5 - 0.35 * amount,
     last: complete,
     simulatePressure: false,
     easing: pressureResponse,

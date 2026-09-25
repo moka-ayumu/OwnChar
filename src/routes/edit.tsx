@@ -406,11 +406,11 @@ function CompositionControls({ settings }: { settings: CompositionSettings }) {
         ))}
       </div>
       <div className="mt-6 border-t border-[#EEF0F2] pt-5">
-        <h3 className="text-sm font-semibold">획 끝점 보정</h3>
-        <p className="mt-1 text-[11px] leading-4 text-[#92969D]">0은 원본 획, 1은 직선형 시작·끝의 흔들림을 최대 안전 범위로 보정합니다.</p>
+        <h3 className="text-sm font-semibold">손떨림 보정</h3>
+        <p className="mt-1 text-[11px] leading-4 text-[#92969D]">0은 원본 획, 1은 획의 떨림과 시작·끝의 갈고리를 최대로 보정합니다. 모서리는 유지됩니다.</p>
         <label className="mt-4 block">
-          <span className="flex items-center justify-between text-xs"><span>끝점 보정 강도</span><span className="tabular-nums">{settings.endpointStabilization.toFixed(2)}</span></span>
-          <input aria-label="끝점 보정 강도" type="range" min="0" max="1" step="0.01" value={settings.endpointStabilization} className="mt-2 w-full accent-[#2457F5]" onChange={(event) => projectActions.updateCompositionSettings({ endpointStabilization: Number(event.target.value) })} />
+          <span className="flex items-center justify-between text-xs"><span>손떨림 보정 강도</span><span className="tabular-nums">{settings.endpointStabilization.toFixed(2)}</span></span>
+          <input aria-label="손떨림 보정 강도" type="range" min="0" max="1" step="0.01" value={settings.endpointStabilization} className="mt-2 w-full accent-[#2457F5]" onChange={(event) => projectActions.updateCompositionSettings({ endpointStabilization: Number(event.target.value) })} />
         </label>
       </div>
       <div className="mt-6 border-t border-[#EEF0F2] pt-5">

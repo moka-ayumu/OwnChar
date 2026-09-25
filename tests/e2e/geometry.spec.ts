@@ -47,6 +47,55 @@ test('keeps the live start model fixed as the input prefix grows', () => {
   expect(grown.at(-1)).toEqual(points.at(-1))
 })
 
+const line = (from: [number, number], to: [number, number], step = 2): [number, number][] => {
+  const length = Math.hypot(to[0] - from[0], to[1] - from[1])
+  const count = Math.max(1, Math.round(length / step))
+  return Array.from({ length: count + 1 }, (_, index) => [
+    from[0] + (to[0] - from[0]) * index / count,
+    from[1] + (to[1] - from[1]) * index / count,
+  ] as [number, number])
+}
+
+test('straightens a contact hook that bends away from the stroke', () => {
+  // Pen lands, skids down-left for ~7px, then writes a horizontal bar.
+  const points: [number, number][] = [[6, -6], [4, -3], [2, 0], ...line([2, 0], [120, 0]).slice(1)]
+  const result = conditionStroke(points, points.map(() => 1), 10, 'complete', 1).points
+  for (const [, y] of result.slice(0, 4)) expect(Math.abs(y)).toBeLessThanOrEqual(1.5)
+})
+
+test('removes a release curl without backtracking along the stroke', () => {
+  // Diagonal stroke that curls back and wobbles as the pen lifts (the blob in a "7").
+  const body = line([0, 0], [80, 80])
+  const points: [number, number][] = [...body, [83, 82], [85, 81], [84, 78], [82, 77], [81, 79]]
+  const result = conditionStroke(points, points.map(() => 1), 10, 'complete', 1).points
+  const tangent = [Math.SQRT1_2, Math.SQRT1_2]
+  const along = result.map(([x, y]) => x * tangent[0] + y * tangent[1])
+  const tail = along.slice(-12)
+  for (let index = 1; index < tail.length; index += 1) expect(tail[index]).toBeGreaterThanOrEqual(tail[index - 1] - 1e-6)
+  for (const [x, y] of result.slice(-5)) expect(Math.abs(x * tangent[1] - y * tangent[0])).toBeLessThan(1.5)
+})
+
+test('keeps intentional corners sharp while stabilizing', () => {
+  const points: [number, number][] = [...line([0, 0], [100, 0]), ...line([100, 0], [100, 100]).slice(1)]
+  const cornerIndex = points.findIndex(([x, y]) => x === 100 && y === 0)
+  const result = conditionStroke(points, points.map(() => 1), 10, 'complete', 1).points
+  expect(Math.hypot(result[cornerIndex][0] - 100, result[cornerIndex][1])).toBeLessThanOrEqual(1)
+  const before = result[cornerIndex - 5]
+  const after = result[cornerIndex + 5]
+  const incoming = [result[cornerIndex][0] - before[0], result[cornerIndex][1] - before[1]]
+  const outgoing = [after[0] - result[cornerIndex][0], after[1] - result[cornerIndex][1]]
+  const angle = Math.acos((incoming[0] * outgoing[0] + incoming[1] * outgoing[1]) / (Math.hypot(incoming[0], incoming[1]) * Math.hypot(outgoing[0], outgoing[1])))
+  expect(angle * 180 / Math.PI).toBeGreaterThanOrEqual(80)
+})
+
+test('smooths hand jitter in the stroke body and is inert at zero strength', () => {
+  const points = line([0, 0], [200, 0]).map(([x], index) => [x, index % 2 ? 1 : -1] as [number, number])
+  const rms = (values: [number, number][]) => Math.sqrt(values.slice(15, -15).reduce((sum, [, y]) => sum + y * y, 0) / (values.length - 30))
+  const smoothed = conditionStroke(points, points.map(() => 1), 10, 'complete', 1).points
+  expect(rms(smoothed)).toBeLessThanOrEqual(rms(points) * 0.5)
+  expect(conditionStroke(points, points.map(() => 1), 10, 'complete', 0).points).toEqual(points)
+})
+
 test('expands the overlap policy to the documented pair counts', async () => {
   const server = await createModuleServer()
   try {

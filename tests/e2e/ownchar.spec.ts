@@ -88,7 +88,7 @@ test('starts a new local handwriting project', async ({ page }) => {
   await expect(writingCanvas).toHaveAttribute('data-cell-size', '152')
   await expect(page.getByText('이 문장에서 수집된 자모')).toBeVisible()
   await expect(page.getByRole('slider', { name: '획 굵기' })).toHaveAttribute('aria-valuenow', '3')
-  await expect(page.getByRole('slider', { name: '끝점 보정' })).toHaveAttribute('aria-valuenow', '1')
+  await expect(page.getByRole('slider', { name: '손떨림 보정' })).toHaveAttribute('aria-valuenow', '1')
 })
 
 test('maps continuous stroke settings to saved pen widths', async ({ page }) => {
@@ -1322,7 +1322,7 @@ test('generates a complete Hangul OTF', async ({ page }, testInfo) => {
   await expect(jamoNormalization).toHaveValue('1')
   const initialHeightRatio = page.getByRole('slider', { name: '단독 자모 크기 비율' })
   await expect(initialHeightRatio).toHaveValue('1')
-  const endpointStabilization = page.getByRole('slider', { name: '끝점 보정 강도' })
+  const endpointStabilization = page.getByRole('slider', { name: '손떨림 보정 강도' })
   await expect(endpointStabilization).toHaveValue('1')
   const standalonePreview = page.getByLabel('ㅇ 단독 자모 미리보기')
   await expect(page.getByLabel('ㅜ 단독 자모 미리보기')).toBeVisible()
@@ -1373,7 +1373,7 @@ test('generates a complete Hangul OTF', async ({ page }, testInfo) => {
   await expect(page.getByRole('slider', { name: '한글 음절 정규화' })).toHaveValue('1')
   await expect(page.getByRole('slider', { name: '자모 정규화' })).toHaveValue('0')
   await expect(page.getByRole('slider', { name: '단독 자모 크기 비율' })).toHaveValue('0.1')
-  await expect(page.getByRole('slider', { name: '끝점 보정 강도' })).toHaveValue('0.5')
+  await expect(page.getByRole('slider', { name: '손떨림 보정 강도' })).toHaveValue('0.5')
   await expect(page.getByRole('button', { name: '고정 폭' })).toHaveAttribute('aria-pressed', 'true')
   await page.getByRole('button', { name: '변경 적용' }).click()
   await expect(page).toHaveURL(/\/preview$/, { timeout: 120_000 })
