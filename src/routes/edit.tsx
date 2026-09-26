@@ -6,14 +6,13 @@ import { ArrowLeft, ChevronRight, PenLine, Redo2, RotateCcw, Save, Undo2 } from 
 import { Button, buttonVariants } from '@/components/ui/button'
 import { useFontFace } from '@/hooks/use-font-face'
 import { useProject } from '@/hooks/use-project'
-import { composeHangulPath, getHangulVariantSelection, variantShapeKey } from '@/font/hangul'
-import { normalizeRawStrokes, normalizeStrokePaths, type NormalizedShape } from '@/font/path-geometry'
-import { learnGaps, type GapProfile } from '@/font/gap-learning'
-import { learnHangulCenter, learnHangulHeight } from '@/font/hangul-height'
+import { composeHangulPath, getHangulVariantSelection } from '@/font/hangul'
+import type { NormalizedShape } from '@/font/path-geometry'
+import { composedHangulPath, hangulComposeOptions, type HangulCompositionInputs } from '@/font/composer'
 import { glyphSources } from '@/font/glyph-provenance'
 import { composeStandaloneJamoPath, type ReferenceEnvelope } from '@/font/standalone-initial'
-import { calibrateGlyphPath, visualCalibrationScale, VISUAL_HANGUL_HEIGHT } from '@/font/visual-calibration'
-import type { RawStroke } from '@/font/stroke-outline'
+import { renderCalibratedGlyph, VISUAL_HANGUL_HEIGHT } from '@/font/visual-calibration'
+import { useCompositionContext } from '@/hooks/use-composition-context'
 import { CHARACTER_PROMPTS } from '@/lib/prompts'
 import { WRITING_EXERCISES } from '@/lib/writing-exercises'
 import { cn } from '@/lib/utils'
@@ -234,38 +233,13 @@ function CompositionWorkspace({ drawings, sessions, settings }: {
   sessions: Record<string, WritingSessionRecord>
   settings: CompositionSettings
 }) {
-  const gaps = useMemo(() => learnGaps(sessions, settings.endpointStabilization), [sessions, settings.endpointStabilization])
-  const targetHeight = useMemo(() => learnHangulHeight(sessions, settings.endpointStabilization), [sessions, settings.endpointStabilization])
-  const targetCenter = useMemo(() => learnHangulCenter(sessions, settings.endpointStabilization), [sessions, settings.endpointStabilization])
-  const shapes = useMemo(() => {
-    const result = new Map<string, NormalizedShape>()
-    for (const prompt of CHARACTER_PROMPTS) {
-      const drawing = drawings[prompt.id]
-      if (drawing?.paths.length || drawing?.elements.length) {
-        const key = prompt.variantRole === undefined ? prompt.char : variantShapeKey(prompt.variantRole, prompt.variantIndex!, prompt.char)
-        const session = drawing.capture ? sessions[drawing.capture.exerciseId] : undefined
-        const cellSize = session?.cellSize ?? 148
-        const offsetX = drawing.capture ? (drawing.capture.cellIndex % (session?.columns ?? 1)) * cellSize : 0
-        const offsetY = drawing.capture ? Math.floor(drawing.capture.cellIndex / (session?.columns ?? 1)) * cellSize : 0
-        const raw = (drawing.elements as unknown as RawStroke[])
-          .filter((element) => Array.isArray(element.points) && element.points.length > 0)
-          .map((element) => ({ ...element, x: element.x - offsetX, y: element.y - offsetY }))
-        const shape = raw.length ? normalizeRawStrokes(raw, cellSize, settings.endpointStabilization) : normalizeStrokePaths(drawing.paths, session?.cellSize)
-        shape.sourceCellId = drawing.capture ? `${drawing.capture.exerciseId}:${drawing.capture.cellIndex}` : undefined
-        const derivedRole = drawing.derivedFromPromptId?.split('-')[0]
-        if (derivedRole === 'initial' || derivedRole === 'medial' || derivedRole === 'final') shape.sourceRole = derivedRole
-        result.set(key, shape)
-      }
-    }
-    return result
-  }, [drawings, sessions, settings.endpointStabilization])
-  const visualScale = useMemo(() => visualCalibrationScale(shapes, settings, gaps, targetHeight, targetCenter), [shapes, settings, gaps, targetHeight, targetCenter])
+  const { shapes, composition, visualScale } = useCompositionContext(drawings, sessions, settings)
   const jamoReference = useMemo<ReferenceEnvelope>(() => {
-    const path = composeHangulPath('가'.codePointAt(0)!, shapes, settings, { gaps, targetHeight, targetCenter, postScale: visualScale })
-    if (!path.commands.length) return { width: VISUAL_HANGUL_HEIGHT / visualScale, height: VISUAL_HANGUL_HEIGHT / visualScale, centerX: 500, centerY: targetCenter }
+    const path = composeHangulPath('가'.codePointAt(0)!, shapes, settings, hangulComposeOptions(composition, visualScale))
+    if (!path.commands.length) return { width: VISUAL_HANGUL_HEIGHT / visualScale, height: VISUAL_HANGUL_HEIGHT / visualScale, centerX: 500, centerY: composition.hangulTargetCenter }
     const box = path.getBoundingBox()
     return { width: box.x2 - box.x1, height: box.y2 - box.y1, centerX: (box.x1 + box.x2) / 2, centerY: (box.y1 + box.y2) / 2 }
-  }, [shapes, settings, gaps, targetHeight, targetCenter, visualScale])
+  }, [shapes, settings, composition, visualScale])
 
   return (
     <div className="composition-workspace">
@@ -281,7 +255,7 @@ function CompositionWorkspace({ drawings, sessions, settings }: {
         <div className="composition-example-grid">
           <StandaloneJamoCanvas char="ㅇ" shape={shapes.get('ㅇ')} settings={settings} reference={jamoReference} visualScale={visualScale} />
           <StandaloneJamoCanvas char="ㅜ" shape={shapes.get('ㅜ')} settings={settings} reference={jamoReference} visualScale={visualScale} />
-          {compositionExamples.map((example) => <CompositionCanvas key={example.char} {...example} shapes={shapes} settings={settings} gaps={gaps} targetHeight={targetHeight} targetCenter={targetCenter} visualScale={visualScale} />)}
+          {compositionExamples.map((example) => <CompositionCanvas key={example.char} {...example} shapes={shapes} composition={composition} visualScale={visualScale} />)}
         </div>
       </main>
       <aside className="composition-control-panel">
@@ -336,8 +310,10 @@ function StandaloneJamoCanvas({ char, shape, settings, reference, visualScale }:
   const canvasRef = useRef<HTMLCanvasElement>(null)
   useEffect(() => {
     if (!canvasRef.current) return
-    const path = shape ? composeStandaloneJamoPath(shape, settings, reference) : new opentype.Path()
-    calibrateGlyphPath(path, visualScale, reference.centerY, 450, settings.widthMode === 'fixed')
+    const path = renderCalibratedGlyph(
+      (penScale) => shape ? composeStandaloneJamoPath(shape, settings, reference, penScale) : new opentype.Path(),
+      visualScale, reference.centerY, 450, settings.widthMode === 'fixed',
+    )
     drawCompositionPreview(canvasRef.current, path)
   }, [shape, settings, reference, visualScale])
   return <figure className="composition-example-card">
@@ -349,14 +325,11 @@ function StandaloneJamoCanvas({ char, shape, settings, reference, visualScale }:
   </figure>
 }
 
-function CompositionCanvas({ char, label, shapes, settings, gaps, targetHeight, targetCenter, visualScale }: {
+function CompositionCanvas({ char, label, shapes, composition, visualScale }: {
   char: string
   label: string
   shapes: Map<string, NormalizedShape>
-  settings: CompositionSettings
-  gaps: GapProfile
-  targetHeight: number
-  targetCenter: number
+  composition: HangulCompositionInputs
   visualScale: number
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -367,10 +340,8 @@ function CompositionCanvas({ char, label, shapes, settings, gaps, targetHeight, 
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
-    const path = composeHangulPath(codePoint, shapes, settings, { gaps, targetHeight, targetCenter, postScale: visualScale })
-    calibrateGlyphPath(path, visualScale, targetCenter, 450, settings.widthMode === 'fixed')
-    drawCompositionPreview(canvas, path)
-  }, [codePoint, settings, shapes, gaps, targetHeight, targetCenter, visualScale])
+    drawCompositionPreview(canvas, composedHangulPath(codePoint, shapes, composition, visualScale))
+  }, [codePoint, shapes, composition, visualScale])
 
   return (
     <figure className="composition-example-card">
@@ -388,7 +359,6 @@ function CompositionControls({ settings }: { settings: CompositionSettings }) {
     ['hangulNormalization', '한글 음절 정규화'],
     ['jamoNormalization', '자모 정규화'],
     ['latinNormalization', '영문 정규화'],
-    ['numberNormalization', '숫자 정규화'],
   ] as const
   return (
     <div>

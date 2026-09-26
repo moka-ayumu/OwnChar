@@ -34,11 +34,13 @@ function scalePath(path: opentype.Path, scale: number, targetX: number, targetY:
   }
 }
 
-export function composeStandaloneJamoPath(shape: NormalizedShape, settings: CompositionSettings, reference: ReferenceEnvelope) {
+export function composeStandaloneJamoPath(shape: NormalizedShape, settings: CompositionSettings, reference: ReferenceEnvelope, penScale = 1) {
   const path = new opentype.Path()
-  const appendAt = (factor: number) => {
+  let zoneFactor = 1
+  const appendAt = (factor: number, pen = penScale) => {
+    zoneFactor = factor
     path.commands.length = 0
-    appendShape(path, shape, scaledZone(factor))
+    appendShape(path, shape, scaledZone(factor), false, pen)
   }
   appendAt(1)
   let box = path.getBoundingBox()
@@ -47,10 +49,28 @@ export function composeStandaloneJamoPath(shape: NormalizedShape, settings: Comp
   if (Math.abs(normalizedFactor - 1) > 0.005) appendAt(normalizedFactor)
 
   const ratio = Math.max(0.1, Math.min(1, settings.standaloneJamoMaxHeight))
+  const fitFor = (current: ReturnType<opentype.Path['getBoundingBox']>) => Math.min(
+    1,
+    reference.width * ratio / Math.max(1, current.x2 - current.x1),
+    reference.height * ratio / Math.max(1, current.y2 - current.y1),
+  )
   box = path.getBoundingBox()
-  const width = Math.max(1, box.x2 - box.x1)
-  const height = Math.max(1, box.y2 - box.y1)
-  const fit = Math.min(1, reference.width * ratio / width, reference.height * ratio / height)
+  let fit = fitFor(box)
+  // The fit scales the outline itself, so the pen is first widened by 1/fit to
+  // end unchanged. That widening grows the ink, so settle the fit on it.
+  if (fit < 0.995) {
+    let rendered = 1
+    for (let pass = 0; pass < 4; pass += 1) {
+      appendAt(zoneFactor, penScale / fit)
+      rendered = fit
+      box = path.getBoundingBox()
+      const next = fitFor(box)
+      if (Math.abs(next / fit - 1) < 0.001) break
+      fit = next
+    }
+    // Scale the outline that was rendered, never beyond the reference.
+    fit = Math.min(rendered, fitFor(box))
+  }
   scalePath(path, fit, reference.centerX, (box.y1 + box.y2) / 2)
   alignVerticalCenter(path, reference.centerY, settings.verticalAlignment)
   return path

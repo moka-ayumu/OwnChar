@@ -19,8 +19,8 @@ const defaultMetadata: FontMetadata = {
 
 export const initialProjectState: ProjectState = {
   schemaVersion: 7,
-  settingsVersion: 6,
-  fontBuildVersion: 7,
+  settingsVersion: 7,
+  fontBuildVersion: 8,
   hydrated: false,
   status: 'empty',
   currentPrompt: 0,
@@ -78,9 +78,11 @@ export const projectActions = {
     }
     restoredComposition.endpointStabilization = Math.max(0, Math.min(1, restoredComposition.endpointStabilization))
     delete (restoredComposition as Record<string, unknown>).standaloneInitialMaxHeight
-    const addedSettings = ['endpointStabilization', 'hangulNormalization', 'jamoNormalization', 'standaloneJamoMaxHeight', 'latinNormalization', 'numberNormalization', 'widthMode'] as const
+    // Numerals now share the height of ! and ?, so their own normalization is gone.
+    delete (restoredComposition as Record<string, unknown>).numberNormalization
+    const addedSettings = ['endpointStabilization', 'hangulNormalization', 'jamoNormalization', 'standaloneJamoMaxHeight', 'latinNormalization', 'widthMode'] as const
     const needsFontRegeneration = addedSettings.some((key) => !(key in (project.compositionSettings ?? {})))
-    const legacySettings = project.settingsVersion !== 6
+    const legacySettings = project.settingsVersion !== 7
     const legacyDefaultSettings = !project.settingsVersion || project.settingsVersion < 4
     const legacyJamoSettings = !project.settingsVersion || project.settingsVersion < 2
     const legacyExerciseOrder = !('hangulNormalization' in (project.compositionSettings ?? {}))
@@ -96,14 +98,14 @@ export const projectActions = {
     update(() => ({
       ...initialProjectState,
       ...project,
-      settingsVersion: 6,
-      fontBuildVersion: 7,
+      settingsVersion: 7,
+      fontBuildVersion: 8,
       currentPrompt: legacyExerciseOrder ? Math.min(restoredPrompt, WRITING_EXERCISES.length - 3) : restoredPrompt,
       globalMetrics: { ...initialProjectState.globalMetrics, ...project.globalMetrics },
       compositionSettings: restoredComposition,
       writingSessions: project.writingSessions,
       sourceDirty: project.sourceDirty ?? false,
-      fontDirty: project.fontDirty || needsFontRegeneration || legacySettings || project.fontBuildVersion !== 7,
+      fontDirty: project.fontDirty || needsFontRegeneration || legacySettings || project.fontBuildVersion !== 8,
       hydrated: true,
     }))
   },

@@ -11,7 +11,11 @@ import { useProject } from '@/hooks/use-project'
 import { completedPromptCount, missingPrompts, PROMPT_COUNT } from '@/lib/prompts'
 import { exerciseCompletion, WRITING_EXERCISES } from '@/lib/writing-exercises'
 import { projectActions } from '@/store/project-store'
-import type { DrawingRecord, JamoBoundary, StrokeAssignment, StrokePath, WritingSessionRecord } from '@/types/project'
+import type { CompositionSettings, DrawingRecord, JamoBoundary, StrokeAssignment, StrokePath, WritingSessionRecord } from '@/types/project'
+import { cellId, indexedSlotsForCell, isFixedSlot } from '@/font/composition-inputs'
+import { hangulComposeOptions } from '@/font/composer'
+import { composeGuideParts } from '@/font/syllable-lock'
+import { useCompositionContext } from '@/hooks/use-composition-context'
 
 export const Route = createFileRoute('/write')({
   validateSearch: (search: Record<string, unknown>): { exerciseId?: string; cellIndex?: number; returnGlyph?: number; returnQuery?: string } => ({
@@ -47,21 +51,6 @@ function previewFromPaths(paths: StrokePath[]) {
   const maxY = Math.max(...paths.map((path) => path.y + Math.max(path.height, 1)))
   const body = paths.map((path) => `<path d="${path.d}" transform="translate(${path.x} ${path.y})" fill="#17181A" fill-rule="nonzero"/>`).join('')
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${minX} ${minY} ${Math.max(1, maxX - minX)} ${Math.max(1, maxY - minY)}">${body}</svg>`
-}
-
-function isFixedSlot(promptId: string, cellIndex: number, slotIndex: number, exercise: typeof WRITING_EXERCISES[number], drawings: Record<string, DrawingRecord>) {
-  const record = drawings[promptId]
-  if (!record) return false
-  if (record.capture?.exerciseId !== exercise.id) return true
-  return record.capture.cellIndex !== cellIndex || record.capture.slotIndex !== slotIndex
-}
-
-function indexedSlotsForCell(cell: typeof WRITING_EXERCISES[number]['cells'][number]) {
-  const roleOrder: Record<string, number> = { initial: 0, medial: 1, final: 2 }
-  return [
-    ...cell.slots.map((slot, slotIndex) => ({ slot, slotIndex, guide: false })),
-    ...(cell.guides ?? []).map((slot, guideIndex) => ({ slot, slotIndex: cell.slots.length + guideIndex, guide: true })),
-  ].sort((left, right) => (roleOrder[left.slot.role ?? ''] ?? 3) - (roleOrder[right.slot.role ?? ''] ?? 3))
 }
 
 function cellIndexForElement(element: SceneElement, cellSize: number, columns: number, cellCount: number) {
@@ -133,32 +122,63 @@ function assignElements(elements: readonly SceneElement[], cellSize: number, col
   return { groups, assignments }
 }
 
-function FixedCaptureLayer({ exercise, drawings, sessions, cellSize, columns, width, height }: {
+interface GuidePath { key: string; cellIndex: number; promptId: string; d: string; transform: string }
+
+/**
+ * Fixed jamo are drawn from the same composition the font uses, so a guide in
+ * a writing cell is exactly the glyph the font will contain (in cell space,
+ * before the uniform font calibration).
+ */
+function FixedCaptureLayer(props: {
   exercise: typeof WRITING_EXERCISES[number]
   drawings: Record<string, DrawingRecord>
   sessions: Record<string, WritingSessionRecord>
+  settings: CompositionSettings
   cellSize: number
   columns: number
   width: number
   height: number
 }) {
-  const paths = exercise.cells.flatMap((cell, cellIndex) => indexedSlotsForCell(cell).flatMap(({ slot, slotIndex }) => {
-    // A contextual glyph may only be reused by the exact same role + variant + jamo.
-    // Base glyphs are font-generation fallbacks, never writing-canvas guides.
-    const record = drawings[slot.promptId]
-    if (!record || !isFixedSlot(slot.promptId, cellIndex, slotIndex, exercise, drawings)) return []
-    const sourceSize = record.capture ? sessions[record.capture.exerciseId]?.cellSize ?? cellSize : cellSize
-    const scale = cellSize / sourceSize
+  const { exercise, drawings } = props
+  const hasFixed = exercise.cells.some((cell, cellIndex) => indexedSlotsForCell(cell)
+    .some(({ slot, slotIndex }) => isFixedSlot(slot.promptId, cellIndex, slotIndex, exercise, drawings)))
+  return hasFixed ? <ComposedGuideLayer {...props} /> : null
+}
+
+function ComposedGuideLayer({ exercise, drawings, sessions, settings, cellSize, columns, width, height }: Parameters<typeof FixedCaptureLayer>[0]) {
+  const { shapes, composition, visualScale } = useCompositionContext(drawings, sessions, settings)
+  const paths = useMemo(() => exercise.cells.flatMap((cell, cellIndex): GuidePath[] => {
+    const fixed = indexedSlotsForCell(cell).filter(({ slot, slotIndex }) => isFixedSlot(slot.promptId, cellIndex, slotIndex, exercise, drawings))
+    if (!fixed.length) return []
     const cellX = (cellIndex % columns) * cellSize
     const cellY = Math.floor(cellIndex / columns) * cellSize
-    return record.paths.map((path, pathIndex) => ({
-      key: `${cellIndex}-${slotIndex}-${pathIndex}`,
-      cellIndex,
-      promptId: slot.promptId,
-      d: path.d,
-      transform: `matrix(${scale} 0 0 ${scale} ${cellX + path.x * scale} ${cellY + path.y * scale})`,
-    }))
-  }))
+    const codePoint = cell.char.codePointAt(0)!
+    if (codePoint >= 0xac00 && codePoint <= 0xd7a3 && fixed.every(({ slot }) => slot.role)) {
+      const { parts } = composeGuideParts(codePoint, shapes, settings, hangulComposeOptions(composition, visualScale), cellId(exercise.id, cellIndex))
+      const scale = cellSize / 1000
+      return fixed.map(({ slot, slotIndex }) => ({
+        key: `${cellIndex}-${slotIndex}`,
+        cellIndex,
+        promptId: slot.promptId,
+        // An integer argument keeps font coordinates (no y flip); the transform flips.
+        d: parts[slot.role!].toPathData(2),
+        transform: `matrix(${scale} 0 0 ${-scale} ${cellX} ${cellY + cellSize})`,
+      }))
+    }
+    // Non-syllable guides keep the captured outline where it was written.
+    return fixed.flatMap(({ slot, slotIndex }) => {
+      const record = drawings[slot.promptId]
+      const sourceSize = record.capture ? sessions[record.capture.exerciseId]?.cellSize ?? cellSize : cellSize
+      const scale = cellSize / sourceSize
+      return record.paths.map((path, pathIndex) => ({
+        key: `${cellIndex}-${slotIndex}-${pathIndex}`,
+        cellIndex,
+        promptId: slot.promptId,
+        d: path.d,
+        transform: `matrix(${scale} 0 0 ${scale} ${cellX + path.x * scale} ${cellY + path.y * scale})`,
+      }))
+    })
+  }), [exercise, drawings, sessions, settings, cellSize, columns, shapes, composition, visualScale])
   if (!paths.length) return null
   return <svg className="fixed-capture-layer" viewBox={`0 0 ${width} ${height}`} aria-label="이미 수집되어 고정된 자모">
     {paths.map((path) => <path key={path.key} data-cell-index={path.cellIndex} data-prompt-id={path.promptId} d={path.d} transform={path.transform} fillRule="nonzero" />)}
@@ -174,7 +194,8 @@ function WritePage() {
   const status = useProject((state) => state.status)
   const sourceDirty = useProject((state) => state.sourceDirty)
   const generatedFont = useProject((state) => state.generatedFont)
-  const endpointStabilization = useProject((state) => state.compositionSettings.endpointStabilization)
+  const compositionSettings = useProject((state) => state.compositionSettings)
+  const endpointStabilization = compositionSettings.endpointStabilization
   const modifiedGlyphCount = useProject((state) => Object.keys(state.glyphOverrides).length)
   const sourceIndex = sourceExerciseId ? WRITING_EXERCISES.findIndex((item) => item.id === sourceExerciseId) : -1
   const currentIndex = sourceIndex >= 0 ? sourceIndex : Math.min(storedIndex, WRITING_EXERCISES.length - 1)
@@ -412,7 +433,7 @@ function WritePage() {
           </div>
           <div className="sentence-canvas-scroll" ref={canvasViewport}>
             <div className="sentence-canvas-frame" data-testid="writing-canvas" data-cell-size={cellSize} data-columns={activeColumns} data-rows={rowCount} data-assignment-prompts={capture.assignments.map((item) => item.promptId).join(',')} style={{ width: canvasWidth, height: canvasHeight }}>
-              <FixedCaptureLayer exercise={exercise} drawings={drawings} sessions={sessions} cellSize={cellSize} columns={activeColumns} width={canvasWidth} height={canvasHeight} />
+              <FixedCaptureLayer exercise={exercise} drawings={drawings} sessions={sessions} settings={compositionSettings} cellSize={cellSize} columns={activeColumns} width={canvasWidth} height={canvasHeight} />
               <div className="writing-grid" aria-hidden="true">
                 {exercise.cells.map((cell, index) => <div key={index} data-source-cell={sourceExerciseId === exercise.id && sourceCellIndex === index ? 'true' : undefined} className={sourceExerciseId === exercise.id && sourceCellIndex === index ? 'source-cell-highlight' : undefined} style={{ width: cellSize }}><span>{cell.char}</span></div>)}
               </div>

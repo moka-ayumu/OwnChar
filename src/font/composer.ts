@@ -1,14 +1,16 @@
 import opentype from 'opentype.js'
-import { BASE_CHARACTER_PROMPTS, CHARACTER_PROMPTS } from '@/lib/prompts'
+import { BASE_CHARACTER_PROMPTS } from '@/lib/prompts'
 import type { CharacterPrompt, GenerationRequest, GlyphOverride } from '@/types/project'
-import { composeHangulPath, variantShapeKey } from './hangul'
-import { appendShape, normalizeRawStrokes, normalizeStrokePaths, transformPath, type NormalizedShape, type Zone } from './path-geometry'
+import { composeHangulPath, type HangulComposeOptions } from './hangul'
+import { appendShape, transformPath, type NormalizedShape, type Zone } from './path-geometry'
 import { medianHeight, normalizationFactor } from './size-normalization'
 import { alignVerticalCenter } from './vertical-alignment'
-import { appendSymbol } from './symbol-placement'
+import { appendNumeral, appendSymbol } from './symbol-placement'
 import { composeStandaloneJamoPath, type ReferenceEnvelope } from './standalone-initial'
-import { calibrateGlyphPath, symbolCalibrationAnchor, symbolMaximumHeight, visualCalibrationScale, VISUAL_HANGUL_HEIGHT } from './visual-calibration'
+import { renderCalibratedGlyph, symbolCalibrationAnchor, symbolMaximumHeight, visualCalibrationScale, VISUAL_HANGUL_HEIGHT } from './visual-calibration'
 import { prepareCffPath } from './cff-outline'
+import { shapesFromRequestDrawings } from './composition-inputs'
+import { composeLockedHangulPath } from './syllable-lock'
 
 export interface ComposeOptions {
   cancelled: () => boolean
@@ -95,39 +97,31 @@ function glyphWithMetrics(codePoint: number, path: opentype.Path, baseAdvanceWid
   return new opentype.Glyph({ name: glyphName(codePoint), unicode: codePoint, advanceWidth, path })
 }
 
-function shapesForRequest(request: GenerationRequest) {
-  const shapes = new Map<string, NormalizedShape>()
-  for (const prompt of CHARACTER_PROMPTS) {
-    const drawing = request.drawings[prompt.id]
-    const source = drawing?.sourcePromptId ? request.drawings[drawing.sourcePromptId] ?? drawing : drawing
-    const paths = source?.paths
-    const raw = source?.elements?.filter((element) => Array.isArray(element.points) && element.points.length > 0) ?? []
-    if (raw.length || paths?.length) {
-      const key = prompt.variantRole === undefined ? prompt.char : variantShapeKey(prompt.variantRole, prompt.variantIndex!, prompt.char)
-      const shape = raw.length
-        ? normalizeRawStrokes(raw, source?.cellSize ?? 148, request.compositionSettings.endpointStabilization)
-        : normalizeStrokePaths(paths!, source?.cellSize)
-      shape.sourceCellId = source?.sourceCellId
-      const derivedRole = drawing?.sourcePromptId?.split('-')[0]
-      if (derivedRole === 'initial' || derivedRole === 'medial' || derivedRole === 'final') shape.sourceRole = derivedRole
-      shapes.set(key, shape)
-    }
-  }
-  return shapes
-}
-
 export function prepareCompositionContext(request: GenerationRequest): PreparedCompositionContext {
-  const shapes = shapesForRequest(request)
+  const shapes = shapesFromRequestDrawings(request.drawings, request.compositionSettings)
   return {
     shapes,
-    visualScale: visualCalibrationScale(shapes, request.compositionSettings, request.gaps, request.hangulTargetHeight, request.hangulTargetCenter),
+    visualScale: visualCalibrationScale(shapes, request.compositionSettings, request.gaps, request.hangulTargetHeight, request.hangulTargetCenter, request.proportions),
   }
 }
 
-function composedHangulPath(codePoint: number, shapes: Map<string, NormalizedShape>, request: GenerationRequest, visualScale: number) {
-  const path = composeHangulPath(codePoint, shapes, request.compositionSettings, { gaps: request.gaps, targetHeight: request.hangulTargetHeight, targetCenter: request.hangulTargetCenter, postScale: visualScale })
-  calibrateGlyphPath(path, visualScale, request.hangulTargetCenter, 450, request.compositionSettings.widthMode === 'fixed')
-  return path
+/** The part of a generation request that decides how a Hangul syllable is composed. */
+export type HangulCompositionInputs = Pick<GenerationRequest, 'compositionSettings' | 'gaps' | 'proportions' | 'hangulTargetHeight' | 'hangulTargetCenter' | 'lockedSyllables'>
+
+export function hangulComposeOptions(request: HangulCompositionInputs, visualScale: number): HangulComposeOptions {
+  return { gaps: request.gaps, proportions: request.proportions, targetHeight: request.hangulTargetHeight, targetCenter: request.hangulTargetCenter, postScale: visualScale }
+}
+
+/** A syllable exactly as it is written to the font, before metrics and overrides. */
+export function composedHangulPath(codePoint: number, shapes: Map<string, NormalizedShape>, request: HangulCompositionInputs, visualScale: number) {
+  const options = hangulComposeOptions(request, visualScale)
+  const lock = request.lockedSyllables?.[String.fromCodePoint(codePoint)]
+  return renderCalibratedGlyph(
+    (penScale) => lock
+      ? composeLockedHangulPath(codePoint, shapes, request.compositionSettings, { ...options, penScale }, lock)
+      : composeHangulPath(codePoint, shapes, request.compositionSettings, { ...options, penScale }),
+    visualScale, request.hangulTargetCenter, 450, request.compositionSettings.widthMode === 'fixed',
+  )
 }
 
 export async function precomposeHangulRange(request: GenerationRequest, start: number, end: number, progress?: (completed: number) => void, prepared?: PreparedCompositionContext) {
@@ -144,12 +138,7 @@ export async function precomposeHangulRange(request: GenerationRequest, start: n
 
 export async function composeFont(request: GenerationRequest, options: ComposeOptions) {
   const { shapes, visualScale } = options.preparedContext ?? prepareCompositionContext(request)
-  const gaPath = composeHangulPath('가'.codePointAt(0)!, shapes, request.compositionSettings, {
-    gaps: request.gaps,
-    targetHeight: request.hangulTargetHeight,
-    targetCenter: request.hangulTargetCenter,
-    postScale: visualScale,
-  })
+  const gaPath = composeHangulPath('가'.codePointAt(0)!, shapes, request.compositionSettings, hangulComposeOptions(request, visualScale))
   const gaReference: ReferenceEnvelope = gaPath.commands.length ? (() => {
     const box = gaPath.getBoundingBox()
     return { width: box.x2 - box.x1, height: box.y2 - box.y1, centerX: (box.x1 + box.x2) / 2, centerY: (box.y1 + box.y2) / 2 }
@@ -162,7 +151,7 @@ export async function composeFont(request: GenerationRequest, options: ComposeOp
   const baseHeights = new Map<string, number[]>()
   const baseCenters = new Map<string, number[]>()
   for (const prompt of BASE_CHARACTER_PROMPTS) {
-    if (prompt.group === 'symbol') continue
+    if (prompt.group === 'symbol' || prompt.group === 'number') continue
     const shape = shapes.get(prompt.char)
     if (!shape) continue
     const path = new opentype.Path()
@@ -177,34 +166,37 @@ export async function composeFont(request: GenerationRequest, options: ComposeOp
   for (const prompt of BASE_CHARACTER_PROMPTS) {
     const shape = shapes.get(prompt.char)
     if (prompt.group === 'symbol' && !shape) continue
-    const path = new opentype.Path()
     const isJamo = prompt.group === 'consonant' || prompt.group === 'vowel'
-    if (shape) {
-      if (prompt.group === 'symbol') appendSymbol(path, prompt.char, shape)
+    // Numerals are tall marks: they take the anchor and height limit of `!`.
+    const markChar = prompt.group === 'number' ? '!' : prompt.char
+    const render = (penScale: number) => {
+      const path = new opentype.Path()
+      if (!shape) return path
+      if (prompt.group === 'symbol') appendSymbol(path, prompt.char, shape, penScale)
+      else if (prompt.group === 'number') appendNumeral(path, shape, penScale)
       else if (isJamo) path.commands.push(...composeStandaloneJamoPath(
         shape,
         request.compositionSettings,
         gaReference,
+        penScale,
       ).commands)
       else {
-      const zone = baseZone(prompt)
-      appendShape(path, shape, zone)
-      const strength = prompt.group === 'number' ? request.compositionSettings.numberNormalization
-          : request.compositionSettings.latinNormalization
-      const target = baseTargets.get(baseClass(prompt)) ?? 720
-      const factor = normalizationFactor(inkHeight(path), target, strength)
-      if (Math.abs(factor - 1) > 0.005) {
-        path.commands.length = 0
-        appendShape(path, shape, scaledZone(zone, factor))
+        const zone = baseZone(prompt)
+        appendShape(path, shape, zone, false, penScale)
+        const target = baseTargets.get(baseClass(prompt)) ?? 720
+        const factor = normalizationFactor(inkHeight(path), target, request.compositionSettings.latinNormalization)
+        if (Math.abs(factor - 1) > 0.005) {
+          path.commands.length = 0
+          appendShape(path, shape, scaledZone(zone, factor), false, penScale)
+        }
+        alignVerticalCenter(path, centerTargets.get(baseClass(prompt)) ?? 440, request.compositionSettings.verticalAlignment)
       }
-      alignVerticalCenter(path, centerTargets.get(baseClass(prompt)) ?? 440, request.compositionSettings.verticalAlignment)
-      }
+      return path
     }
-    if (path.commands.length) {
-      const anchor = prompt.group === 'symbol' ? symbolCalibrationAnchor(prompt.char)
-        : isJamo ? request.hangulTargetCenter : centerTargets.get(baseClass(prompt)) ?? 440
-      calibrateGlyphPath(path, visualScale, anchor, isJamo ? 450 : anchor, request.compositionSettings.widthMode === 'fixed', prompt.group === 'symbol' ? symbolMaximumHeight(prompt.char) : 950)
-    }
+    const tallMark = prompt.group === 'symbol' || prompt.group === 'number'
+    const anchor = tallMark ? symbolCalibrationAnchor(markChar)
+      : isJamo ? request.hangulTargetCenter : centerTargets.get(baseClass(prompt)) ?? 440
+    const path = renderCalibratedGlyph(render, visualScale, anchor, isJamo ? 450 : anchor, request.compositionSettings.widthMode === 'fixed', tallMark ? symbolMaximumHeight(markChar) : 950)
     const specific = request.overrides[prompt.codePoint]
     const override = {
       left: request.globalMetrics.left + (specific?.left ?? 0),

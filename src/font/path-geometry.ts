@@ -22,15 +22,34 @@ interface NormalizedCommand {
   y2?: number
 }
 
+/** A captured pen path in its source cell, kept so outlines can be rebuilt at a fixed pen width. */
+export interface StrokeCenterline {
+  points: [number, number][]
+  pressures: number[]
+  /** Recorded pen diameter in source-cell pixels. */
+  diameter: number
+  cellSize: number
+  strength: number
+}
+
+export interface NormalizedStroke {
+  contours: [number, number][][]
+  smooth: boolean
+  centerline?: StrokeCenterline
+}
+
 export interface NormalizedShape {
   commands: NormalizedCommand[]
   aspectRatio: number
   /** Bounds of the ink inside the source writing cell, in cell fractions. */
   frame?: Zone
-  strokes?: Array<{ contours: [number, number][][]; smooth: boolean }>
+  strokes?: NormalizedStroke[]
   sourceCellId?: string
   sourceRole?: 'initial' | 'medial' | 'final'
 }
+
+/** Font units per source-cell width: a contextual jamo placed in its own cell frame. */
+export const CELL_UNITS = 1000
 
 const coordinatePairs = [
   ['x', 'y'],
@@ -103,6 +122,7 @@ export function normalizeRawStrokes(strokes: RawStroke[], cellSize: number, endp
         : [strokePolygon(points, stroke.pressures, diameter, true, endpointStabilization)])
         .map((contour) => contour.map(([x, y]) => [x / cellSize, y / cellSize] as [number, number])),
       smooth: !needsUnion,
+      centerline: { points, pressures: [...stroke.pressures], diameter, cellSize, strength: endpointStabilization },
     }
   })
   const points = raw.flatMap((stroke) => stroke.contours.flat())
@@ -126,7 +146,38 @@ function fitZone(shape: NormalizedShape, zone: Zone): Zone {
   return { ...zone, x: zone.x + (zone.width - width) / 2, width }
 }
 
-export function appendShape(path: opentype.Path, shape: NormalizedShape, targetZone: Zone, preserveCellFrame = false) {
+const centerlineOutlines = new WeakMap<StrokeCenterline, Map<string, NormalizedStroke>>()
+
+/** Outline a captured centerline at `renderDiameter` source pixels, in source-cell fractions. */
+function outlineCenterline(centerline: StrokeCenterline, renderDiameter: number): NormalizedStroke {
+  let cache = centerlineOutlines.get(centerline)
+  if (!cache) {
+    cache = new Map()
+    centerlineOutlines.set(centerline, cache)
+  }
+  const key = renderDiameter.toFixed(2)
+  const cached = cache.get(key)
+  if (cached) return cached
+  const { points, pressures, diameter, cellSize, strength } = centerline
+  const needsUnion = strokeNeedsUnion(points, renderDiameter, pressures, strength, diameter)
+  const outline: NormalizedStroke = {
+    contours: (needsUnion
+      ? strokeContours(points, pressures, renderDiameter, true, strength, diameter)
+      : [strokePolygon(points, pressures, renderDiameter, true, strength, diameter)])
+      .map((contour) => contour.map(([x, y]) => [x / cellSize, y / cellSize] as [number, number])),
+    smooth: !needsUnion,
+  }
+  if (cache.size > 96) cache.clear()
+  cache.set(key, outline)
+  return outline
+}
+
+/**
+ * Place a shape into `targetZone`. Captured strokes are re-outlined after
+ * placement so the pen keeps its recorded width (times `penScale`) in font
+ * units, however much the jamo itself is enlarged or reduced.
+ */
+export function appendShape(path: opentype.Path, shape: NormalizedShape, targetZone: Zone, preserveCellFrame = false, penScale = 1) {
   const frame = preserveCellFrame ? shape.frame : undefined
   const zone = frame ? {
     x: targetZone.x + frame.x * targetZone.width,
@@ -137,7 +188,14 @@ export function appendShape(path: opentype.Path, shape: NormalizedShape, targetZ
   if (shape.strokes) {
     const source = shape.frame ?? { x: 0, y: 0, width: 1, height: 1 }
     const placement = preserveCellFrame ? targetZone : zone
-    for (const stroke of shape.strokes) {
+    const unitsPerCell = Math.sqrt(
+      placement.width / (preserveCellFrame ? 1 : source.width)
+      * placement.height / (preserveCellFrame ? 1 : source.height),
+    )
+    for (const captured of shape.strokes) {
+      const stroke = captured.centerline && unitsPerCell > 0
+        ? outlineCenterline(captured.centerline, captured.centerline.diameter * CELL_UNITS * penScale / unitsPerCell)
+        : captured
       for (const sourceContour of stroke.contours) {
         const contour = sourceContour.map(([x, y]) => [
           placement.x + (preserveCellFrame ? x : (x - source.x) / source.width) * placement.width,

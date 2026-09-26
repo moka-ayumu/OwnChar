@@ -6,9 +6,7 @@ import { Progress } from '@/components/ui/progress'
 import { useProject } from '@/hooks/use-project'
 import { projectActions, projectStore } from '@/store/project-store'
 import type { GenerationEvent, GenerationRequest } from '@/types/project'
-import type { RawStroke } from '@/font/stroke-outline'
-import { learnGaps } from '@/font/gap-learning'
-import { learnHangulCenter, learnHangulHeight } from '@/font/hangul-height'
+import { buildGenerationInputs } from '@/font/composition-inputs'
 
 export const Route = createFileRoute('/generate')({ component: GeneratePage })
 
@@ -43,34 +41,11 @@ function GeneratePage() {
 
     const request: GenerationRequest = {
       type: 'compose-font',
-      drawings: Object.fromEntries(Object.entries(state.drawings).map(([promptId, drawing]) => [
-        promptId,
-        drawing.derivedFromPromptId && state.drawings[drawing.derivedFromPromptId]
-          ? { sourcePromptId: drawing.derivedFromPromptId }
-          : {
-            paths: drawing.paths,
-            elements: (drawing.elements as unknown as RawStroke[]).map((element) => {
-              const capture = drawing.capture
-              const session = capture ? state.writingSessions[capture.exerciseId] : undefined
-              const size = session?.cellSize ?? 148
-              const columns = session?.columns ?? 1
-              const offsetX = capture ? (capture.cellIndex % columns) * size : 0
-              const offsetY = capture ? Math.floor(capture.cellIndex / columns) * size : 0
-              return { ...element, x: element.x - offsetX, y: element.y - offsetY }
-            }),
-            cellSize: drawing.capture
-              ? state.writingSessions[drawing.capture.exerciseId]?.cellSize ?? 148
-              : undefined,
-            sourceCellId: drawing.capture ? `${drawing.capture.exerciseId}:${drawing.capture.cellIndex}` : undefined,
-          },
-      ])),
+      ...buildGenerationInputs(state.drawings, state.writingSessions, state.compositionSettings),
       metadata: state.metadata,
       overrides: state.glyphOverrides,
       globalMetrics: state.globalMetrics,
       compositionSettings: state.compositionSettings,
-      gaps: learnGaps(state.writingSessions, state.compositionSettings.endpointStabilization),
-      hangulTargetHeight: learnHangulHeight(state.writingSessions, state.compositionSettings.endpointStabilization),
-      hangulTargetCenter: learnHangulCenter(state.writingSessions, state.compositionSettings.endpointStabilization),
       unitsPerEm: 1000,
     }
     worker.postMessage(request)

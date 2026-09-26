@@ -55,9 +55,12 @@ export function strokePolygon(
   size: number,
   complete = true,
   strength = 1,
+  conditionSize = size,
 ): [number, number][] {
   if (!points.length) return []
-  const conditioned = conditionStroke(points, pressures, size, complete ? 'complete' : 'live', strength)
+  // The centerline is conditioned at the pen size it was written with, so a
+  // glyph rendered at another outline size keeps the exact captured path.
+  const conditioned = conditionStroke(points, pressures, conditionSize, complete ? 'complete' : 'live', strength)
   const input = conditioned.points.map(([x, y], index) => {
     let pressure = conditioned.pressures[index]
     if ((index === 0 || index === points.length - 1) && pressure < 0.1) {
@@ -82,20 +85,20 @@ export function strokePolygon(
   }) as [number, number][]
 }
 
-export function strokeContours(points: readonly [number, number][], pressures: readonly number[], size: number, complete = true, strength = 1): [number, number][][] {
+export function strokeContours(points: readonly [number, number][], pressures: readonly number[], size: number, complete = true, strength = 1, conditionSize = size): [number, number][][] {
   const precision = 1024
   const closedCenterline = points.length > 2 && Math.hypot(
     points[0][0] - points.at(-1)![0],
     points[0][1] - points.at(-1)![1],
-  ) <= Math.max(0.25, size * 0.2)
+  ) <= Math.max(0.25, conditionSize * 0.2)
   if (closedCenterline) {
-    const conditioned = conditionStroke(points, pressures, size, 'complete', strength).points
+    const conditioned = conditionStroke(points, pressures, conditionSize, 'complete', strength).points
     const centerline = conditioned.slice(0, -1).map(([x, y]) => ({ x: Math.round(x * precision), y: Math.round(y * precision) }))
     return inflatePaths([centerline], size * precision / 2, JoinType.Round, EndType.Joined)
       .filter((contour) => contour.length >= 3)
       .map((contour) => contour.map(({ x, y }) => [x / precision, y / precision] as [number, number]))
   }
-  const polygon = strokePolygon(points, pressures, size, complete, strength)
+  const polygon = strokePolygon(points, pressures, size, complete, strength, conditionSize)
   if (polygon.length < 3) return polygon.length ? [polygon] : []
   const subject = [polygon.map(([x, y]) => ({ x: Math.round(x * precision), y: Math.round(y * precision) }))]
   return union(subject, [], FillRule.NonZero)
@@ -117,12 +120,12 @@ function polygonCrossesItself(polygon: readonly [number, number][]) {
   return false
 }
 
-export function strokeNeedsUnion(points: readonly [number, number][], size: number, pressures: readonly number[] = [], strength = 1): boolean {
+export function strokeNeedsUnion(points: readonly [number, number][], size: number, pressures: readonly number[] = [], strength = 1, conditionSize = size): boolean {
   if (points.length < 3) return false
   const first = points[0]
   const last = points.at(-1)!
   if (Math.hypot(first[0] - last[0], first[1] - last[1]) <= size * 2) return true
-  if (points.length < 4) return polygonCrossesItself(strokePolygon(points, pressures, size, true, strength))
+  if (points.length < 4) return polygonCrossesItself(strokePolygon(points, pressures, size, true, strength, conditionSize))
   const cross = (a: readonly number[], b: readonly number[], c: readonly number[]) =>
     (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])
   for (let firstSegment = 0; firstSegment < points.length - 1; firstSegment += 1) {
@@ -136,7 +139,7 @@ export function strokeNeedsUnion(points: readonly [number, number][], size: numb
   }
   // A tight turn can make the expanded outline cross itself even when the
   // pen's centerline never crosses. CFF cannot safely keep that contour.
-  return polygonCrossesItself(strokePolygon(points, pressures, size, true, strength))
+  return polygonCrossesItself(strokePolygon(points, pressures, size, true, strength, conditionSize))
 }
 
 export function polygonSvgPath(points: readonly [number, number][]): string {

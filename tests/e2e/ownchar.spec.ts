@@ -155,6 +155,13 @@ test('collects a missing medial written in a later cell and backfills earlier ma
   await page.locator('.exercise-chip').filter({ hasText: '초성 조합 모양 1' }).first().click()
   const frame = page.getByTestId('writing-canvas')
   const cellSize = Number(await frame.getAttribute('data-cell-size'))
+  // The canvas first renders with the saved column count and then fits its
+  // container; read the layout only after it has settled.
+  await expect.poll(async () => {
+    const before = await frame.getAttribute('data-columns')
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))))
+    return before === await frame.getAttribute('data-columns')
+  }).toBe(true)
   const columns = Number(await frame.getAttribute('data-columns'))
   const cellIndex = 15 // 카: initial-0-ㅋ + medial-0-ㅏ
   const cellX = (cellIndex % columns) * cellSize
@@ -713,7 +720,7 @@ test('normalizes Hangul, jamo, Latin, and digits by their own controls', async (
     Object.assign(fixture, { settingsVersion: 4 })
     Object.assign(fixture.compositionSettings, {
       hangulNormalization: strength, jamoNormalization: strength,
-      latinNormalization: strength, numberNormalization: strength, widthMode: 'proportional',
+      latinNormalization: strength, widthMode: 'proportional',
       standaloneJamoMaxHeight: initialHeightRatio,
     })
     for (const [group, char] of [['consonant', 'ㄱ'], ['uppercase', 'A'], ['number', '1']]) {
@@ -768,15 +775,18 @@ test('normalizes Hangul, jamo, Latin, and digits by their own controls', async (
   const partial = await generate(0.6)
   const normalized = await generate(1)
   const capped = await generate(0, 0.8)
-  for (const char of ['ㄱ', 'A', '1']) expect(normalized[char], JSON.stringify({ char, original, normalized })).toBeGreaterThan(original[char])
+  for (const char of ['ㄱ', 'A']) expect(normalized[char], JSON.stringify({ char, original, normalized })).toBeGreaterThan(original[char])
+  // Numerals always take the height of ! and ?, independent of the strength.
+  expect(Math.abs(normalized['1'] - original['1'])).toBeLessThanOrEqual(1)
   for (const char of ['ㅎ', 'ㅜ']) expect(normalized[char], char).toBeLessThanOrEqual(normalized['가'] + 1)
   expect(normalized.uWidth).toBeLessThanOrEqual(normalized.gaWidth + 1)
   expect(partial['ㅎ']).toBeGreaterThanOrEqual(original['ㅎ'])
   expect(partial['ㅎ']).toBeLessThanOrEqual(normalized['ㅎ'] + 1)
-  expect(normalized.hieutStrokeDiameter).toBeGreaterThanOrEqual(original.hieutStrokeDiameter)
   expect(capped['ㅎ']).toBeLessThanOrEqual(original['ㅎ'] * 0.8 + 1)
   expect(capped['ㅎ']).toBeLessThan(original['ㅎ'])
-  expect(capped.hieutStrokeDiameter).toBeLessThan(original.hieutStrokeDiameter)
+  // Resizing a jamo never changes the recorded pen width.
+  expect(Math.abs(normalized.hieutStrokeDiameter - original.hieutStrokeDiameter)).toBeLessThanOrEqual(1)
+  expect(Math.abs(capped.hieutStrokeDiameter - original.hieutStrokeDiameter)).toBeLessThanOrEqual(1)
   expect(['가', '고', '각'].some((char) => Math.abs(normalized[char] - original[char]) > 1), JSON.stringify({ original, normalized })).toBe(true)
 })
 
@@ -812,10 +822,13 @@ test('uses a bounded final consonant only until an initial sample exists, and li
   const initialX = initialCommands.flatMap((command) => 'x' in command ? [command.x] : [])
   const initialY = initialCommands.flatMap((command) => 'y' in command ? [command.y] : [])
   expect(Math.max(...initialX) - Math.min(...initialX)).toBeLessThan(370)
-  // The borrowed two-point stroke keeps its real pen thickness. The previous
-  // normalized-coordinate bug inflated this into a 56–150 unit semicircle.
-  expect(Math.max(...initialY) - Math.min(...initialY)).toBeGreaterThan(10)
-  expect(Math.max(...initialY) - Math.min(...initialY)).toBeLessThan(50)
+  // The borrowed two-point stroke keeps its recorded pen thickness (ink is
+  // 2 × 4.25 px of a 148 px cell ≈ 57 units, times the project-wide visual
+  // calibration of at most 1.6), however much the jamo is reduced. The
+  // previous normalized-coordinate bug inflated this into a tall semicircle.
+  const penInk = 2 * 4.25 * 1000 / 148
+  expect(Math.max(...initialY) - Math.min(...initialY)).toBeGreaterThan(penInk * 0.85)
+  expect(Math.max(...initialY) - Math.min(...initialY)).toBeLessThan(penInk * 1.6 * 1.02)
   await page.getByRole('link', { name: /고급 편집/ }).click()
   await page.getByPlaceholder('문자 검색').fill('내')
   await page.getByRole('button', { name: '내' }).click()
@@ -1016,7 +1029,7 @@ test('restores a sentence-writing project', async ({ page }) => {
       request.onerror = () => reject(request.error)
     })
     return `${project?.settingsVersion}:${project?.compositionSettings?.jamoNormalization}:${project?.compositionSettings?.standaloneJamoMaxHeight}:${project?.compositionSettings?.endpointStabilization}:${project?.fontDirty}`
-  })).toBe('6:1:1:1:true')
+  })).toBe('7:1:1:1:true')
   await page.goto('/write')
   await expect(page.getByText('113 / 359')).toBeVisible()
   await expect(page.getByRole('heading', { name: '0123456789' })).toBeVisible()
@@ -1044,7 +1057,7 @@ test('migrates vertical alignment while preserving an explicitly chosen zero jam
       request.onerror = () => reject(request.error)
     })
     return `${project?.settingsVersion}:${project?.compositionSettings?.jamoNormalization}:${project?.compositionSettings?.standaloneJamoMaxHeight}:${project?.compositionSettings?.verticalAlignment}:${project?.compositionSettings?.endpointStabilization}:${project?.fontDirty}`
-  })).toBe('6:0:0.7:0.8:1:true')
+  })).toBe('7:0:0.7:0.8:1:true')
 })
 
 test('asks whether to retain advanced edits before recomposition', async ({ page }, testInfo) => {
@@ -1328,7 +1341,8 @@ test('generates a complete Hangul OTF', async ({ page }, testInfo) => {
   await expect(page.getByLabel('ㅜ 단독 자모 미리보기')).toBeVisible()
   const beforeStandalone = await standalonePreview.evaluate((canvas: HTMLCanvasElement) => canvas.toDataURL())
   await expect(page.getByRole('slider', { name: '영문 정규화' })).toHaveValue('0')
-  await expect(page.getByRole('slider', { name: '숫자 정규화' })).toHaveValue('0')
+  // Numerals follow the height of ! and ?; there is no separate numeral control.
+  await expect(page.getByRole('slider', { name: '숫자 정규화' })).toHaveCount(0)
   await normalization.focus()
   await normalization.press('Home')
   await expect(normalization).toHaveValue('0')
@@ -1367,7 +1381,7 @@ test('generates a complete Hangul OTF', async ({ page }, testInfo) => {
       request.onerror = () => reject(request.error)
     })
     return `${project?.settingsVersion}:${project?.compositionSettings?.hangulNormalization}:${project?.compositionSettings?.jamoNormalization}:${project?.compositionSettings?.standaloneJamoMaxHeight}:${project?.compositionSettings?.endpointStabilization}:${project?.compositionSettings?.widthMode}`
-  })).toBe('6:1:0:0.1:0.5:fixed')
+  })).toBe('7:1:0:0.1:0.5:fixed')
   await page.reload()
   await page.getByRole('button', { name: '한글 조합 설정' }).click()
   await expect(page.getByRole('slider', { name: '한글 음절 정규화' })).toHaveValue('1')

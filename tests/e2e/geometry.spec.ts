@@ -161,7 +161,23 @@ test('fits a wide standalone jamo to both dimensions of the ga envelope', () => 
   expect(box.y2 - box.y1).toBeLessThan(100)
 })
 
-test('keeps a raw closed-stroke silhouette affine across derived placements', () => {
+const contourBoxes = (path: opentype.Path) => {
+  const boxes: Array<{ x1: number; x2: number; y1: number; y2: number }> = []
+  let points: number[][] = []
+  for (const command of path.commands) {
+    if ('x' in command && 'y' in command) points.push([command.x, command.y])
+    if (command.type === 'Z') {
+      boxes.push({
+        x1: Math.min(...points.map(([x]) => x)), x2: Math.max(...points.map(([x]) => x)),
+        y1: Math.min(...points.map(([, y]) => y)), y2: Math.max(...points.map(([, y]) => y)),
+      })
+      points = []
+    }
+  }
+  return boxes
+}
+
+test('moves a raw stroke centerline with its placement but keeps the recorded pen width', () => {
   const loop: [number, number][] = [[0, -20], [14, -14], [20, 0], [14, 14], [0, 20], [-14, 14], [-20, 0], [-14, -14], [0, -20]]
   const stroke = (id: string, x: number, y: number, points: [number, number][]) => ({
     id, type: 'freedraw' as const, x, y, width: 40, height: 40, points,
@@ -176,21 +192,16 @@ test('keeps a raw closed-stroke silhouette affine across derived placements', ()
   const small = new opentype.Path()
   appendShape(large, shape, { x: 100, y: 100, width: 800, height: 800 })
   appendShape(small, shape, { x: 300, y: 300, width: 400, height: 400 })
-  expect(small.commands.map((command) => command.type)).toEqual(large.commands.map((command) => command.type))
   expect(large.commands.filter((command) => command.type === 'Z')).toHaveLength(3)
-  const normalized = (path: opentype.Path) => {
-    const box = path.getBoundingBox()
-    return path.commands.flatMap((command) => 'x' in command && 'y' in command
-      ? [[(command.x - box.x1) / (box.x2 - box.x1), (command.y - box.y1) / (box.y2 - box.y1)]]
-      : [])
-  }
-  const first = normalized(large)
-  const second = normalized(small)
-  expect(second).toHaveLength(first.length)
-  for (let index = 0; index < first.length; index += 1) {
-    expect(second[index][0]).toBeCloseTo(first[index][0], 6)
-    expect(second[index][1]).toBeCloseTo(first[index][1], 6)
-  }
+  expect(small.commands.filter((command) => command.type === 'Z')).toHaveLength(3)
+  const [largeBar] = contourBoxes(large)
+  const [smallBar] = contourBoxes(small)
+  const largePen = largeBar.y2 - largeBar.y1
+  const smallPen = smallBar.y2 - smallBar.y1
+  // The same pen, placed at half the size, keeps its width.
+  expect(smallPen).toBeCloseTo(largePen, 0)
+  // Its centerline (length minus the round caps) follows the placement.
+  expect((smallBar.x2 - smallBar.x1 - smallPen) / (largeBar.x2 - largeBar.x1 - largePen)).toBeCloseTo(0.5, 1)
 })
 
 test('builds raw two-point outlines in cell space before normalization', () => {
@@ -447,4 +458,179 @@ test('browser renders the ㅇ seam black and its center clear', async ({ page })
   }, strokeSvgPath(stroke, 148))
   expect(pixels.seam).toBeGreaterThan(200)
   expect(pixels.center).toBe(0)
+})
+
+const penStroke = (id: string, x: number, y: number, points: [number, number][], strokeWidth = 1): RawStroke => ({
+  id, type: 'freedraw', x, y, width: 0, height: 0, points,
+  pressures: points.map(() => 1), strokeWidth, version: 1,
+  simulatePressure: false, lastCommittedPoint: points.at(-1),
+})
+
+const centerlineSize = (path: opentype.Path, pen: number) => {
+  const box = path.getBoundingBox()
+  return Math.sqrt((box.x2 - box.x1 - pen) * (box.y2 - box.y1 - pen))
+}
+
+test('keeps the same pen width in every jamo of a composed syllable and in numerals', async () => {
+  const server = await createModuleServer()
+  try {
+    const { composeHangulParts } = await server.ssrLoadModule('/src/font/hangul.ts')
+    const { appendNumeral } = await server.ssrLoadModule('/src/font/symbol-placement.ts')
+    const { normalizeRawStrokes: normalize } = await server.ssrLoadModule('/src/font/path-geometry.ts')
+    // Base jamo written at very different sizes: rescaling their outlines
+    // would make the small ㄴ thick and the long ㅡ thin.
+    const shapes = new Map([
+      ['ㄴ', normalize([penStroke('n', 60, 60, [[0, 0], [0, 20], [25, 20]])], 148, 0)],
+      ['ㅡ', normalize([penStroke('eu', 10, 74, [[0, 0], [128, 0]])], 148, 0)],
+    ])
+    const { parts } = composeHangulParts('느'.codePointAt(0)!, shapes, DEFAULT_COMPOSITION_SETTINGS)
+    const medial = contourBoxes(parts.medial)[0]
+    const initial = contourBoxes(parts.initial)[0]
+    const medialPen = medial.y2 - medial.y1
+    // Above the corner only ㄴ's vertical leg has ink: its width is the pen.
+    const legXs = (parts.initial as opentype.Path).commands.flatMap((command) => 'x' in command && command.y > (initial.y1 + initial.y2) / 2 ? [command.x] : [])
+    const initialPen = Math.max(...legXs) - Math.min(...legXs)
+    expect(initialPen / medialPen).toBeGreaterThan(0.9)
+    expect(initialPen / medialPen).toBeLessThan(1.1)
+
+    const one = new opentype.Path()
+    const wide = new opentype.Path()
+    appendNumeral(one, normalize([penStroke('one', 74, 20, [[0, 0], [0, 110]])], 148, 0))
+    appendNumeral(wide, normalize([penStroke('wide', 74, 20, [[0, 0], [0, 110]], 2)], 148, 0))
+    const onePen = contourBoxes(one)[0].x2 - contourBoxes(one)[0].x1
+    // A stroke written with a pen twice as wide stays twice as wide.
+    expect((contourBoxes(wide)[0].x2 - contourBoxes(wide)[0].x1) / onePen).toBeCloseTo(2, 1)
+    expect(onePen / medialPen).toBeGreaterThan(0.9)
+    expect(onePen / medialPen).toBeLessThan(1.1)
+  } finally {
+    await server.close()
+  }
+})
+
+test('follows the learned initial : final size ratio of a stacked syllable', async () => {
+  const server = await createModuleServer()
+  try {
+    const { composeHangulParts } = await server.ssrLoadModule('/src/font/hangul.ts')
+    const { normalizeRawStrokes: normalize } = await server.ssrLoadModule('/src/font/path-geometry.ts')
+    const shapes = new Map([
+      // A small ㄴ and a large ㄹ, captured standalone.
+      ['ㄴ', normalize([penStroke('n', 60, 60, [[0, 0], [0, 20], [25, 20]])], 148, 0)],
+      ['ㅡ', normalize([penStroke('eu', 10, 74, [[0, 0], [128, 0]])], 148, 0)],
+      ['ㄹ', normalize([
+        penStroke('r1', 20, 20, [[0, 0], [100, 0], [100, 50]]),
+        penStroke('r2', 20, 70, [[100, 0], [0, 0], [0, 50]]),
+        penStroke('r3', 20, 120, [[0, 0], [100, 0]]),
+      ], 148, 0)],
+    ])
+    const codePoint = '늘'.codePointAt(0)!
+    const ratio = (parts: { initial: opentype.Path; medial: opentype.Path; final: opentype.Path }) => {
+      // ㅡ is one horizontal stroke: its height is the pen.
+      const eu = contourBoxes(parts.medial)[0]
+      const pen = eu.y2 - eu.y1
+      return centerlineSize(parts.final, pen) / centerlineSize(parts.initial, pen)
+    }
+    const unlearned = ratio(composeHangulParts(codePoint, shapes, DEFAULT_COMPOSITION_SETTINGS).parts)
+    const target = 1.3
+    const proportions = { contexts: { 'horizontalDown:final': { final: target, sampleCount: 4 } }, pairs: {}, syllables: {} }
+    const learned = ratio(composeHangulParts(codePoint, shapes, DEFAULT_COMPOSITION_SETTINGS, { proportions }).parts)
+    expect(Math.abs(unlearned - target)).toBeGreaterThan(0.2)
+    expect(Math.abs(learned / target - 1)).toBeLessThan(0.05)
+    // Without learned samples the zone layout stays as before.
+    const empty = { contexts: {}, pairs: {}, syllables: {} }
+    expect(ratio(composeHangulParts(codePoint, shapes, DEFAULT_COMPOSITION_SETTINGS, { proportions: empty }).parts)).toBeCloseTo(unlearned, 6)
+  } finally {
+    await server.close()
+  }
+})
+
+test('learns jamo proportions from completed sentence syllables', async () => {
+  const server = await createModuleServer()
+  try {
+    const { learnProportions } = await server.ssrLoadModule('/src/font/proportion-learning.ts')
+    const { WRITING_EXERCISES } = await server.ssrLoadModule('/src/lib/writing-exercises.ts')
+    const exercise = WRITING_EXERCISES.find((item: { id: string }) => item.id === 'hangul-base-1')
+    const cellIndex = exercise.cells.findIndex((cell: { char: string }) => cell.char === '들')
+    const columns = exercise.cells.length
+    const x = cellIndex * 148
+    // ㄷ and ㄹ with the same 40×20 centerline box, ㅡ 100 long.
+    const slots = [
+      [penStroke('d1', x + 50, 20, [[0, 0], [40, 0]]), penStroke('d2', x + 50, 20, [[0, 0], [0, 20], [40, 20]])],
+      [penStroke('eu', x + 20, 60, [[0, 0], [100, 0]])],
+      [penStroke('r1', x + 50, 90, [[0, 0], [40, 0], [40, 10]]), penStroke('r2', x + 50, 100, [[40, 0], [0, 0], [0, 10]]), penStroke('r3', x + 50, 110, [[0, 0], [40, 0]])],
+    ]
+    const session = {
+      exerciseId: exercise.id, text: exercise.text, cellSize: 148, columns, updatedAt: 0, boundaries: {},
+      elements: slots.flat(),
+      assignments: slots.flatMap((strokes, slotIndex) => strokes.map((stroke) => ({ elementId: stroke.id, cellIndex, slotIndex, promptId: exercise.cells[cellIndex].slots[slotIndex].promptId }))),
+    }
+    const profile = learnProportions({ [exercise.id]: session })
+    expect(profile.syllables['들'].final).toBeCloseTo(1, 5)
+    expect(profile.contexts['horizontalDown:final'].final).toBeCloseTo(1, 5)
+    expect(profile.contexts['horizontalDown:final'].medial).toBeCloseTo(100 / Math.sqrt(800), 5)
+  } finally {
+    await server.close()
+  }
+})
+
+test('a locked syllable is the canvas guide plus the jamo written in the cell', async () => {
+  const server = await createModuleServer()
+  try {
+    const { composeGuideParts, composeLockedHangulPath } = await server.ssrLoadModule('/src/font/syllable-lock.ts')
+    const { normalizeRawStrokes: normalize, appendShape: place } = await server.ssrLoadModule('/src/font/path-geometry.ts')
+    const withCell = (shape: ReturnType<typeof normalizeRawStrokes>, sourceCellId: string) => Object.assign(shape, { sourceCellId })
+    const shapes = new Map([
+      ['initial:5:ㄱ', withCell(normalize([penStroke('g', 20, 30, [[0, 0], [40, 0], [40, 50]])], 148, 0), 'a:0')],
+      ['medial:1:ㅏ', withCell(normalize([penStroke('a1', 100, 20, [[0, 0], [0, 80]]), penStroke('a2', 100, 55, [[0, 0], [20, 0]])], 148, 0), 'b:0')],
+      ['ㄱ', normalize([penStroke('base', 40, 40, [[0, 0], [60, 0], [60, 60]])], 148, 0)],
+    ])
+    const codePoint = '각'.codePointAt(0)!
+    const guide = composeGuideParts(codePoint, shapes, DEFAULT_COMPOSITION_SETTINGS, {}, 'lock:0')
+    const written = withCell(normalize([penStroke('final', 40, 110, [[0, 0], [60, 0], [60, 25]])], 148, 0), 'lock:0')
+    const after = new Map([...shapes, ['final:0:ㄱ', written]])
+    // Writing the missing final must not move the fixed guide jamo.
+    const guideAfter = composeGuideParts(codePoint, after, DEFAULT_COMPOSITION_SETTINGS, {}, 'lock:0')
+    expect(guideAfter.parts.initial.commands).toEqual(guide.parts.initial.commands)
+    expect(guideAfter.parts.medial.commands).toEqual(guide.parts.medial.commands)
+
+    const locked: opentype.Path = composeLockedHangulPath(codePoint, after, DEFAULT_COMPOSITION_SETTINGS, {}, { cellId: 'lock:0', writtenRoles: ['final'] })
+    const fixedCount = guide.parts.initial.commands.length + guide.parts.medial.commands.length
+    expect(locked.commands.slice(0, fixedCount)).toEqual([...guide.parts.initial.commands, ...guide.parts.medial.commands])
+    const asWritten = new opentype.Path()
+    place(asWritten, written, { x: 0, y: 0, width: 1000, height: 1000 }, true)
+    expect(locked.commands.slice(fixedCount)).toEqual(asWritten.commands)
+  } finally {
+    await server.close()
+  }
+})
+
+test('numerals get the height and baseline of ! and ?', async () => {
+  test.setTimeout(120_000)
+  const server = await createModuleServer()
+  try {
+    const { composeFont } = await server.ssrLoadModule('/src/font/composer.ts')
+    const { DEFAULT_GAPS } = await server.ssrLoadModule('/src/font/gap-profile.ts')
+    const drawing = (strokes: RawStroke[]) => ({ elements: strokes, cellSize: 148 })
+    const request = {
+      type: 'compose-font',
+      drawings: {
+        [`symbol-${'!'.codePointAt(0)}`]: drawing([penStroke('bang', 74, 20, [[0, 0], [0, 80]]), penStroke('dot', 74, 120, [[0, 0], [0.5, 0]])]),
+        [`number-${'1'.codePointAt(0)}`]: drawing([penStroke('one', 74, 10, [[0, 0], [0, 128]])]),
+        [`number-${'4'.codePointAt(0)}`]: drawing([penStroke('four', 40, 30, [[40, 0], [0, 60], [60, 60]]), penStroke('four2', 80, 50, [[0, 0], [0, 70]])]),
+      },
+      metadata: { familyName: 'T', styleName: 'Regular', designer: '', version: '1.0' },
+      overrides: {}, globalMetrics: { left: 0, right: 0, y: 0 },
+      compositionSettings: DEFAULT_COMPOSITION_SETTINGS,
+      gaps: DEFAULT_GAPS, proportions: { contexts: {}, pairs: {}, syllables: {} }, lockedSyllables: {},
+      hangulTargetHeight: 760, hangulTargetCenter: 500, unitsPerEm: 1000,
+    }
+    const { buffer } = await composeFont(request, { cancelled: () => false, progress: () => {} })
+    const font = opentype.parse(buffer)
+    const box = (char: string) => font.charToGlyph(char).getBoundingBox()
+    for (const digit of ['1', '4']) {
+      expect(Math.abs((box(digit).y2 - box(digit).y1) / (box('!').y2 - box('!').y1) - 1)).toBeLessThan(0.02)
+      expect(box(digit).y1).toBeCloseTo(box('!').y1, 0)
+    }
+  } finally {
+    await server.close()
+  }
 })

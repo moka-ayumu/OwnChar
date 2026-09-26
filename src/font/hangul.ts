@@ -1,8 +1,9 @@
 import opentype from 'opentype.js'
-import { appendShape, type NormalizedShape, type Zone } from './path-geometry'
+import { appendShape, CELL_UNITS, type NormalizedShape, type Zone } from './path-geometry'
 import type { CompositionSettings } from '@/types/project'
 import type { HangulRole } from '@/types/project'
 import { DEFAULT_GAPS, finalGapContext, finalGapPair, gapContext, gapPair, minimumGap, type GapKind, type GapProfile } from './gap-profile'
+import { jamoSize, learnedRatios, proportionContext, proportionPair, type ProportionProfile } from './proportion-profile'
 import { normalizationFactor } from './size-normalization'
 import { maximizeSafeIntrusion } from './ink-collision'
 import { conditionalGeometryAllows, overlapRule, type OverlapRuleDescriptor } from './overlap-policy'
@@ -23,7 +24,7 @@ const horizontalVowels = new Set([8, 12, 13, 17, 18])
 const upwardVowels = new Set([8, 12])
 const simpleVerticalVowels = new Set([0, 1, 2, 3, 4, 5, 6, 7, 20])
 const noFinalInitialVariants = [0, 0, 0, 0, 0, 0, 0, 0, 1, 3, 3, 3, 1, 2, 4, 4, 4, 2, 1, 3, 0]
-const componentCaches = new WeakMap<Map<string, NormalizedShape>, Map<string, { commands: opentype.Path['commands']; sourceCellId?: string }>>()
+const componentCaches = new WeakMap<Map<string, NormalizedShape>, Map<string, { commands: opentype.Path['commands']; sourceCellId?: string; pen: number }>>()
 const intrusionCache = new Map<string, number>()
 export function variantShapeKey(role: HangulRole, variantIndex: number, char: string) {
   return sourceKey(role, variantIndex, char)
@@ -94,24 +95,49 @@ function scaleGlyphZone(zone: Zone, scale: number): Zone {
   }
 }
 
-function appendComponents(path: opentype.Path, components: string[], zone: Zone, shapes: Map<string, NormalizedShape>, role: HangulRole, variantIndex: number, scale = 1, glyphScale = 1, postScale = 1) {
+/**
+ * Ink width of the pen, in font units, that `appendShape` gives this shape at
+ * `penScale`. perfect-freehand treats its size as the radius at full pressure,
+ * so the ink is twice the stored stroke size.
+ */
+function penUnits(shape: NormalizedShape, penScale: number) {
+  const sizes = (shape.strokes ?? []).flatMap((stroke) => stroke.centerline
+    ? [stroke.centerline.diameter * CELL_UNITS / stroke.centerline.cellSize]
+    : [])
+  return 2 * (sizes.length ? Math.max(...sizes) : minimumGap / 1.5) * penScale
+}
+
+/**
+ * Normalization factors are almost unique per syllable. Rounding the pen
+ * compensation keeps the component and outline caches effective while the
+ * stroke width error stays below half a percent.
+ */
+function quantizePen(penScale: number) {
+  return Math.round(penScale * 200) / 200
+}
+
+interface ComponentInfo { sourceCellId?: string; pen: number }
+
+function appendComponents(path: opentype.Path, components: string[], zone: Zone, shapes: Map<string, NormalizedShape>, role: HangulRole, variantIndex: number, scale = 1, glyphScale = 1, postScale = 1, penScale = 1): ComponentInfo {
   let cache = componentCaches.get(shapes)
   if (!cache) {
     cache = new Map()
     componentCaches.set(shapes, cache)
   }
-  const cacheKey = [role, variantIndex, components.join(','), zone.x, zone.y, zone.width, zone.height, scale, glyphScale, postScale].join(':')
+  const cacheKey = [role, variantIndex, components.join(','), zone.x, zone.y, zone.width, zone.height, scale, glyphScale, postScale, penScale].join(':')
   const cached = cache.get(cacheKey)
   if (cached) {
     path.commands.push(...cached.commands.map((command) => ({ ...command })))
-    return cached.sourceCellId
+    return { sourceCellId: cached.sourceCellId, pen: cached.pen }
   }
   const componentPath = new opentype.Path()
   let sourceCellId: string | undefined
+  let pen = 0
   components.forEach((component) => {
     const { shape, contextual, exact, crossRole } = shapeFor(shapes, role, variantIndex, component)
     if (!shape) return
     sourceCellId = exact ? shape.sourceCellId : undefined
+    pen = Math.max(pen, penUnits(shape, penScale))
     // Contextual jamo were drawn together inside a syllable cell. Keep that
     // shared coordinate system; only standalone fallback jamo need zone fitting.
     const preserveFrame = contextual && Boolean(shape.frame)
@@ -126,16 +152,12 @@ function appendComponents(path: opentype.Path, components: string[], zone: Zone,
       const cap = Math.min(placement.width * 0.75, nativeWidth, 270 / postScale)
       placement = scaleZone(placement, Math.min(1, cap / Math.max(1, projectedWidth)))
     }
-    appendShape(componentPath, shape, placement, preserveFrame)
+    appendShape(componentPath, shape, placement, preserveFrame, penScale)
   })
   const commands = componentPath.commands.map((command) => ({ ...command }))
-  cache.set(cacheKey, { commands, sourceCellId })
+  cache.set(cacheKey, { commands, sourceCellId, pen })
   path.commands.push(...commands.map((command) => ({ ...command })))
-  return sourceCellId
-}
-
-function appendVowel(path: opentype.Path, vowelIndex: number, zone: Zone, shapes: Map<string, NormalizedShape>, settings: CompositionSettings, variantIndex: number, glyphScale: number) {
-  return appendComponents(path, JUNGSEONG[vowelIndex], zone, shapes, 'medial', variantIndex, settings.vowelScale, glyphScale)
+  return { sourceCellId, pen }
 }
 
 function shift(path: opentype.Path, dx: number, dy: number) {
@@ -210,7 +232,28 @@ function mixedHorizontalBox(path: opentype.Path) {
   return { x1: Math.min(...points.map(([x]) => x)), x2: Math.max(...points.map(([x]) => x)), y1: Math.min(...points.map(([, y]) => y)), y2: Math.max(...points.map(([, y]) => y)) }
 }
 
-export function composeHangulPath(codePoint: number, shapes: Map<string, NormalizedShape>, settings: CompositionSettings, options?: { omitRoles?: HangulRole[]; gaps?: GapProfile; targetHeight?: number; targetCenter?: number; postScale?: number }) {
+export interface HangulComposeOptions {
+  omitRoles?: HangulRole[]
+  gaps?: GapProfile
+  proportions?: ProportionProfile
+  targetHeight?: number
+  targetCenter?: number
+  postScale?: number
+  /** Pen width multiplier, used to cancel a uniform scale applied after composition. */
+  penScale?: number
+}
+
+export interface HangulParts {
+  path: opentype.Path
+  /** Placed role outlines. They share command objects with `path`. */
+  parts: Record<HangulRole, opentype.Path>
+}
+
+export function composeHangulPath(codePoint: number, shapes: Map<string, NormalizedShape>, settings: CompositionSettings, options?: HangulComposeOptions) {
+  return composeHangulParts(codePoint, shapes, settings, options).path
+}
+
+export function composeHangulParts(codePoint: number, shapes: Map<string, NormalizedShape>, settings: CompositionSettings, options?: HangulComposeOptions): HangulParts {
   const offset = codePoint - 0xac00
   const initialIndex = Math.floor(offset / 588)
   const vowelIndex = Math.floor((offset % 588) / 28)
@@ -223,14 +266,49 @@ export function composeHangulPath(codePoint: number, shapes: Map<string, Normali
   const kind: GapKind = verticalVowels.has(vowelIndex) ? 'vertical'
     : upwardVowels.has(vowelIndex) ? 'horizontalUp'
       : horizontalVowels.has(vowelIndex) ? 'horizontalDown' : 'mixed'
+  const ratios = learnedRatios(
+    options?.proportions,
+    String.fromCodePoint(codePoint),
+    proportionPair(initials[0], JUNGSEONG[vowelIndex][0], JONGSEONG[finalIndex][0]),
+    proportionContext(kind, finalIndex > 0),
+  )
 
-  const build = (layoutScale: number) => {
+  const build = (layoutScale: number, penScale: number) => {
     const initialPath = new opentype.Path()
-    const medialPath = new opentype.Path()
-    const finalPath = new opentype.Path()
-    const initialSource = !omitted.has('initial') ? appendComponents(initialPath, initials, zones.initial, shapes, 'initial', variants.initial, settings.singleInitialScale, layoutScale, options?.postScale) : undefined
-    const medialSource = !omitted.has('medial') ? appendVowel(medialPath, vowelIndex, zones.vowel, shapes, settings, variants.medial, layoutScale) : undefined
-    const finalSource = zones.final && !omitted.has('final') ? appendComponents(finalPath, JONGSEONG[finalIndex], zones.final, shapes, 'final', variants.final, settings.finalScale, layoutScale) : undefined
+    let medialPath = new opentype.Path()
+    let finalPath = new opentype.Path()
+    const appendMedial = (target: opentype.Path, factor: number) => appendComponents(target, JUNGSEONG[vowelIndex], zones.vowel, shapes, 'medial', variants.medial, settings.vowelScale * factor, layoutScale, 1, penScale)
+    const appendFinal = (target: opentype.Path, factor: number) => appendComponents(target, JONGSEONG[finalIndex], zones.final!, shapes, 'final', variants.final, settings.finalScale * factor, layoutScale, 1, penScale)
+    const initialInfo = !omitted.has('initial') ? appendComponents(initialPath, initials, zones.initial, shapes, 'initial', variants.initial, settings.singleInitialScale, layoutScale, options?.postScale, penScale) : undefined
+    const medialInfo = !omitted.has('medial') ? appendMedial(medialPath, 1) : undefined
+    const finalInfo = zones.final && !omitted.has('final') ? appendFinal(finalPath, 1) : undefined
+    const initialSource = initialInfo?.sourceCellId
+    const medialSource = medialInfo?.sourceCellId
+    const finalSource = finalInfo?.sourceCellId
+
+    // Follow the learned initial : medial : final size ratio. A role is
+    // re-appended at a scaled zone, not scaled as an outline, so its pen width
+    // stays the same; its center stays where the zone put it.
+    const initialMeasure = initialInfo && inkBox(initialPath)
+    if (ratios && initialMeasure && initialInfo) {
+      const size = (role: HangulRole, box: NonNullable<ReturnType<typeof inkBox>>, pen: number) =>
+        jamoSize(role, kind, box.x2 - box.x1 - pen, box.y2 - box.y1 - pen)
+      const initialSize = size('initial', initialMeasure, initialInfo.pen)
+      const resize = (role: 'medial' | 'final', current: opentype.Path, info: ComponentInfo | undefined, learned: number | undefined, append: (target: opentype.Path, factor: number) => ComponentInfo) => {
+        const box = inkBox(current)
+        // Jamo captured together in one cell already carry the user's ratio.
+        if (!box || !info || learned === undefined || (info.sourceCellId && (info.sourceCellId === initialSource || (role === 'final' && info.sourceCellId === medialSource)))) return current
+        const factor = Math.max(0.7, Math.min(1.4, learned * initialSize / Math.max(1, size(role, box, info.pen))))
+        if (Math.abs(factor - 1) < 0.02) return current
+        const resized = new opentype.Path()
+        append(resized, factor)
+        const next = inkBox(resized)
+        if (next) shift(resized, (box.x1 + box.x2 - next.x1 - next.x2) / 2, (box.y1 + box.y2 - next.y1 - next.y2) / 2)
+        return resized
+      }
+      medialPath = resize('medial', medialPath, medialInfo, ratios.medial, appendMedial)
+      if (zones.final) finalPath = resize('final', finalPath, finalInfo, ratios.final, appendFinal)
+    }
     const initialBox = inkBox(initialPath)
     const medialBox = inkBox(medialPath)
     const sameUpperCell = Boolean(initialSource && medialSource && initialSource === medialSource)
@@ -339,14 +417,30 @@ export function composeHangulPath(codePoint: number, shapes: Map<string, Normali
     return { path, initialPath, medialPath, finalPath, upperGap, finalGap }
   }
 
-  const built = build(1)
-  const path = built.path
-  let box = inkBox(path)
-  if (box) {
+  const basePen = options?.penScale ?? 1
+  const normalizationFor = (box: NonNullable<ReturnType<typeof inkBox>>) => {
     const height = box.y2 - box.y1
     const normalize = normalizationFactor(height, options?.targetHeight ?? 760, settings.hangulNormalization)
     const overflow = 950 / Math.max(box.x2 - box.x1, height)
-    const factor = Math.min(normalize, overflow)
+    return Math.min(normalize, overflow)
+  }
+  let built = build(1, quantizePen(basePen))
+  let box = inkBox(built.path)
+  if (box) {
+    const provisional = normalizationFor(box)
+    // The syllable is about to be scaled as an outline. Compose it once more
+    // with the inverse pen width so every syllable ends with the same stroke.
+    if (Math.abs(provisional - 1) > 0.005) {
+      const penScale = quantizePen(basePen / provisional)
+      if (penScale !== quantizePen(basePen)) {
+        built = build(1, penScale)
+        box = inkBox(built.path)
+      }
+    }
+  }
+  const path = built.path
+  if (box) {
+    const factor = normalizationFor(box)
     if (Math.abs(factor - 1) > 0.005) {
       scalePath(path, factor)
       // Normalization scales silhouettes uniformly, but a positive optical gap
@@ -382,5 +476,5 @@ export function composeHangulPath(codePoint: number, shapes: Map<string, Normali
     shift(path, dx, dy)
   }
   alignVerticalCenter(path, options?.targetCenter ?? 500, settings.verticalAlignment)
-  return path
+  return { path, parts: { initial: built.initialPath, medial: built.medialPath, final: built.finalPath } }
 }

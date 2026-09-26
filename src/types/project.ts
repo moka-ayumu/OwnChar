@@ -89,7 +89,6 @@ export interface CompositionSettings {
   jamoNormalization: number
   standaloneJamoMaxHeight: number
   latinNormalization: number
-  numberNormalization: number
   verticalAlignment: number
   widthMode: 'proportional' | 'fixed'
 }
@@ -109,8 +108,8 @@ export interface GenerationState {
 
 export interface ProjectState {
   schemaVersion: 7
-  settingsVersion: 6
-  fontBuildVersion: 7
+  settingsVersion: 7
+  fontBuildVersion: 8
   hydrated: boolean
   status: ProjectStatus
   currentPrompt: number
@@ -141,6 +140,8 @@ export interface GenerationRequest {
   globalMetrics: { left: number; right: number; y: number }
   compositionSettings: CompositionSettings
   gaps: import('@/font/gap-profile').GapProfile
+  proportions: import('@/font/proportion-profile').ProportionProfile
+  lockedSyllables: Record<string, import('@/font/syllable-lock').LockedSyllable>
   hangulTargetHeight: number
   hangulTargetCenter: number
   unitsPerEm: 1000
@@ -175,7 +176,6 @@ export const DEFAULT_COMPOSITION_SETTINGS: CompositionSettings = {
   jamoNormalization: 1,
   standaloneJamoMaxHeight: 1,
   latinNormalization: 0,
-  numberNormalization: 0,
   verticalAlignment: 0.8,
   widthMode: 'proportional',
 }
