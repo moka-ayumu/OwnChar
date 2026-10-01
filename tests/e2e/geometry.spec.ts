@@ -530,11 +530,13 @@ test('follows the learned initial : final size ratio of a stacked syllable', asy
       return centerlineSize(parts.final, pen) / centerlineSize(parts.initial, pen)
     }
     const unlearned = ratio(composeHangulParts(codePoint, shapes, DEFAULT_COMPOSITION_SETTINGS).parts)
-    const target = 1.3
+    const target = 0.6
     const proportions = { contexts: { 'horizontalDown:final': { final: target, sampleCount: 4 } }, pairs: {}, syllables: {} }
     const learned = ratio(composeHangulParts(codePoint, shapes, DEFAULT_COMPOSITION_SETTINGS, { proportions }).parts)
     expect(Math.abs(unlearned - target)).toBeGreaterThan(0.2)
     expect(Math.abs(learned / target - 1)).toBeLessThan(0.05)
+    const oversized = { contexts: { 'horizontalDown:final': { final: 4, sampleCount: 4 } }, pairs: {}, syllables: {} }
+    expect(ratio(composeHangulParts(codePoint, shapes, DEFAULT_COMPOSITION_SETTINGS, { proportions: oversized }).parts)).toBeLessThan(2)
     // Without learned samples the zone layout stays as before.
     const empty = { contexts: {}, pairs: {}, syllables: {} }
     expect(ratio(composeHangulParts(codePoint, shapes, DEFAULT_COMPOSITION_SETTINGS, { proportions: empty }).parts)).toBeCloseTo(unlearned, 6)
@@ -548,13 +550,13 @@ test('learns jamo proportions from completed sentence syllables', async () => {
   try {
     const { learnProportions } = await server.ssrLoadModule('/src/font/proportion-learning.ts')
     const { WRITING_EXERCISES } = await server.ssrLoadModule('/src/lib/writing-exercises.ts')
-    const exercise = WRITING_EXERCISES.find((item: { id: string }) => item.id === 'hangul-base-1')
-    const cellIndex = exercise.cells.findIndex((cell: { char: string }) => cell.char === '들')
+    const exercise = WRITING_EXERCISES.find((item: { cells: Array<{ char: string }> }) => item.cells.some((cell) => cell.char === '를'))
+    const cellIndex = exercise.cells.findIndex((cell: { char: string }) => cell.char === '를')
     const columns = exercise.cells.length
     const x = cellIndex * 148
-    // ㄷ and ㄹ with the same 40×20 centerline box, ㅡ 100 long.
+    // Initial and final ㄹ with the same 40×20 centerline box, ㅡ 100 long.
     const slots = [
-      [penStroke('d1', x + 50, 20, [[0, 0], [40, 0]]), penStroke('d2', x + 50, 20, [[0, 0], [0, 20], [40, 20]])],
+      [penStroke('i1', x + 50, 20, [[0, 0], [40, 0], [40, 10]]), penStroke('i2', x + 50, 30, [[40, 0], [0, 0], [0, 10]]), penStroke('i3', x + 50, 40, [[0, 0], [40, 0]])],
       [penStroke('eu', x + 20, 60, [[0, 0], [100, 0]])],
       [penStroke('r1', x + 50, 90, [[0, 0], [40, 0], [40, 10]]), penStroke('r2', x + 50, 100, [[40, 0], [0, 0], [0, 10]]), penStroke('r3', x + 50, 110, [[0, 0], [40, 0]])],
     ]
@@ -564,7 +566,7 @@ test('learns jamo proportions from completed sentence syllables', async () => {
       assignments: slots.flatMap((strokes, slotIndex) => strokes.map((stroke) => ({ elementId: stroke.id, cellIndex, slotIndex, promptId: exercise.cells[cellIndex].slots[slotIndex].promptId }))),
     }
     const profile = learnProportions({ [exercise.id]: session })
-    expect(profile.syllables['들'].final).toBeCloseTo(1, 5)
+    expect(profile.syllables['를'].final).toBeCloseTo(1, 5)
     expect(profile.contexts['horizontalDown:final'].final).toBeCloseTo(1, 5)
     expect(profile.contexts['horizontalDown:final'].medial).toBeCloseTo(100 / Math.sqrt(800), 5)
   } finally {
@@ -572,11 +574,11 @@ test('learns jamo proportions from completed sentence syllables', async () => {
   }
 })
 
-test('a locked syllable is the canvas guide plus the jamo written in the cell', async () => {
+test('fixed guide jamo do not move when the missing jamo is written in the cell', async () => {
   const server = await createModuleServer()
   try {
-    const { composeGuideParts, composeLockedHangulPath } = await server.ssrLoadModule('/src/font/syllable-lock.ts')
-    const { normalizeRawStrokes: normalize, appendShape: place } = await server.ssrLoadModule('/src/font/path-geometry.ts')
+    const { composeGuideParts } = await server.ssrLoadModule('/src/font/syllable-lock.ts')
+    const { normalizeRawStrokes: normalize } = await server.ssrLoadModule('/src/font/path-geometry.ts')
     const withCell = (shape: ReturnType<typeof normalizeRawStrokes>, sourceCellId: string) => Object.assign(shape, { sourceCellId })
     const shapes = new Map([
       ['initial:5:ㄱ', withCell(normalize([penStroke('g', 20, 30, [[0, 0], [40, 0], [40, 50]])], 148, 0), 'a:0')],
@@ -592,12 +594,6 @@ test('a locked syllable is the canvas guide plus the jamo written in the cell', 
     expect(guideAfter.parts.initial.commands).toEqual(guide.parts.initial.commands)
     expect(guideAfter.parts.medial.commands).toEqual(guide.parts.medial.commands)
 
-    const locked: opentype.Path = composeLockedHangulPath(codePoint, after, DEFAULT_COMPOSITION_SETTINGS, {}, { cellId: 'lock:0', writtenRoles: ['final'] })
-    const fixedCount = guide.parts.initial.commands.length + guide.parts.medial.commands.length
-    expect(locked.commands.slice(0, fixedCount)).toEqual([...guide.parts.initial.commands, ...guide.parts.medial.commands])
-    const asWritten = new opentype.Path()
-    place(asWritten, written, { x: 0, y: 0, width: 1000, height: 1000 }, true)
-    expect(locked.commands.slice(fixedCount)).toEqual(asWritten.commands)
   } finally {
     await server.close()
   }
@@ -620,7 +616,7 @@ test('numerals get the height and baseline of ! and ?', async () => {
       metadata: { familyName: 'T', styleName: 'Regular', designer: '', version: '1.0' },
       overrides: {}, globalMetrics: { left: 0, right: 0, y: 0 },
       compositionSettings: DEFAULT_COMPOSITION_SETTINGS,
-      gaps: DEFAULT_GAPS, proportions: { contexts: {}, pairs: {}, syllables: {} }, lockedSyllables: {},
+      gaps: DEFAULT_GAPS, proportions: { contexts: {}, pairs: {}, syllables: {} },
       hangulTargetHeight: 760, hangulTargetCenter: 500, unitsPerEm: 1000,
     }
     const { buffer } = await composeFont(request, { cancelled: () => false, progress: () => {} })

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { Check, Eraser, PenLine, Redo2, RotateCcw, Undo2 } from 'lucide-react'
+import { Check, Eraser, PenLine, Redo2, RotateCcw, SquareDashed, Undo2 } from 'lucide-react'
 import { WritingSurface, type WritingSurfaceHandle } from '@/components/writing-surface'
 import { strokeSvgPath, type RawStroke } from '@/font/stroke-outline'
 import { Button } from '@/components/ui/button'
@@ -9,12 +9,13 @@ import { Progress } from '@/components/ui/progress'
 import { Slider } from '@/components/ui/slider'
 import { useProject } from '@/hooks/use-project'
 import { completedPromptCount, missingPrompts, PROMPT_COUNT } from '@/lib/prompts'
-import { exerciseCompletion, WRITING_EXERCISES } from '@/lib/writing-exercises'
+import { exerciseCompletion, WRITING_EXERCISES, type WritingCell, type WritingExercise } from '@/lib/writing-exercises'
 import { projectActions } from '@/store/project-store'
-import type { CompositionSettings, DrawingRecord, JamoBoundary, StrokeAssignment, StrokePath, WritingSessionRecord } from '@/types/project'
+import type { DrawingRecord, GuideBox, HangulRole, JamoBoundary, StoredCellGuide, StrokeAssignment, StrokePath, WritingSessionRecord } from '@/types/project'
 import { cellId, indexedSlotsForCell, isFixedSlot } from '@/font/composition-inputs'
 import { hangulComposeOptions } from '@/font/composer'
-import { composeGuideParts } from '@/font/syllable-lock'
+import { svgPathData } from '@/font/svg-path'
+import { composeCellGuide, guideSourceTag, writingBand } from '@/font/cell-guides'
 import { useCompositionContext } from '@/hooks/use-composition-context'
 
 export const Route = createFileRoute('/write')({
@@ -123,47 +124,69 @@ function assignElements(elements: readonly SceneElement[], cellSize: number, col
 }
 
 interface GuidePath { key: string; cellIndex: number; promptId: string; d: string; transform: string }
+interface GuideHint { key: string; cellIndex: number; role: HangulRole; band?: boolean; x: number; y: number; width: number; height: number }
+
+const PLACEHOLDER_HINT_KEY = 'ownchar:placeholder-hint'
+
+function readPlaceholderHint() {
+  try {
+    return window.localStorage.getItem(PLACEHOLDER_HINT_KEY) !== 'off'
+  } catch {
+    return true
+  }
+}
+
+function writePlaceholderHint(enabled: boolean) {
+  try {
+    window.localStorage.setItem(PLACEHOLDER_HINT_KEY, enabled ? 'on' : 'off')
+  } catch {
+    // The hint is a per-device convenience; without storage it resets to on.
+  }
+}
+
+/** Fixed slots of a syllable cell, when every one of them is a jamo role. */
+function fixedRoleSlots(cell: WritingCell, cellIndex: number, exercise: WritingExercise, drawings: Record<string, DrawingRecord>) {
+  const codePoint = cell.char.codePointAt(0)!
+  if (codePoint < 0xac00 || codePoint > 0xd7a3) return undefined
+  const fixed = indexedSlotsForCell(cell).filter(({ slot, slotIndex }) => isFixedSlot(slot.promptId, cellIndex, slotIndex, exercise, drawings))
+  return fixed.length && fixed.every(({ slot }) => slot.role) ? fixed : undefined
+}
 
 /**
- * Fixed jamo are drawn from the same composition the font uses, so a guide in
- * a writing cell is exactly the glyph the font will contain (in cell space,
- * before the uniform font calibration).
+ * Fixed jamo are drawn from the guide of their cell (see `composeCellGuide`),
+ * the same outlines the font uses for a cell written around them, in cell
+ * space before the uniform font calibration.
  */
-function FixedCaptureLayer(props: {
-  exercise: typeof WRITING_EXERCISES[number]
+function FixedCaptureLayer({ exercise, drawings, sessions, cellGuides, hints, cellSize, columns, width, height }: {
+  exercise: WritingExercise
   drawings: Record<string, DrawingRecord>
   sessions: Record<string, WritingSessionRecord>
-  settings: CompositionSettings
+  cellGuides: Map<number, StoredCellGuide>
+  hints: GuideHint[]
   cellSize: number
   columns: number
   width: number
   height: number
 }) {
-  const { exercise, drawings } = props
-  const hasFixed = exercise.cells.some((cell, cellIndex) => indexedSlotsForCell(cell)
-    .some(({ slot, slotIndex }) => isFixedSlot(slot.promptId, cellIndex, slotIndex, exercise, drawings)))
-  return hasFixed ? <ComposedGuideLayer {...props} /> : null
-}
-
-function ComposedGuideLayer({ exercise, drawings, sessions, settings, cellSize, columns, width, height }: Parameters<typeof FixedCaptureLayer>[0]) {
-  const { shapes, composition, visualScale } = useCompositionContext(drawings, sessions, settings)
   const paths = useMemo(() => exercise.cells.flatMap((cell, cellIndex): GuidePath[] => {
     const fixed = indexedSlotsForCell(cell).filter(({ slot, slotIndex }) => isFixedSlot(slot.promptId, cellIndex, slotIndex, exercise, drawings))
     if (!fixed.length) return []
     const cellX = (cellIndex % columns) * cellSize
     const cellY = Math.floor(cellIndex / columns) * cellSize
-    const codePoint = cell.char.codePointAt(0)!
-    if (codePoint >= 0xac00 && codePoint <= 0xd7a3 && fixed.every(({ slot }) => slot.role)) {
-      const { parts } = composeGuideParts(codePoint, shapes, settings, hangulComposeOptions(composition, visualScale), cellId(exercise.id, cellIndex))
+    if (fixedRoleSlots(cell, cellIndex, exercise, drawings)) {
+      const guide = cellGuides.get(cellIndex)
       const scale = cellSize / 1000
-      return fixed.map(({ slot, slotIndex }) => ({
-        key: `${cellIndex}-${slotIndex}`,
-        cellIndex,
-        promptId: slot.promptId,
-        // An integer argument keeps font coordinates (no y flip); the transform flips.
-        d: parts[slot.role!].toPathData(2),
-        transform: `matrix(${scale} 0 0 ${-scale} ${cellX} ${cellY + cellSize})`,
-      }))
+      return fixed.flatMap(({ slot, slotIndex }) => {
+        const role = guide?.roles[slot.role!]
+        return role ? [{
+          key: `${cellIndex}-${slotIndex}`,
+          cellIndex,
+          promptId: slot.promptId,
+          // An integer argument keeps font coordinates (no y flip); the transform flips.
+          d: svgPathData(role.commands),
+          transform: `matrix(${scale} 0 0 ${-scale} ${cellX} ${cellY + cellSize})`,
+        }] : []
+      })
     }
     // Non-syllable guides keep the captured outline where it was written.
     return fixed.flatMap(({ slot, slotIndex }) => {
@@ -178,11 +201,27 @@ function ComposedGuideLayer({ exercise, drawings, sessions, settings, cellSize, 
         transform: `matrix(${scale} 0 0 ${scale} ${cellX + path.x * scale} ${cellY + path.y * scale})`,
       }))
     })
-  }), [exercise, drawings, sessions, settings, cellSize, columns, shapes, composition, visualScale])
-  if (!paths.length) return null
+  }), [exercise, drawings, sessions, cellGuides, cellSize, columns])
+  if (!paths.length && !hints.length) return null
   return <svg className="fixed-capture-layer" viewBox={`0 0 ${width} ${height}`} aria-label="이미 수집되어 고정된 자모">
+    {hints.map((hint) => <rect key={hint.key} className={hint.band ? 'placeholder-band' : 'placeholder-hint'} data-cell-index={hint.cellIndex} data-placeholder-role={hint.role} x={hint.x} y={hint.y} width={hint.width} height={hint.height} rx={4} />)}
     {paths.map((path) => <path key={path.key} data-cell-index={path.cellIndex} data-prompt-id={path.promptId} d={path.d} transform={path.transform} fillRule="nonzero" />)}
   </svg>
+}
+
+/** Two guide maps are the same when every cell keeps the same stored role outlines. */
+function sameGuides(left: Record<number, StoredCellGuide>, right: Record<number, StoredCellGuide>) {
+  const keys = Object.keys(left)
+  if (keys.length !== Object.keys(right).length) return false
+  return keys.every((key) => {
+    const a = left[Number(key)]
+    const b = right[Number(key)]
+    if (!b) return false
+    const roles = Object.keys(a.roles) as HangulRole[]
+    return roles.length === Object.keys(b.roles).length
+      && roles.every((role) => a.roles[role] === b.roles[role])
+      && JSON.stringify(a.placeholders) === JSON.stringify(b.placeholders)
+  })
 }
 
 function WritePage() {
@@ -207,6 +246,9 @@ function WritePage() {
   const [tool, setTool] = useState<'freedraw' | 'eraser'>('freedraw')
   const [sceneElements, setSceneElements] = useState<readonly SceneElement[]>(savedSession?.elements as readonly SceneElement[] ?? [])
   const [boundaries, setBoundaries] = useState<Record<number, JamoBoundary[]>>(savedSession?.boundaries ?? {})
+  const [storedGuides, setStoredGuides] = useState<Record<number, StoredCellGuide>>(savedSession?.guides ?? {})
+  const guidesRef = useRef<Record<number, StoredCellGuide>>(savedSession?.guides ?? {})
+  const [showPlaceholderHint, setShowPlaceholderHint] = useState(readPlaceholderHint)
   const [boundaryWarning, setBoundaryWarning] = useState('')
   const [generationDialog, setGenerationDialog] = useState<'missing' | 'conflict' | null>(null)
   const api = useRef<WritingSurfaceHandle>(null)
@@ -239,6 +281,74 @@ function WritePage() {
     () => assignElements(sceneElements, cellSize, activeColumns, exercise, drawings, boundaries),
     [activeColumns, boundaries, cellSize, drawings, exercise, sceneElements],
   )
+
+  // Learned spacing and calibration stay as they were when the sentence was
+  // opened, so completing other syllables never moves a guide on screen.
+  const { shapes, composition } = useCompositionContext(drawings, sessions, compositionSettings, `${exercise.id}|${JSON.stringify(compositionSettings)}`)
+  const cellGuides = useMemo(() => {
+    const options = hangulComposeOptions(composition)
+    const guides = new Map<number, StoredCellGuide>()
+    exercise.cells.forEach((cell, cellIndex) => {
+      const fixed = fixedRoleSlots(cell, cellIndex, exercise, drawings)
+      if (!fixed) return
+      const guideRoles = Object.fromEntries(fixed.map(({ slot }) => [slot.role!, guideSourceTag(drawings[slot.promptId])]))
+      const writtenRoles = cell.slots.filter((slot) => {
+        const written = drawings[slot.promptId]?.capture
+        return slot.role && written?.exerciseId === exercise.id && written.cellIndex === cellIndex
+      }).map((slot) => slot.role!)
+      guides.set(cellIndex, composeCellGuide({
+        codePoint: cell.char.codePointAt(0)!, cellId: cellId(exercise.id, cellIndex), guideRoles, writtenRoles,
+        stored: storedGuides[cellIndex], shapes, settings: compositionSettings, options,
+      }))
+    })
+    return guides
+  }, [exercise, drawings, storedGuides, shapes, compositionSettings, composition])
+
+  // A cell keeps the guide it showed when its first stroke began: the stored
+  // outlines are what the canvas and the font use from then on.
+  useEffect(() => {
+    const written = new Set(drawableElements(sceneElements).map((element) => cellIndexForElement(element, cellSize, activeColumns, exercise.cells.length)))
+    const next: Record<number, StoredCellGuide> = {}
+    for (const index of written) {
+      const guide = cellGuides.get(index)
+      if (guide && Object.keys(guide.roles).length) next[index] = guide
+    }
+    if (sameGuides(next, guidesRef.current)) return
+    guidesRef.current = next
+    setStoredGuides(next)
+    projectActions.saveSessionGuides(exercise.id, next)
+  }, [sceneElements, cellGuides, cellSize, activeColumns, exercise])
+
+  const placeholderHints = useMemo((): GuideHint[] => {
+    if (!showPlaceholderHint) return []
+    const writtenRoles = new Map<number, Set<HangulRole>>()
+    for (const group of capture.groups) {
+      if (!group.elements.length || !group.slot.role) continue
+      writtenRoles.set(group.cellIndex, new Set([...(writtenRoles.get(group.cellIndex) ?? []), group.slot.role]))
+    }
+    const scale = cellSize / 1000
+    return [...cellGuides].flatMap(([cellIndex, guide]) => {
+      const cellX = (cellIndex % activeColumns) * cellSize
+      const cellY = Math.floor(cellIndex / activeColumns) * cellSize
+      const guideBoxes = Object.values(guide.roles).map((entry) => entry.box)
+      const rect = (box: GuideBox) => ({
+        x: cellX + box.x1 * scale, y: cellY + cellSize - box.y2 * scale,
+        width: (box.x2 - box.x1) * scale, height: (box.y2 - box.y1) * scale,
+      })
+      return (Object.entries(guide.placeholders) as Array<[HangulRole, GuideBox]>)
+        .filter(([role]) => !writtenRoles.get(cellIndex)?.has(role))
+        .flatMap(([role, box]) => [
+          { key: `${cellIndex}-${role}-band`, cellIndex, role, band: true, ...rect(guide.bands?.[role] ?? writingBand(box, guideBoxes)) },
+          { key: `${cellIndex}-${role}`, cellIndex, role, ...rect(box) },
+        ])
+    })
+  }, [showPlaceholderHint, capture, cellGuides, cellSize, activeColumns])
+
+  const togglePlaceholderHint = () => {
+    const next = !showPlaceholderHint
+    setShowPlaceholderHint(next)
+    writePlaceholderHint(next)
+  }
 
   const saveElements = (elements: readonly SceneElement[], requestedBoundaries = boundariesRef.current) => {
     const normalizedBoundaries = normalizeBoundaries(elements, cellSize, activeColumns, exercise, drawings, requestedBoundaries)
@@ -276,6 +386,7 @@ function WritePage() {
         exerciseId: exercise.id, text: exercise.text,
         elements: structuredClone(elements) as readonly Record<string, unknown>[],
         assignments, boundaries: normalizedBoundaries, cellSize, columns: activeColumns, updatedAt: Date.now(),
+        guides: guidesRef.current,
       }
       projectActions.saveSentenceCapture(session, records)
     }, 250)
@@ -301,6 +412,8 @@ function WritePage() {
     boundariesRef.current = nextSession?.boundaries ?? {}
     setBoundaries(boundariesRef.current)
     setBoundaryWarning('')
+    guidesRef.current = nextSession?.guides ?? {}
+    setStoredGuides(guidesRef.current)
     setCellSize(nextSession?.cellSize ?? 148)
     setColumns(nextSession?.columns ?? Math.min(6, WRITING_EXERCISES[next].cells.length))
     projectActions.navigatePrompt(next, WRITING_EXERCISES.length)
@@ -425,6 +538,8 @@ function WritePage() {
             <div className="canvas-stroke-control"><span>획 굵기</span><div className="canvas-stroke-slider"><Slider aria-label="획 굵기" min={1} max={5} step={0.1} value={[strokeWidth]} onValueChange={([value]) => setStrokeWidth(value)} /></div><span className="canvas-stroke-value">{strokeWidth.toFixed(1)}</span></div>
             <div className="canvas-stroke-control"><span>손떨림 보정</span><div className="canvas-stroke-slider"><Slider aria-label="손떨림 보정" min={0} max={1} step={0.01} value={[endpointStabilization]} onValueChange={([value]) => projectActions.updateCompositionSettings({ endpointStabilization: value })} /></div><span className="canvas-stroke-value">{endpointStabilization.toFixed(2)}</span></div>
             <span className="canvas-toolbar-divider" aria-hidden="true" />
+            <Button size="sm" variant={showPlaceholderHint ? 'default' : 'secondary'} aria-pressed={showPlaceholderHint} title="아직 쓸 자모의 자리를 점선으로 보여줘요" onClick={togglePlaceholderHint}><SquareDashed className="size-3.5" /> 자리 안내</Button>
+            <span className="canvas-toolbar-divider" aria-hidden="true" />
             <div className="canvas-history-buttons">
               <Button aria-label="실행 취소" size="icon" variant="ghost" onClick={() => api.current?.undo()}><Undo2 className="size-4" /></Button>
               <Button aria-label="다시 실행" size="icon" variant="ghost" onClick={() => api.current?.redo()}><Redo2 className="size-4" /></Button>
@@ -433,7 +548,7 @@ function WritePage() {
           </div>
           <div className="sentence-canvas-scroll" ref={canvasViewport}>
             <div className="sentence-canvas-frame" data-testid="writing-canvas" data-cell-size={cellSize} data-columns={activeColumns} data-rows={rowCount} data-assignment-prompts={capture.assignments.map((item) => item.promptId).join(',')} style={{ width: canvasWidth, height: canvasHeight }}>
-              <FixedCaptureLayer exercise={exercise} drawings={drawings} sessions={sessions} settings={compositionSettings} cellSize={cellSize} columns={activeColumns} width={canvasWidth} height={canvasHeight} />
+              <FixedCaptureLayer exercise={exercise} drawings={drawings} sessions={sessions} cellGuides={cellGuides} hints={placeholderHints} cellSize={cellSize} columns={activeColumns} width={canvasWidth} height={canvasHeight} />
               <div className="writing-grid" aria-hidden="true">
                 {exercise.cells.map((cell, index) => <div key={index} data-source-cell={sourceExerciseId === exercise.id && sourceCellIndex === index ? 'true' : undefined} className={sourceExerciseId === exercise.id && sourceCellIndex === index ? 'source-cell-highlight' : undefined} style={{ width: cellSize }}><span>{cell.char}</span></div>)}
               </div>
@@ -469,7 +584,7 @@ function WritePage() {
         </div>
       </section>
 
-      <Dialog open={generationDialog === 'missing'} onOpenChange={(open) => !open && setGenerationDialog(null)}><DialogContent><DialogTitle>아직 수집하지 않은 글자가 있어요</DialogTitle><DialogDescription>기본 글자 {missingBase.length}개, 문맥형 {missingVariants.length}개, 기호 {missingSymbols.length}개가 비어 있습니다. 누락된 기호와 기본 글자는 폰트에 포함하지 않고, 누락된 문맥형은 다른 원본에서 대체합니다.</DialogDescription><div className="mt-4 max-h-24 overflow-y-auto rounded-lg bg-[#F7F8FA] p-3 text-sm leading-6 text-[#62656B]">{remaining.map((item) => item.char).join(' ')}</div><div className="mt-6 flex justify-end gap-2"><DialogClose asChild><Button variant="secondary">계속 작성하기</Button></DialogClose><Button onClick={proceedToGeneration}>그래도 생성하기</Button></div></DialogContent></Dialog>
+      <Dialog open={generationDialog === 'missing'} onOpenChange={(open) => !open && setGenerationDialog(null)}><DialogContent><DialogTitle>아직 수집하지 않은 글자가 있어요</DialogTitle><DialogDescription>기본 글자 {missingBase.length}개, 문맥형 {missingVariants.length}개, 기호 {missingSymbols.length}개가 비어 있습니다. 누락된 기호와 기본 글자는 폰트에 포함하지 않고, 누락된 문맥형은 이미 쓴 다른 문맥의 같은 자모로 대체합니다.</DialogDescription><div className="mt-4 max-h-24 overflow-y-auto rounded-lg bg-[#F7F8FA] p-3 text-sm leading-6 text-[#62656B]">{remaining.map((item) => item.char).join(' ')}</div><div className="mt-6 flex justify-end gap-2"><DialogClose asChild><Button variant="secondary">계속 작성하기</Button></DialogClose><Button onClick={proceedToGeneration}>그래도 생성하기</Button></div></DialogContent></Dialog>
       <Dialog open={generationDialog === 'conflict'} onOpenChange={(open) => !open && setGenerationDialog(null)}><DialogContent><DialogTitle>기존 글리프 보정을 어떻게 할까요?</DialogTitle><DialogDescription>다시 작성한 원본으로 재합성하면 고급 편집에서 수정한 {modifiedGlyphCount.toLocaleString()}개 글리프의 보정값과 결과가 달라질 수 있습니다.</DialogDescription><div className="mt-6 grid gap-2"><Button onClick={() => void navigate({ to: '/generate' })}>보정 유지하고 재합성</Button><Button variant="destructive" onClick={() => { projectActions.clearGlyphTransformsForRecompose(); void navigate({ to: '/generate' }) }}>기존 보정 삭제 후 재합성</Button><DialogClose asChild><Button variant="ghost">취소</Button></DialogClose></div></DialogContent></Dialog>
     </div>
   )

@@ -1,27 +1,34 @@
 import type { HangulRole } from '@/types/project'
 
-export type SourceMatch = 'exact' | 'same-role' | 'base' | 'cross-role'
+/**
+ * exact: written in this very context. derived: the same jamo written in
+ * another context of the same role, fitted into the requested layout.
+ */
+export type SourceMatch = 'exact' | 'derived' | 'base' | 'cross-role'
 
 export function sourceKey(role: HangulRole, variant: number, char: string) {
   return `${role}:${variant}:${char}`
 }
 
-function initialFamily(variant: number) {
-  if (variant === 0 || variant === 5) return 'vertical'
-  if (variant === 1) return 'upward'
-  if (variant === 2) return 'downward'
-  if (variant === 6) return 'horizontal'
-  return 'mixed'
+// Initial layouts, in order of how well each one stands in for another.
+// 0 vertical, 1 ㅗ/ㅛ/ㅡ, 2 ㅜ/ㅠ, 3 ㅘ/ㅙ/ㅚ/ㅢ, 4 ㅝ/ㅞ/ㅟ; 5–7 the same
+// families with a final. ㅜ shares the ㅗ zone, and the compound-vowel
+// layouts sit in a compact top-left zone closest to the vertical initial.
+const INITIAL_DONORS: Record<number, number[]> = {
+  0: [5, 3, 4, 7, 1, 2, 6],
+  1: [2, 6, 0, 5, 3, 4, 7],
+  2: [1, 6, 0, 5, 3, 4, 7],
+  3: [4, 7, 5, 0, 1, 2, 6],
+  4: [3, 7, 5, 0, 1, 2, 6],
+  5: [0, 7, 3, 4, 6, 1, 2],
+  6: [1, 2, 5, 0, 7, 3, 4],
+  7: [3, 4, 6, 5, 0, 1, 2],
 }
 
-function candidateScore(role: HangulRole, requested: number, candidate: number) {
-  if (role !== 'initial') return Math.abs(requested - candidate)
-  const sameFinal = (requested >= 5) === (candidate >= 5)
-  const requestedFamily = initialFamily(requested)
-  const candidateFamily = initialFamily(candidate)
-  const bothHorizontal = ['upward', 'downward', 'horizontal'].includes(requestedFamily) && ['upward', 'downward', 'horizontal'].includes(candidateFamily)
-  const layoutDistance = requestedFamily === candidateFamily ? 0 : bothHorizontal ? 1 : 4
-  return layoutDistance + (sameFinal ? 0 : 2) + Math.abs(requested - candidate) / 10
+function donors(role: HangulRole, variant: number) {
+  if (role === 'initial') return INITIAL_DONORS[variant] ?? []
+  if (role === 'medial') return [1 - variant]
+  return []
 }
 
 export function selectJamoSource<T extends { sourceRole?: HangulRole }>(
@@ -30,12 +37,11 @@ export function selectJamoSource<T extends { sourceRole?: HangulRole }>(
   const exactKey = sourceKey(role, variant, char)
   const exact = sources.get(exactKey)
   if (exact) return { source: exact, key: exactKey, match: 'exact' }
-  const count = role === 'initial' ? 8 : role === 'medial' ? 2 : 1
-  const alternatives = Array.from({ length: count }, (_, index) => ({
-    index, key: sourceKey(role, index, char), source: sources.get(sourceKey(role, index, char)),
-  })).filter((candidate): candidate is { index: number; key: string; source: T } => Boolean(candidate.source))
-  alternatives.sort((a, b) => candidateScore(role, variant, a.index) - candidateScore(role, variant, b.index) || a.index - b.index)
-  if (alternatives.length) return { source: alternatives[0].source, key: alternatives[0].key, match: 'same-role' }
+  for (const index of donors(role, variant)) {
+    const key = sourceKey(role, index, char)
+    const source = sources.get(key)
+    if (source) return { source, key, match: 'derived' }
+  }
   const base = sources.get(char)
   if (!base) return undefined
   return { source: base, key: char, match: base.sourceRole && base.sourceRole !== role ? 'cross-role' : 'base' }

@@ -141,8 +141,75 @@ function preparedDistance(a: PreparedOutline, b: PreparedOutline, dx = 0, dy = 0
   return minimum
 }
 
+/** Segments of one outline bucketed by position, so a clearance query only meets its neighbours. */
+interface SegmentGrid {
+  size: number
+  buckets: Map<number, number[]>
+}
+
+const bucketKey = (x: number, y: number) => (x + 8192) * 16384 + (y + 8192)
+
+function buildGrid(outline: PreparedOutline, size: number): SegmentGrid {
+  const buckets = new Map<number, number[]>()
+  outline.segments.forEach((segment, index) => {
+    const x2 = Math.floor(segment.maxX / size)
+    const y2 = Math.floor(segment.maxY / size)
+    for (let x = Math.floor(segment.minX / size); x <= x2; x += 1) {
+      for (let y = Math.floor(segment.minY / size); y <= y2; y += 1) {
+        const key = bucketKey(x, y)
+        const bucket = buckets.get(key)
+        if (bucket) bucket.push(index)
+        else buckets.set(key, [index])
+      }
+    }
+  })
+  return { size, buckets }
+}
+
+/**
+ * Whether `moving`, shifted by (dx, dy), keeps at least `clearance` from
+ * `fixed`. Same answer as `preparedDistance(...) >= clearance`, but only
+ * segment pairs within `clearance` of each other are ever compared.
+ */
+function keepsClearance(fixed: PreparedOutline, moving: PreparedOutline, grid: SegmentGrid, dx: number, dy: number, clearance: number) {
+  if (!fixed.contours.length || !moving.contours.length) return true
+  const { size, buckets } = grid
+  for (const first of fixed.segments) {
+    const x1 = Math.floor((first.minX - clearance - dx) / size)
+    const x2 = Math.floor((first.maxX + clearance - dx) / size)
+    const y1 = Math.floor((first.minY - clearance - dy) / size)
+    const y2 = Math.floor((first.maxY + clearance - dy) / size)
+    for (let x = x1; x <= x2; x += 1) {
+      for (let y = y1; y <= y2; y += 1) {
+        const bucket = buckets.get(bucketKey(x, y))
+        if (!bucket) continue
+        for (const index of bucket) {
+          const second = moving.segments[index]
+          const boxDx = Math.max(0, Math.max(first.minX, second.minX + dx) - Math.min(first.maxX, second.maxX + dx))
+          const boxDy = Math.max(0, Math.max(first.minY, second.minY + dy) - Math.min(first.maxY, second.maxY + dy))
+          if (Math.hypot(boxDx, boxDy) >= clearance) continue
+          const movedStart: Point = [second.start[0] + dx, second.start[1] + dy]
+          const movedEnd: Point = [second.end[0] + dx, second.end[1] + dy]
+          if (segmentDistance(first.start, first.end, movedStart, movedEnd) < clearance) return false
+        }
+      }
+    }
+  }
+  // No edges are close; one outline can still sit entirely inside the other.
+  const aPoint = fixed.contours[0]?.[0]; const bPoint = moving.contours[0]?.[0]
+  if ((aPoint && contains(moving.contours, aPoint[0] - dx, aPoint[1] - dy)) ||
+      (bPoint && contains(fixed.contours, bPoint[0] + dx, bPoint[1] + dy))) return false
+  return true
+}
+
 export function minimumInkDistance(first: opentype.Path, second: opentype.Path, dx = 0, dy = 0) {
   return preparedDistance(prepareOutline(first), prepareOutline(second), dx, dy)
+}
+
+/** Early-out clearance check using the intrusion solver's spatial grid. */
+export function hasInkClearance(first: opentype.Path, second: opentype.Path, clearance: number) {
+  const a = prepareOutline(first); const b = prepareOutline(second)
+  return keepsClearance(a, b, buildGrid(b, Math.max(4, clearance)), 0, 0, clearance - 1e-3)
 }
 
 export interface SafeIntrusionOptions {
@@ -163,9 +230,11 @@ export function maximizeSafeIntrusion(fixed: opentype.Path | PreparedOutline, mo
   const offset = (distance: number) => options.axis === 'x'
     ? [distance * options.direction, 0] as const
     : [0, distance * options.direction] as const
+  const clearance = options.clearance - 1e-3
+  const grid = buildGrid(movingOutline, Math.max(4, clearance))
   const safe = (distance: number) => {
     const [dx, dy] = offset(distance)
-    return preparedDistance(fixedOutline, movingOutline, dx, dy, options.clearance - 1e-3) >= options.clearance - 1e-3
+    return keepsClearance(fixedOutline, movingOutline, grid, dx, dy, clearance)
   }
   if (!safe(0)) return 0
   const step = Math.max(1, options.step ?? options.clearance / 2)

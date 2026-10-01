@@ -1,4 +1,4 @@
-import { CHARACTER_PROMPTS } from '@/lib/prompts'
+import { CHARACTER_PROMPTS, COMPOUND_FINALS } from '@/lib/prompts'
 import type { DrawingRecord, HangulRole } from '@/types/project'
 import { CHOSEONG, JONGSEONG, JUNGSEONG, getHangulVariantSelection, variantShapeKey } from './hangul'
 import { selectJamoSource, type SourceMatch } from './source-selection'
@@ -6,7 +6,7 @@ import { selectJamoSource, type SourceMatch } from './source-selection'
 export interface GlyphSource {
   role: string
   char: string
-  match: SourceMatch | 'direct' | 'missing'
+  match: SourceMatch | 'compound' | 'direct' | 'missing'
   originPromptId: string
   capture?: DrawingRecord['capture']
 }
@@ -44,7 +44,11 @@ export function glyphSources(codePoint: number, drawings: Record<string, Drawing
   if (final) roles.push({ role: 'final', char: JONGSEONG[final][0], variant: variants.final })
   return roles.flatMap(({ role, char, variant }) => {
     const selected = selectJamoSource(map, role, variant, char)
-    return selected ? [make(role, char, selected.source, selected.match)]
-      : [{ role, char, match: 'missing', originPromptId: '' }]
+    if (selected) return [make(role, char, selected.source, selected.match)]
+    // Mirrors the compound-final synthesis in `shapesFromRequestDrawings`.
+    const parts = role === 'final' ? COMPOUND_FINALS[char] : undefined
+    const records = parts?.map((part) => map.get(variantShapeKey('final', 0, part)))
+    if (parts && records?.every(Boolean)) return records.map((record, index) => make(role, parts[index], record!, 'compound'))
+    return [{ role, char, match: 'missing', originPromptId: '' }]
   })
 }

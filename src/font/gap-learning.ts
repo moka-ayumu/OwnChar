@@ -2,6 +2,10 @@ import type { WritingSessionRecord } from '@/types/project'
 import { STROKE_SIZE_FACTOR, REFERENCE_CELL_SIZE, strokePolygon, type RawStroke } from './stroke-outline'
 import { completedHangulCells } from './hangul-samples'
 import { finalGapContext, finalGapPair, gapContext, gapPair, minimumGap, type GapKind, type GapProfile, type LearnedPlacement } from './gap-profile'
+import { vowelKind } from './hangul-structure'
+import { medialSpace } from './syllable-layout'
+import { normalizeRawStrokes, appendShape } from './path-geometry'
+import opentype from 'opentype.js'
 
 export type { GapProfile } from './gap-profile'
 export { DEFAULT_GAPS } from './gap-profile'
@@ -62,10 +66,16 @@ export function learnGaps(sessions: Record<string, WritingSessionRecord>, endpoi
     const medial = boxes[1]!
     const offset = cell.char.codePointAt(0)! - 0xac00
     const vowel = Math.floor((offset % 588) / 28)
-    const kind: GapKind = new Set([0, 1, 2, 3, 4, 5, 6, 7, 20]).has(vowel) ? 'vertical'
-      : new Set([8, 12]).has(vowel) ? 'horizontalUp'
-        : new Set([13, 17, 18]).has(vowel) ? 'horizontalDown' : 'mixed'
-    const gap = kind === 'vertical' ? medial.left - initial.right : medial.top - initial.bottom
+    const kind = vowelKind(vowel)
+    let medialAnchor = medial
+    if (kind === 'mixed') {
+      const local = assigned[1].map(stroke => ({ ...stroke, x: stroke.x - cellX, y: stroke.y - cellY }))
+      const path = new opentype.Path()
+      appendShape(path, normalizeRawStrokes(local, session.cellSize, endpointStabilization), { x: 0, y: 0, width: session.cellSize, height: session.cellSize }, true, session.cellSize / 1000)
+      const space = medialSpace(path)?.horizontal
+      if (space) medialAnchor = { left: space.x1, right: space.x2, top: session.cellSize - space.y2, bottom: session.cellSize - space.y1 }
+    }
+    const gap = kind === 'vertical' ? medial.left - initial.right : medialAnchor.top - initial.bottom
     const scaledGap = Math.max(-minimum * 2, Math.min(300, gap * 1000 / session.cellSize))
     samples[kind].push(scaledGap)
     const context = gapContext(kind, Boolean(boxes[2]))
@@ -75,12 +85,12 @@ export function learnGaps(sessions: Record<string, WritingSessionRecord>, endpoi
     syllables.set(cell.char, [...(syllables.get(cell.char) ?? []), scaledGap])
     const upperCrossOffset = kind === 'vertical'
       ? ((medial.top + medial.bottom) - (initial.top + initial.bottom)) * 500 / session.cellSize
-      : ((medial.left + medial.right) - (initial.left + initial.right)) * 500 / session.cellSize
+      : ((medialAnchor.left + medialAnchor.right) - (initial.left + initial.right)) * 500 / session.cellSize
     const upperPlacement = { advanceGap: scaledGap, crossOffset: upperCrossOffset }
     initialMedialPairs.set(pair, [...(initialMedialPairs.get(pair) ?? []), upperPlacement])
     initialMedialSyllables.set(cell.char, [...(initialMedialSyllables.get(cell.char) ?? []), upperPlacement])
     if (boxes[2]) {
-      const upperBottom = Math.max(initial.bottom, medial.bottom)
+      const upperBottom = Math.max(initial.bottom, medialAnchor.bottom)
       const finalGap = boxes[2]!.top - upperBottom
       const scaledFinalGap = Math.max(-minimum * 2, Math.min(300, finalGap * 1000 / session.cellSize))
       const medialChar = cell.slots[1].char
@@ -91,7 +101,9 @@ export function learnGaps(sessions: Record<string, WritingSessionRecord>, endpoi
       finalSyllables.set(cell.char, [...(finalSyllables.get(cell.char) ?? []), scaledFinalGap])
       const finalPlacement = {
         advanceGap: scaledFinalGap,
-        crossOffset: ((boxes[2]!.left + boxes[2]!.right) - (medial.left + medial.right)) * 500 / session.cellSize,
+        crossOffset: ((boxes[2]!.left + boxes[2]!.right) - (kind === 'mixed'
+          ? medial.left + medial.right
+          : Math.min(initial.left, medial.left) + Math.max(initial.right, medial.right))) * 500 / session.cellSize,
       }
       const finalPair = finalGapPair(medialChar, finalChar)
       medialFinalPairs.set(finalPair, [...(medialFinalPairs.get(finalPair) ?? []), finalPlacement])

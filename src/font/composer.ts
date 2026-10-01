@@ -1,7 +1,7 @@
 import opentype from 'opentype.js'
 import { BASE_CHARACTER_PROMPTS } from '@/lib/prompts'
 import type { CharacterPrompt, GenerationRequest, GlyphOverride } from '@/types/project'
-import { composeHangulPath, type HangulComposeOptions } from './hangul'
+import { composeHangulPath, composeHangulParts, type HangulParts, type HangulComposeOptions } from './hangul'
 import { appendShape, transformPath, type NormalizedShape, type Zone } from './path-geometry'
 import { medianHeight, normalizationFactor } from './size-normalization'
 import { alignVerticalCenter } from './vertical-alignment'
@@ -10,7 +10,6 @@ import { composeStandaloneJamoPath, type ReferenceEnvelope } from './standalone-
 import { renderCalibratedGlyph, symbolCalibrationAnchor, symbolMaximumHeight, visualCalibrationScale, VISUAL_HANGUL_HEIGHT } from './visual-calibration'
 import { prepareCffPath } from './cff-outline'
 import { shapesFromRequestDrawings } from './composition-inputs'
-import { composeLockedHangulPath } from './syllable-lock'
 
 export interface ComposeOptions {
   cancelled: () => boolean
@@ -106,22 +105,43 @@ export function prepareCompositionContext(request: GenerationRequest): PreparedC
 }
 
 /** The part of a generation request that decides how a Hangul syllable is composed. */
-export type HangulCompositionInputs = Pick<GenerationRequest, 'compositionSettings' | 'gaps' | 'proportions' | 'hangulTargetHeight' | 'hangulTargetCenter' | 'lockedSyllables'>
+export type HangulCompositionInputs = Pick<GenerationRequest, 'compositionSettings' | 'gaps' | 'proportions' | 'hangulTargetHeight' | 'hangulTargetCenter'>
 
-export function hangulComposeOptions(request: HangulCompositionInputs, visualScale: number): HangulComposeOptions {
-  return { gaps: request.gaps, proportions: request.proportions, targetHeight: request.hangulTargetHeight, targetCenter: request.hangulTargetCenter, postScale: visualScale }
+export function hangulComposeOptions(request: HangulCompositionInputs): HangulComposeOptions {
+  return { gaps: request.gaps, proportions: request.proportions, targetHeight: request.hangulTargetHeight, targetCenter: request.hangulTargetCenter }
 }
 
 /** A syllable exactly as it is written to the font, before metrics and overrides. */
 export function composedHangulPath(codePoint: number, shapes: Map<string, NormalizedShape>, request: HangulCompositionInputs, visualScale: number) {
-  const options = hangulComposeOptions(request, visualScale)
-  const lock = request.lockedSyllables?.[String.fromCodePoint(codePoint)]
-  return renderCalibratedGlyph(
-    (penScale) => lock
-      ? composeLockedHangulPath(codePoint, shapes, request.compositionSettings, { ...options, penScale }, lock)
-      : composeHangulPath(codePoint, shapes, request.compositionSettings, { ...options, penScale }),
+  return composedHangulParts(codePoint, shapes, request, visualScale).path
+}
+
+/** Calibrated role geometry shared by export, previews, and diagnostics. */
+export function composedHangulParts(codePoint: number, shapes: Map<string, NormalizedShape>, request: HangulCompositionInputs, visualScale: number): HangulParts {
+  const options = hangulComposeOptions(request)
+  let result: HangulParts | undefined
+  let original: opentype.BoundingBox | undefined
+  const path = renderCalibratedGlyph(
+    (penScale) => {
+      result = composeHangulParts(codePoint, shapes, request.compositionSettings, { ...options, penScale })
+      original = result.path.getBoundingBox()
+      return result.path
+    },
     visualScale, request.hangulTargetCenter, 450, request.compositionSettings.widthMode === 'fixed',
   )
+  const box = path.getBoundingBox()
+  if (original && path.commands.length) {
+    const scale = (box.y2 - box.y1) / Math.max(1e-6, original.y2 - original.y1)
+    const dx = box.x1 - original.x1 * scale; const dy = box.y1 - original.y1 * scale
+    for (const role of ['initial', 'medial', 'final'] as const) {
+      const zone = result!.geometry.zones[role]
+      if (zone) result!.geometry.zones[role] = { x1: zone.x1 * scale + dx, y1: zone.y1 * scale + dy, x2: zone.x2 * scale + dx, y2: zone.y2 * scale + dy }
+      const anchor = result!.geometry.anchors[role]
+      if (anchor) result!.geometry.anchors[role] = { x: anchor.x * scale + dx, y: anchor.y * scale + dy }
+      if (result!.geometry.scales[role] !== undefined) result!.geometry.scales[role]! *= scale
+    }
+  }
+  return result!
 }
 
 export async function precomposeHangulRange(request: GenerationRequest, start: number, end: number, progress?: (completed: number) => void, prepared?: PreparedCompositionContext) {
@@ -138,7 +158,7 @@ export async function precomposeHangulRange(request: GenerationRequest, start: n
 
 export async function composeFont(request: GenerationRequest, options: ComposeOptions) {
   const { shapes, visualScale } = options.preparedContext ?? prepareCompositionContext(request)
-  const gaPath = composeHangulPath('가'.codePointAt(0)!, shapes, request.compositionSettings, hangulComposeOptions(request, visualScale))
+  const gaPath = composeHangulPath('가'.codePointAt(0)!, shapes, request.compositionSettings, hangulComposeOptions(request))
   const gaReference: ReferenceEnvelope = gaPath.commands.length ? (() => {
     const box = gaPath.getBoundingBox()
     return { width: box.x2 - box.x1, height: box.y2 - box.y1, centerX: (box.x1 + box.x2) / 2, centerY: (box.y1 + box.y2) / 2 }

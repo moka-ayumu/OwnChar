@@ -33,7 +33,7 @@ export function calibrationFactor(path: opentype.Path, factor: number, fixedWidt
   const box = path.getBoundingBox()
   const height = box.y2 - box.y1
   const width = box.x2 - box.x1
-  return Math.min(factor, maximumHeight / Math.max(1, height), fixedWidth ? 900 / Math.max(1, width) : Infinity)
+  return Math.min(factor, maximumHeight / Math.max(1, height), (fixedWidth ? 900 : 950) / Math.max(1, width))
 }
 
 /**

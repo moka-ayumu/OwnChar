@@ -91,7 +91,30 @@ export const HANGUL_VARIANT_PROMPTS = [
 export const CHARACTER_PROMPTS: CharacterPrompt[] = [...BASE_CHARACTER_PROMPTS, ...HANGUL_VARIANT_PROMPTS]
   .map((prompt, order) => ({ ...prompt, order }))
 
-export const PROMPT_COUNT = CHARACTER_PROMPTS.length
+/** Compound finals are composed from their two single finals when not written directly. */
+export const COMPOUND_FINALS: Record<string, [string, string]> = {
+  ㄳ: ['ㄱ', 'ㅅ'], ㄵ: ['ㄴ', 'ㅈ'], ㄶ: ['ㄴ', 'ㅎ'], ㄺ: ['ㄹ', 'ㄱ'], ㄻ: ['ㄹ', 'ㅁ'], ㄼ: ['ㄹ', 'ㅂ'],
+  ㄽ: ['ㄹ', 'ㅅ'], ㄾ: ['ㄹ', 'ㅌ'], ㄿ: ['ㄹ', 'ㅍ'], ㅀ: ['ㄹ', 'ㅎ'], ㅄ: ['ㅂ', 'ㅅ'],
+}
+
+// Only shapes that are frequent and have their own layout are written by hand.
+// Initials: vertical (가), ㅗ/ㅛ/ㅡ (고), vertical + final (각), horizontal +
+// final (곡). ㅜ/ㅠ reuse the ㅗ layout zone, and the compound-vowel layouts
+// are fitted from the vertical ones. Medials with a final are uniformly fitted from
+// the open form for the rare ㅒㅖㅙㅞㅢ.
+const REQUIRED_INITIAL_VARIANTS = new Set([0, 1, 5, 6])
+const DERIVED_MEDIALS_WITH_FINAL = new Set([...'ㅒㅖㅙㅞㅢ'])
+
+export function isRequiredPrompt(prompt: CharacterPrompt) {
+  if (prompt.variantRole === 'initial') return REQUIRED_INITIAL_VARIANTS.has(prompt.variantIndex!)
+  if (prompt.variantRole === 'medial') return prompt.variantIndex === 0 || !DERIVED_MEDIALS_WITH_FINAL.has(prompt.char)
+  if (prompt.variantRole === 'final' || prompt.group === 'consonant') return !(prompt.char in COMPOUND_FINALS)
+  return true
+}
+
+export const REQUIRED_PROMPTS = CHARACTER_PROMPTS.filter(isRequiredPrompt)
+
+export const PROMPT_COUNT = REQUIRED_PROMPTS.length
 
 export const PROMPT_GROUP_LABELS: Record<PromptGroup, string> = {
   consonant: '기본 자음',
@@ -106,9 +129,9 @@ export const PROMPT_GROUP_LABELS: Record<PromptGroup, string> = {
 }
 
 export function completedPromptCount(drawings: Record<string, unknown>) {
-  return CHARACTER_PROMPTS.reduce((count, prompt) => count + (drawings[prompt.id] ? 1 : 0), 0)
+  return REQUIRED_PROMPTS.reduce((count, prompt) => count + (drawings[prompt.id] ? 1 : 0), 0)
 }
 
 export function missingPrompts(drawings: Record<string, unknown>) {
-  return CHARACTER_PROMPTS.filter((prompt) => !drawings[prompt.id])
+  return REQUIRED_PROMPTS.filter((prompt) => !drawings[prompt.id])
 }

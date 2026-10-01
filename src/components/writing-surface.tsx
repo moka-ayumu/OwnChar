@@ -114,7 +114,8 @@ export const WritingSurface = forwardRef<WritingSurfaceHandle, Props>(function W
     const stroke: RawStroke = {
       id, type: 'freedraw', x, y, width: 0, height: 0,
       points: [[0, 0]], pressures: [event.pointerType === 'pen' ? event.pressure : 1],
-      strokeWidth: strokeWidth / 3, version: 1, simulatePressure: false, lastCommittedPoint: null,
+      // Calibrate the slider so 3 produces the previous thickness of 1.5.
+      strokeWidth: strokeWidth / 6, version: 1, simulatePressure: false, lastCommittedPoint: null,
     }
     pointer.current = { id: event.pointerId, strokeId: id, erasing: false }
     publish([...current.current, stroke])

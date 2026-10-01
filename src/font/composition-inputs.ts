@@ -1,13 +1,12 @@
-import { CHARACTER_PROMPTS } from '@/lib/prompts'
-import { WRITING_EXERCISES, type WritingCell, type WritingExercise } from '@/lib/writing-exercises'
-import type { CompositionSettings, DrawingRecord, GenerationRequest, HangulRole, WritingSessionRecord } from '@/types/project'
+import { CHARACTER_PROMPTS, COMPOUND_FINALS } from '@/lib/prompts'
+import type { WritingCell, WritingExercise } from '@/lib/writing-exercises'
+import type { CompositionSettings, DrawingRecord, GenerationRequest, WritingSessionRecord } from '@/types/project'
 import { learnGaps } from './gap-learning'
 import { variantShapeKey } from './hangul'
 import { learnHangulCenter, learnHangulHeight } from './hangul-height'
-import { normalizeRawStrokes, normalizeStrokePaths, type NormalizedShape } from './path-geometry'
+import { combineShapesSideBySide, normalizeRawStrokes, normalizeStrokePaths, type NormalizedShape } from './path-geometry'
 import { learnProportions } from './proportion-learning'
 import type { RawStroke } from './stroke-outline'
-import type { LockedSyllable } from './syllable-lock'
 
 export type RequestDrawings = GenerationRequest['drawings']
 
@@ -56,6 +55,19 @@ export function shapesFromRequestDrawings(drawings: RequestDrawings, settings: C
       shapes.set(key, shape)
     }
   }
+  // Unwritten compound finals are composed from their captured single finals,
+  // both in syllables and as standalone jamo.
+  for (const [compound, [first, second]] of Object.entries(COMPOUND_FINALS)) {
+    const key = variantShapeKey('final', 0, compound)
+    if (shapes.has(key)) continue
+    const left = shapes.get(variantShapeKey('final', 0, first))
+    const right = shapes.get(variantShapeKey('final', 0, second))
+    const combined = left && right && combineShapesSideBySide(left, right)
+    if (!combined) continue
+    combined.sourceRole = 'final'
+    shapes.set(key, combined)
+    if (!shapes.has(compound)) shapes.set(compound, combined)
+  }
   return shapes
 }
 
@@ -85,37 +97,10 @@ export function isFixedSlot(promptId: string, cellIndex: number, slotIndex: numb
   return record.capture.cellIndex !== cellIndex || record.capture.slotIndex !== slotIndex
 }
 
-/** Syllable cells whose fixed guide jamo were completed by jamo written in the cell. */
-export function findLockedSyllables(drawings: Record<string, DrawingRecord>): Record<string, LockedSyllable> {
-  const locks = new Map<string, LockedSyllable & { updatedAt: number }>()
-  for (const exercise of WRITING_EXERCISES) {
-    exercise.cells.forEach((cell, cellIndex) => {
-      const slots = indexedSlotsForCell(cell).filter(({ slot }) => slot.role)
-      if (slots.length < 2) return
-      const fixed = slots.filter(({ slot, slotIndex }) => isFixedSlot(slot.promptId, cellIndex, slotIndex, exercise, drawings))
-      const written = slots.filter(({ slot, slotIndex }) => {
-        const capture = drawings[slot.promptId]?.capture
-        return capture?.exerciseId === exercise.id && capture.cellIndex === cellIndex && capture.slotIndex === slotIndex
-      })
-      if (!fixed.length || !written.length) return
-      const updatedAt = Math.max(...written.map(({ slot }) => drawings[slot.promptId].updatedAt))
-      const previous = locks.get(cell.char)
-      if (previous && previous.updatedAt >= updatedAt) return
-      locks.set(cell.char, {
-        cellId: cellId(exercise.id, cellIndex),
-        writtenRoles: written.map(({ slot }) => slot.role as HangulRole),
-        updatedAt,
-      })
-    })
-  }
-  return Object.fromEntries([...locks].map(([char, { cellId: id, writtenRoles }]) => [char, { cellId: id, writtenRoles }]))
-}
-
 /** Everything the composer needs, computed from project state. */
 export function buildGenerationInputs(drawings: Record<string, DrawingRecord>, sessions: Record<string, WritingSessionRecord>, settings: CompositionSettings) {
   return {
     drawings: toRequestDrawings(drawings, sessions),
-    lockedSyllables: findLockedSyllables(drawings),
     ...learnCompositionProfile(sessions, settings),
   }
 }

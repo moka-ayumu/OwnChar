@@ -46,6 +46,8 @@ export interface NormalizedShape {
   strokes?: NormalizedStroke[]
   sourceCellId?: string
   sourceRole?: 'initial' | 'medial' | 'final'
+  /** Built from other captured jamo rather than written directly. */
+  synthesized?: boolean
 }
 
 /** Font units per source-cell width: a contextual jamo placed in its own cell frame. */
@@ -145,6 +147,7 @@ function fitZone(shape: NormalizedShape, zone: Zone): Zone {
   const width = zone.height * shape.aspectRatio
   return { ...zone, x: zone.x + (zone.width - width) / 2, width }
 }
+
 
 const centerlineOutlines = new WeakMap<StrokeCenterline, Map<string, NormalizedStroke>>()
 
@@ -270,3 +273,70 @@ export function splitHorizontal(zone: Zone, count: number, gap = 24) {
     height: zone.height,
   }))
 }
+
+/**
+ * Two captured jamo uniformly scaled to the same height and set side by side
+ * as a compound final such as ㄺ. Centerlines move with
+ * their contours, so the result is re-outlined at the recorded pen width.
+ */
+export function combineShapesSideBySide(left: NormalizedShape, right: NormalizedShape, gapRatio = 0.12): NormalizedShape | undefined {
+  if (left.strokes?.length && right.strokes?.length && left.frame && right.frame) {
+    // Stay at the written cell scale: the pen is re-outlined at its recorded
+    // width, so the gap between the parts is measured in pen diameters.
+    const height = (left.frame.height + right.frame.height) / 2
+    const pen = Math.max(...[...left.strokes, ...right.strokes].map((stroke) => stroke.centerline ? stroke.centerline.diameter / stroke.centerline.cellSize : 0))
+    const gap = pen * 1.5 + height * 0.05
+    const strokes: NormalizedStroke[] = []
+    let offsetX = 0
+    for (const part of [left, right]) {
+      const frame = part.frame!
+      const scaleY = height / frame.height
+      const scaleX = scaleY
+      const map = ([x, y]: [number, number]) => [offsetX + (x - frame.x) * scaleX, (y - frame.y) * scaleY] as [number, number]
+      for (const stroke of part.strokes!) {
+        const centerline = stroke.centerline
+        strokes.push({
+          contours: stroke.contours.map((contour) => contour.map(map)),
+          smooth: stroke.smooth,
+          ...(centerline ? { centerline: {
+            ...centerline,
+            points: centerline.points.map(([x, y]) => {
+              const [mappedX, mappedY] = map([x / centerline.cellSize, y / centerline.cellSize])
+              return [mappedX * centerline.cellSize, mappedY * centerline.cellSize] as [number, number]
+            }),
+          } } : {}),
+        })
+      }
+      offsetX += frame.width * scaleX + gap
+    }
+    const width = offsetX - gap
+    return { commands: [], aspectRatio: width / height, frame: { x: 0, y: 0, width, height }, strokes, synthesized: true }
+  }
+  if (!left.strokes?.length && !right.strokes?.length && left.commands.length && right.commands.length) {
+    const commands: NormalizedCommand[] = []
+    let offsetX = 0
+    for (const part of [left, right]) {
+      const partWidth = part.aspectRatio
+      for (const command of part.commands) {
+        const moved: NormalizedCommand = { code: command.code }
+        for (const [xKey, yKey] of coordinatePairs) {
+          if (command[xKey] !== undefined && command[yKey] !== undefined) {
+            moved[xKey] = offsetX + command[xKey]! * partWidth
+            moved[yKey] = command[yKey]
+          }
+        }
+        commands.push(moved)
+      }
+      offsetX += partWidth + gapRatio
+    }
+    const width = offsetX - gapRatio
+    for (const command of commands) {
+      for (const [xKey] of coordinatePairs) if (command[xKey] !== undefined) command[xKey] = command[xKey]! / width
+    }
+    return { commands, aspectRatio: width, synthesized: true }
+  }
+  return undefined
+}
+
+
+export interface Box { x1: number; y1: number; x2: number; y2: number }

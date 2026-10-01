@@ -1,5 +1,5 @@
 import { CHOSEONG, JONGSEONG, JUNGSEONG, getHangulVariantSelection } from '@/font/hangul'
-import { HANGUL_VARIANT_PROMPTS, SYMBOLS } from '@/lib/prompts'
+import { HANGUL_VARIANT_PROMPTS, isRequiredPrompt, SYMBOLS } from '@/lib/prompts'
 import type { HangulRole } from '@/types/project'
 
 export interface CaptureSlot {
@@ -21,7 +21,7 @@ export interface WritingExercise {
   instruction: string
   text: string
   cells: WritingCell[]
-  group: 'hangul' | 'context' | 'latin' | 'number' | 'symbol'
+  group: 'hangul' | 'latin' | 'number' | 'symbol'
 }
 
 const STROKE_COUNTS: Record<string, number> = {
@@ -60,51 +60,29 @@ function cellsFor(text: string): WritingCell[] {
   return [...text].map((char) => ({ char, slots: hangulSlots(char) }))
 }
 
-const BASE_SENTENCES = [
-  '우리 한글은 마음과 소리를 아름답게 담아요',
-  '어린 고양이와 유쾌한 토끼가 푸른 들판을 힘차게 달려요',
-  '조용한 새벽 바람이 창문 곁을 스쳐요',
-  '좋은 글씨로 조화를 이루며 써요',
+// Natural sentences that together contain every required contextual jamo
+// (see `isRequiredPrompt`). Rarer shapes that happen to appear are collected
+// too; the rest are derived during composition.
+const HANGUL_SENTENCES = [
+  '배고픈 너구리가 몰래 부엌에서 닭볶음탕을 끓여 먹었대요',
+  '야, 얘가 퀴즈왕이래! 예쁜 웨딩 케이크를 통째로 뚝딱 만들었대',
+  '곧 옛 친구가 웬일로 쌀 한 포대와 칼국수 육수를 챙겨 왔어',
+  '왜 하필 오늘 햇볕 쬐며 툇마루에 앉아 시를 읊고 싶을까',
+  '뽀얀 타조가 깜짝 놀라 쿵 넘어지자 빵 봉지를 물고 쏙 숨었다',
+  '휴, 바빠서 약속을 또 잊었네, 넷이서 좀 모였다가 쭉 춤추러 가자',
+  '의자 밑 흙 속에 윗집 강아지가 원래 보물을 숨겼대, 용케 찾았지',
+  '꽃밭에서 도토리 밥을 먹고 잠든 토끼, 사랑스러워 참 좋다',
+  '떼쓰던 꼬마가 호호 웃으며 싸 온 초코 파이를 치즈와 쪼개 노나 줬어',
 ]
 
-const baseExercises: WritingExercise[] = BASE_SENTENCES.map((text, index) => ({
-  id: `hangul-base-${index}`,
-  title: index === 0 ? '한글의 기본 모양' : '자연스러운 한글 문장',
-  instruction: '문장을 평소 글씨처럼 이어서 써주세요. 한 음절의 획은 초성·중성·종성 순서로 자동 분리됩니다.',
+const hangulExercises: WritingExercise[] = HANGUL_SENTENCES.map((text, index) => ({
+  id: `hangul-sentence-${index}`,
+  title: `한글 문장 ${index + 1}`,
+  instruction: '문장을 평소 글씨처럼 이어서 써주세요. 한 음절의 획은 초성·중성·종성 순서로 자동 분리되고, 이미 모은 자모는 회색으로 고정됩니다.',
   text,
   cells: cellsFor(text),
   group: 'hangul',
 }))
-
-const contextExercises: WritingExercise[] = []
-const promptGroups = new Map<string, typeof HANGUL_VARIANT_PROMPTS>()
-for (const prompt of HANGUL_VARIANT_PROMPTS) {
-  const key = `${prompt.variantRole}-${prompt.variantIndex}`
-  promptGroups.set(key, [...(promptGroups.get(key) ?? []), prompt])
-}
-for (const prompts of promptGroups.values()) {
-  const examples = prompts.map((prompt) => prompt.example!).join('')
-  const readableExamples = prompts.map((prompt) => prompt.example!).join(', ')
-  const roleLabel = prompts[0].variantRole === 'initial' ? '초성' : prompts[0].variantRole === 'medial' ? '중성' : '종성'
-  const variantNumber = (prompts[0].variantIndex ?? 0) + 1
-  const cells = prompts.map((prompt) => {
-    const allSlots = hangulSlots(prompt.example!)
-    const target = allSlots.find((slot) => slot.promptId === prompt.id)!
-    return {
-      char: prompt.example!,
-      slots: [target],
-      guides: allSlots.filter((slot) => slot !== target),
-    }
-  })
-  contextExercises.push({
-    id: `hangul-${prompts[0].variantRole}-${prompts[0].variantIndex}`,
-    title: `${roleLabel} 조합 모양 ${variantNumber}`,
-    instruction: `${readableExamples}에서 ${roleLabel}을 앞에서부터 써주세요. 이미 수집된 자모는 고정 표시되고, 빈 자모를 함께 쓰면 자동으로 분리합니다.`,
-    text: examples,
-    cells,
-    group: 'context',
-  })
-}
 
 function latinExercise(id: string, text: string, group: 'uppercase' | 'lowercase'): WritingExercise {
   return {
@@ -129,30 +107,21 @@ const latinExercises = [
   latinExercise('latin-lowercase', 'pack my box with five dozen liquor jugs', 'lowercase'),
 ]
 
-const numberText = '0123456789'
-const numberExercise: WritingExercise = {
-  id: 'numbers',
-  title: '숫자를 차례로 써보세요',
-  instruction: '자주 쓰는 숫자를 평소의 속도와 모양으로 적어주세요.',
-  text: numberText,
-  cells: [...numberText].map((char) => ({
-    char,
-    slots: [{ promptId: `number-${char.codePointAt(0)}`, char, expectedStrokes: 1 }],
-  })),
-  group: 'number',
+const numberSymbolText = ['0123456789', ...SYMBOLS].join('')
+const numberSymbolExercise: WritingExercise = {
+  id: 'numbers-symbols',
+  title: '숫자와 기호',
+  instruction: '각 칸의 숫자와 기호를 평소 쓰는 위치와 크기로 적어주세요.',
+  text: numberSymbolText,
+  cells: [...numberSymbolText].map((char) => {
+    const group = /[0-9]/.test(char) ? 'number' : 'symbol'
+    return { char, slots: [{ promptId: `${group}-${char.codePointAt(0)}`, char, expectedStrokes: 1 }] }
+  }),
+  group: 'symbol',
 }
 
 export function buildWritingExercises(): WritingExercise[] {
-  const symbolGroups = [
-    { id: 'symbols-punctuation', title: '문장부호', chars: SYMBOLS.slice(0, 12) },
-    { id: 'symbols-operators', title: '연산·기타 기호', chars: SYMBOLS.slice(12) },
-  ]
-  const symbolExercises: WritingExercise[] = symbolGroups.map(({ id, title, chars }) => ({
-    id, title, group: 'symbol', text: chars.join(''),
-    instruction: '각 칸의 기호를 평소 쓰는 위치와 크기로 적어주세요.',
-    cells: chars.map((char) => ({ char, slots: [{ promptId: `symbol-${char.codePointAt(0)}`, char, expectedStrokes: 1 }] })),
-  }))
-  return [...baseExercises, ...contextExercises, ...latinExercises, numberExercise, ...symbolExercises]
+  return [...hangulExercises, ...latinExercises, numberSymbolExercise]
 }
 
 export const WRITING_EXERCISES: WritingExercise[] = buildWritingExercises()
@@ -165,21 +134,27 @@ export function exerciseCompletion(exercise: WritingExercise, drawings: Record<s
   return { completed, total: ids.size }
 }
 
+/** Where a prompt is written in the current exercises, for records captured by a retired exercise. */
+export function locatePromptSlot(promptId: string, exercises = WRITING_EXERCISES) {
+  for (const exercise of exercises) {
+    const cellIndex = exercise.cells.findIndex((cell) => cell.slots.some((slot) => slot.promptId === promptId))
+    if (cellIndex >= 0) return { exercise, cellIndex }
+  }
+  return undefined
+}
+
 export function validateWritingExercises(exercises = WRITING_EXERCISES) {
   const targetIds = new Set(exercises.flatMap((exercise) => exercise.cells.flatMap((cell) => cell.slots.map((slot) => slot.promptId))))
-  const missingVariantPromptIds = HANGUL_VARIANT_PROMPTS.filter((prompt) => !targetIds.has(prompt.id)).map((prompt) => prompt.id)
-  const invalidContextCells = exercises.filter((exercise) => exercise.group === 'context').flatMap((exercise) =>
-    exercise.cells.filter((cell) => cell.slots.some((slot) => slot.role !== cell.slots[0]?.role)).map((cell) => `${exercise.id}:${cell.char}`),
-  )
+  const missingVariantPromptIds = HANGUL_VARIANT_PROMPTS.filter((prompt) => isRequiredPrompt(prompt) && !targetIds.has(prompt.id)).map((prompt) => prompt.id)
   const invalidHangulSlotIds = exercises.flatMap((exercise) => exercise.cells.flatMap((cell) =>
     [...cell.slots, ...(cell.guides ?? [])]
       .filter((slot) => slot.role && !slot.promptId.startsWith(`${slot.role}-`))
       .map((slot) => `${exercise.id}:${cell.char}:${slot.role}:${slot.promptId}`),
   ))
-  return { missingVariantPromptIds, invalidContextCells, invalidHangulSlotIds }
+  return { missingVariantPromptIds, invalidHangulSlotIds }
 }
 
 const exerciseValidation = validateWritingExercises()
-if (exerciseValidation.missingVariantPromptIds.length || exerciseValidation.invalidContextCells.length || exerciseValidation.invalidHangulSlotIds.length) {
+if (exerciseValidation.missingVariantPromptIds.length || exerciseValidation.invalidHangulSlotIds.length) {
   throw new Error(`Invalid writing exercise plan: ${JSON.stringify(exerciseValidation)}`)
 }

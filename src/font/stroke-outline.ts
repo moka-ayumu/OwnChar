@@ -106,6 +106,60 @@ export function strokeContours(points: readonly [number, number][], pressures: r
     .map((contour) => contour.map(({ x, y }) => [x / precision, y / precision] as [number, number]))
 }
 
+/**
+ * Outline of a centerline that is already conditioned and already placed, in
+ * the units of its target (font units): `size` is the final pen width there, so
+ * the stroke keeps that width however the centerline was stretched.
+ */
+export function outlineConditioned(
+  points: readonly [number, number][],
+  pressures: readonly number[],
+  size: number,
+  strength = 1,
+): { contours: [number, number][][]; smooth: boolean } {
+  if (!points.length || !(size > 0)) return { contours: [], smooth: true }
+  const precision = 1024
+  const closed = points.length > 2 && Math.hypot(points[0][0] - points.at(-1)![0], points[0][1] - points.at(-1)![1]) <= Math.max(0.25, size * 0.2)
+  if (closed) {
+    const centerline = points.slice(0, -1).map(([x, y]) => ({ x: Math.round(x * precision), y: Math.round(y * precision) }))
+    const contours = inflatePaths([centerline], size * precision / 2, JoinType.Round, EndType.Joined)
+      .filter((contour) => contour.length >= 3)
+      .map((contour) => contour.map(({ x, y }) => [x / precision, y / precision] as [number, number]))
+    return { contours, smooth: false }
+  }
+  const input = points.map(([x, y], index) => {
+    let pressure = pressures[index] ?? 1
+    if ((index === 0 || index === points.length - 1) && pressure < 0.1) {
+      const neighbor = index === 0 ? pressures.find((value) => value > 0) : [...pressures].reverse().find((value) => value > 0)
+      pressure = Math.max(0.1, neighbor ?? 0.1)
+    }
+    return [x, y, pressure]
+  }).filter((point, index, all) => index === 0 || Math.hypot(point[0] - all[index - 1][0], point[1] - all[index - 1][1]) > 1e-3)
+  const amount = Math.max(0, Math.min(1, Number.isFinite(strength) ? strength : 1))
+  const polygon = getStroke(input, {
+    size, thinning: 1, smoothing: 0.1, streamline: 0.5 - 0.35 * amount, last: true, simulatePressure: false,
+    easing: pressureResponse, start: { cap: true, taper: 0 }, end: { cap: true, taper: 0 },
+  }) as [number, number][]
+  if (polygon.length < 3) return { contours: polygon.length ? [polygon] : [], smooth: true }
+  let needsUnion = points.length >= 3 && Math.hypot(points[0][0] - points.at(-1)![0], points[0][1] - points.at(-1)![1]) <= size * 2
+  if (!needsUnion && points.length >= 4) {
+    const cross = (a: readonly number[], b: readonly number[], c: readonly number[]) => (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])
+    search: for (let first = 0; first < points.length - 1; first += 1) {
+      for (let second = first + 2; second < points.length - 1; second += 1) {
+        const a = points[first]; const b = points[first + 1]; const c = points[second]; const d = points[second + 1]
+        if (cross(a, b, c) * cross(a, b, d) < 0 && cross(c, d, a) * cross(c, d, b) < 0) { needsUnion = true; break search }
+      }
+    }
+  }
+  if (!needsUnion) needsUnion = polygonCrossesItself(polygon)
+  if (!needsUnion) return { contours: [polygon], smooth: true }
+  const subject = [polygon.map(([x, y]) => ({ x: Math.round(x * precision), y: Math.round(y * precision) }))]
+  const contours = union(subject, [], FillRule.NonZero)
+    .filter((contour) => contour.length >= 3)
+    .map((contour) => contour.map(({ x, y }) => [x / precision, y / precision] as [number, number]))
+  return { contours, smooth: false }
+}
+
 function polygonCrossesItself(polygon: readonly [number, number][]) {
   const cross = (a: readonly number[], b: readonly number[], c: readonly number[]) =>
     (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])

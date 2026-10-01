@@ -9,3 +9,9 @@ dist
 test-results/
 playwright-report/
 gitignore/
+
+tests/fixtures/
+
+tools
+
+*.local

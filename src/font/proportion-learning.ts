@@ -3,6 +3,7 @@ import type { GapKind } from './gap-profile'
 import { completedHangulCells } from './hangul-samples'
 import { jamoSize, proportionContext, proportionPair, type ProportionProfile, type RoleRatios } from './proportion-profile'
 import type { RawStroke } from './stroke-outline'
+import { vowelKind } from './hangul-structure'
 
 export type { ProportionProfile } from './proportion-profile'
 
@@ -18,9 +19,7 @@ function centerlineBox(strokes: RawStroke[]) {
 
 function gapKind(char: string): GapKind {
   const vowel = Math.floor(((char.codePointAt(0)! - 0xac00) % 588) / 28)
-  return new Set([0, 1, 2, 3, 4, 5, 6, 7, 20]).has(vowel) ? 'vertical'
-    : new Set([8, 12]).has(vowel) ? 'horizontalUp'
-      : new Set([13, 17, 18]).has(vowel) ? 'horizontalDown' : 'mixed'
+  return vowelKind(vowel)
 }
 
 function average(values: number[]) {

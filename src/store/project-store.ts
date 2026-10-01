@@ -1,6 +1,5 @@
 import { Store } from '@tanstack/react-store'
 import { CHARACTER_PROMPTS } from '@/lib/prompts'
-import { WRITING_EXERCISES } from '@/lib/writing-exercises'
 import { DEFAULT_COMPOSITION_SETTINGS, DEFAULT_GLYPH_OVERRIDE } from '@/types/project'
 import type {
   DrawingRecord,
@@ -18,9 +17,9 @@ const defaultMetadata: FontMetadata = {
 }
 
 export const initialProjectState: ProjectState = {
-  schemaVersion: 7,
-  settingsVersion: 7,
-  fontBuildVersion: 8,
+  schemaVersion: 8,
+  settingsVersion: 8,
+  fontBuildVersion: 12,
   hydrated: false,
   status: 'empty',
   currentPrompt: 0,
@@ -66,50 +65,17 @@ export const projectActions = {
   },
 
   restoreProject(project: ProjectState | null) {
-    if (!project || project.schemaVersion !== 7) {
-      update((state) => ({ ...state, hydrated: true }))
+    if (!project || project.schemaVersion !== 8 || project.settingsVersion !== 8) {
+      update(() => ({ ...initialProjectState, hydrated: true }))
       return
     }
-    const legacyComposition = project.compositionSettings as typeof project.compositionSettings & { standaloneInitialMaxHeight?: number }
-    const restoredComposition = {
-      ...DEFAULT_COMPOSITION_SETTINGS,
-      ...project.compositionSettings,
-      standaloneJamoMaxHeight: legacyComposition.standaloneJamoMaxHeight ?? legacyComposition.standaloneInitialMaxHeight ?? DEFAULT_COMPOSITION_SETTINGS.standaloneJamoMaxHeight,
-    }
-    restoredComposition.endpointStabilization = Math.max(0, Math.min(1, restoredComposition.endpointStabilization))
-    delete (restoredComposition as Record<string, unknown>).standaloneInitialMaxHeight
-    // Numerals now share the height of ! and ?, so their own normalization is gone.
-    delete (restoredComposition as Record<string, unknown>).numberNormalization
-    const addedSettings = ['endpointStabilization', 'hangulNormalization', 'jamoNormalization', 'standaloneJamoMaxHeight', 'latinNormalization', 'widthMode'] as const
-    const needsFontRegeneration = addedSettings.some((key) => !(key in (project.compositionSettings ?? {})))
-    const legacySettings = project.settingsVersion !== 7
-    const legacyDefaultSettings = !project.settingsVersion || project.settingsVersion < 4
-    const legacyJamoSettings = !project.settingsVersion || project.settingsVersion < 2
-    const legacyExerciseOrder = !('hangulNormalization' in (project.compositionSettings ?? {}))
-    const restoredPrompt = legacyExerciseOrder && project.currentPrompt >= 3 ? project.currentPrompt + 1 : project.currentPrompt
-    if (legacyJamoSettings && restoredComposition.jamoNormalization === 0) restoredComposition.jamoNormalization = 1
-    if (legacyDefaultSettings && restoredComposition.jamoNormalization === 0.6) restoredComposition.jamoNormalization = 1
-    if (legacyDefaultSettings && restoredComposition.standaloneJamoMaxHeight === 0.8) restoredComposition.standaloneJamoMaxHeight = 1
-    // Earlier defaults shrank each captured jamo independently. Move only
-    // unchanged defaults to the new frame-preserving neutral scale.
-    if (restoredComposition.singleInitialScale === 0.8 || restoredComposition.singleInitialScale === 0.82) restoredComposition.singleInitialScale = 1
-    if (restoredComposition.vowelScale === 0.92) restoredComposition.vowelScale = 1
-    if (restoredComposition.finalScale === 0.9) restoredComposition.finalScale = 1
     update(() => ({
-      ...initialProjectState,
-      ...project,
-      settingsVersion: 7,
-      fontBuildVersion: 8,
-      currentPrompt: legacyExerciseOrder ? Math.min(restoredPrompt, WRITING_EXERCISES.length - 3) : restoredPrompt,
-      globalMetrics: { ...initialProjectState.globalMetrics, ...project.globalMetrics },
-      compositionSettings: restoredComposition,
-      writingSessions: project.writingSessions,
-      sourceDirty: project.sourceDirty ?? false,
-      fontDirty: project.fontDirty || needsFontRegeneration || legacySettings || project.fontBuildVersion !== 8,
+      ...initialProjectState, ...project,
+      fontBuildVersion: 12,
+      fontDirty: project.fontDirty || project.fontBuildVersion !== 12,
       hydrated: true,
     }))
   },
-
   resetProject() {
     update(() => ({ ...initialProjectState, hydrated: true }))
   },
@@ -125,6 +91,15 @@ export const projectActions = {
         fontDirty: changed ? true : state.fontDirty,
         sourceDirty: changed ? true : state.sourceDirty,
       }
+    })
+  },
+
+  /** Keep the guides a sentence shows; they are display state and do not change the font sources. */
+  saveSessionGuides(exerciseId: string, guides: Record<number, import('@/types/project').StoredCellGuide>) {
+    update((state) => {
+      const session = state.writingSessions?.[exerciseId]
+      if (!session) return state
+      return { ...state, writingSessions: { ...state.writingSessions, [exerciseId]: { ...session, guides } } }
     })
   },
 

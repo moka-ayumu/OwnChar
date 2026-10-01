@@ -16,6 +16,11 @@ const STRAIGHT_TURN = 6 * Math.PI / 180
 const CURVED_TURN = 15 * Math.PI / 180
 /** Upper bound of the hand-jitter smoothing kernel in canvas pixels. */
 const MAX_SIGMA = 4
+/** The kernel may also grow with the pen, up to this many pen diameters. */
+const SIGMA_PER_DIAMETER = 0.7
+/** A run deviating from its chord by less than this share is straight; by more than the max it is a curve. */
+const STRAIGHT_RUN_MIN = 0.02
+const STRAIGHT_RUN_MAX = 0.06
 
 export function arcLengths(points: readonly Point[]) {
   const lengths = [0]
@@ -133,6 +138,60 @@ function smoothRuns(points: readonly Point[], lengths: readonly number[], corner
 }
 
 /**
+ * A run between two corners (or stroke ends) whose body is nearly straight is
+ * pulled onto its least-squares line, perpendicular to it, so samples keep
+ * their place along the stroke. Hand wobble of a ruled stroke disappears, while
+ * a run that bends more than a few percent of its length is a deliberate curve
+ * and stays as it is. The line is fitted without the stroke-end zones (those
+ * belong to `straightenEnd`), and the correction fades out toward every run
+ * boundary so corners and ends do not move.
+ */
+function straightenRuns(points: Point[], lengths: readonly number[], corners: readonly number[], amount: number, diameter: number) {
+  const total = lengths.at(-1) ?? 0
+  const endReach = Math.min(Math.max(diameter * 2, 8), total * 0.3)
+  const fade = diameter * 3
+  const boundaries = [0, ...corners.filter((index) => index > 0 && index < points.length - 1), points.length - 1]
+  for (let run = 0; run < boundaries.length - 1; run += 1) {
+    const start = boundaries[run]
+    const end = boundaries[run + 1]
+    const body: number[] = []
+    for (let index = start + 1; index < end; index += 1) {
+      if (lengths[index] >= endReach && total - lengths[index] >= endReach) body.push(index)
+    }
+    if (body.length < 4) continue
+    let meanX = 0; let meanY = 0
+    for (const index of body) { meanX += points[index][0]; meanY += points[index][1] }
+    meanX /= body.length; meanY /= body.length
+    let sxx = 0; let sxy = 0; let syy = 0
+    for (const index of body) {
+      const dx = points[index][0] - meanX; const dy = points[index][1] - meanY
+      sxx += dx * dx; sxy += dx * dy; syy += dy * dy
+    }
+    const angle = 0.5 * Math.atan2(2 * sxy, sxx - syy)
+    const direction: Point = [Math.cos(angle), Math.sin(angle)]
+    const normal: Point = [-direction[1], direction[0]]
+    const offset = (point: Point) => normal[0] * (point[0] - meanX) + normal[1] * (point[1] - meanY)
+    let low = Infinity; let high = -Infinity; let deviation = 0
+    for (const index of body) {
+      const along = direction[0] * (points[index][0] - meanX) + direction[1] * (points[index][1] - meanY)
+      low = Math.min(low, along); high = Math.max(high, along)
+      deviation = Math.max(deviation, Math.abs(offset(points[index])))
+    }
+    const extent = high - low
+    if (extent < diameter * 4) continue
+    const straight = 1 - smoothstep((deviation / extent - STRAIGHT_RUN_MIN) / (STRAIGHT_RUN_MAX - STRAIGHT_RUN_MIN))
+    if (straight <= 0) continue
+    for (let index = start + 1; index < end; index += 1) {
+      const distance = offset(points[index])
+      if (Math.abs(distance) < 1e-6) continue
+      const taper = smoothstep(Math.min(lengths[index] - lengths[start], lengths[end] - lengths[index]) / fade)
+      const weight = amount * straight * taper
+      points[index] = [points[index][0] - normal[0] * distance * weight, points[index][1] - normal[1] * distance * weight]
+    }
+  }
+}
+
+/**
  * Removes contact/release hooks, lateral wobble and backtracking blobs from
  * one stroke end. The stable run just behind the end defines a reference line;
  * end samples are projected onto it and forced to advance monotonically
@@ -207,10 +266,13 @@ export function stabilizeStroke(
   if (!amount || points.length < 3 || total < diameter * 2) return { points: copy, pressures: resultPressures, closed }
 
   const corners = detectCorners(points, lengths, diameter)
-  const result = smoothRuns(points, lengths, corners, Math.min(MAX_SIGMA, diameter * 0.35 * amount))
+  const result = smoothRuns(points, lengths, corners, Math.min(Math.max(MAX_SIGMA, diameter * SIGMA_PER_DIAMETER), diameter * 0.35 * amount))
   if (!closed) {
     straightenEnd(result, resultPressures, diameter, amount, true)
-    if (mode === 'complete') straightenEnd(result, resultPressures, diameter, amount, false)
+    if (mode === 'complete') {
+      straightenEnd(result, resultPressures, diameter, amount, false)
+      straightenRuns(result, lengths, corners, amount, diameter)
+    }
   }
   return { points: result, pressures: resultPressures, closed }
 }

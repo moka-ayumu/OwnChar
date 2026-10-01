@@ -14,7 +14,7 @@ import { composeStandaloneJamoPath, type ReferenceEnvelope } from '@/font/standa
 import { renderCalibratedGlyph, VISUAL_HANGUL_HEIGHT } from '@/font/visual-calibration'
 import { useCompositionContext } from '@/hooks/use-composition-context'
 import { CHARACTER_PROMPTS } from '@/lib/prompts'
-import { WRITING_EXERCISES } from '@/lib/writing-exercises'
+import { locatePromptSlot, WRITING_EXERCISES } from '@/lib/writing-exercises'
 import { cn } from '@/lib/utils'
 import { projectActions } from '@/store/project-store'
 import { DEFAULT_COMPOSITION_SETTINGS, DEFAULT_GLYPH_OVERRIDE, type CompositionSettings, type DrawingRecord, type GlyphOverride, type WritingSessionRecord } from '@/types/project'
@@ -160,9 +160,13 @@ function EditPage() {
             {selected.length !== 1 ? <p className="mt-2 text-xs text-[#62656B]">글자 하나를 선택하면 출처를 볼 수 있어요.</p>
               : selectedSources.length === 0 ? <p className="mt-2 text-xs text-[#62656B]">작성된 원본이 없습니다.</p>
                 : <div className="mt-3 space-y-2">{selectedSources.map((source, index) => {
-                  const exercise = WRITING_EXERCISES.find((item) => item.id === source.capture?.exerciseId)
-                  const cellIndex = source.capture?.cellIndex
-                  const role = source.role === 'initial' ? '초성' : source.role === 'medial' ? '중성' : source.role === 'final' ? '종성' : source.role
+                  // Records written in a retired exercise open the cell that collects them now.
+                  const current = WRITING_EXERCISES.find((item) => item.id === source.capture?.exerciseId)
+                  const located = current ? undefined : locatePromptSlot(source.originPromptId)
+                  const exercise = current ?? located?.exercise
+                  const cellIndex = current ? source.capture?.cellIndex : located?.cellIndex
+                  const roleName = source.role === 'initial' ? '초성' : source.role === 'medial' ? '중성' : source.role === 'final' ? '종성' : source.role
+                  const role = source.match === 'derived' ? `${roleName} · 다른 문맥에서 파생` : source.match === 'compound' ? `${roleName} · 겹받침 합성` : roleName
                   return exercise && cellIndex !== undefined
                     ? <button key={`${source.originPromptId}-${index}`} className="flex w-full items-center justify-between rounded-lg border border-[#E5E7EB] px-3 py-2 text-left text-xs font-medium hover:border-[#2457F5] hover:text-[#2457F5]" onClick={() => void navigate({ to: '/write', search: { exerciseId: exercise.id, cellIndex, returnGlyph: selected[0], returnQuery: search || undefined } })}>
                       <span>{role} {source.char}</span><ChevronRight className="size-4" aria-hidden="true" />
@@ -235,7 +239,7 @@ function CompositionWorkspace({ drawings, sessions, settings }: {
 }) {
   const { shapes, composition, visualScale } = useCompositionContext(drawings, sessions, settings)
   const jamoReference = useMemo<ReferenceEnvelope>(() => {
-    const path = composeHangulPath('가'.codePointAt(0)!, shapes, settings, hangulComposeOptions(composition, visualScale))
+    const path = composeHangulPath('가'.codePointAt(0)!, shapes, settings, hangulComposeOptions(composition))
     if (!path.commands.length) return { width: VISUAL_HANGUL_HEIGHT / visualScale, height: VISUAL_HANGUL_HEIGHT / visualScale, centerX: 500, centerY: composition.hangulTargetCenter }
     const box = path.getBoundingBox()
     return { width: box.x2 - box.x1, height: box.y2 - box.y1, centerX: (box.x1 + box.x2) / 2, centerY: (box.y1 + box.y2) / 2 }

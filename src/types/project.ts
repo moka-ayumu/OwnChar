@@ -56,6 +56,30 @@ export interface WritingSessionRecord {
   cellSize: number
   columns: number
   updatedAt: number
+  /** Fixed guide jamo of each written cell, kept exactly where they were shown. */
+  guides?: Record<number, StoredCellGuide>
+}
+
+/** An ink box in font units (1000 per cell, y up). */
+export interface GuideBox { x1: number; y1: number; x2: number; y2: number }
+
+export interface GuideCommand { type: string; x?: number; y?: number; x1?: number; y1?: number; x2?: number; y2?: number }
+
+export interface StoredGuideRole {
+  /** The source jamo drawing the outline was made from. */
+  source: string
+  box: GuideBox
+  commands: GuideCommand[]
+}
+
+export interface StoredCellGuide {
+  /** Revision 2 uses neutral placeholders and one 80% canvas transform. */
+  sizingVersion?: 1 | 2
+  roles: Partial<Record<HangulRole, StoredGuideRole>>
+  /** Where the roles still to be written were reserved. */
+  placeholders: Partial<Record<HangulRole, GuideBox>>
+  /** Room around each placeholder where the jamo may be written without touching a guide. */
+  bands?: Partial<Record<HangulRole, GuideBox>>
 }
 
 export interface JamoBoundary {
@@ -107,9 +131,9 @@ export interface GenerationState {
 }
 
 export interface ProjectState {
-  schemaVersion: 7
-  settingsVersion: 7
-  fontBuildVersion: 8
+  schemaVersion: 8
+  settingsVersion: 8
+  fontBuildVersion: 12
   hydrated: boolean
   status: ProjectStatus
   currentPrompt: number
@@ -141,7 +165,6 @@ export interface GenerationRequest {
   compositionSettings: CompositionSettings
   gaps: import('@/font/gap-profile').GapProfile
   proportions: import('@/font/proportion-profile').ProportionProfile
-  lockedSyllables: Record<string, import('@/font/syllable-lock').LockedSyllable>
   hangulTargetHeight: number
   hangulTargetCenter: number
   unitsPerEm: 1000
