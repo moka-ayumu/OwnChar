@@ -16,3 +16,6 @@ tools
 
 *.local
 .pnpm-store/
+
+# dev-only sample project (copy of tests/fixtures/project.json)
+src/dev/sample-project.json

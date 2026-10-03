@@ -5,6 +5,7 @@ import { useProject } from '@/project/use-project'
 import { completedPromptCount, PROMPT_COUNT } from '@/collection/prompts'
 import { clearPersistedProject } from '@/project/persistence'
 import { projectActions } from '@/project/store'
+import { SampleProjectButton } from '@/dev/sample-project-button'
 
 export const Route = createFileRoute('/')({ component: HomePage })
 
@@ -23,6 +24,7 @@ function HomePage() {
 
   return (
     <section className="mx-auto flex min-h-[calc(100svh-52px)] max-w-6xl items-center px-8 py-16">
+      {import.meta.env.DEV && <SampleProjectButton />}
       <div className="grid w-full gap-14 md:grid-cols-[1.25fr_.75fr] md:items-center">
         <div>
           <p className="mb-5 text-sm font-medium text-[#2457F5]">손글씨로 만드는 조합형 한글 폰트</p>
