@@ -4,7 +4,7 @@ import { hasInkClearance, maximizeSafeIntrusion } from '@/font/geometry/collisio
 import { centerX as cx, centerY as cy, clamp, pathBounds as bounds, pathOf, pointsBox, splitContours, translatePath, unionBox as union, type Box } from '@/font/geometry/path-ops'
 import { appendShape, CELL_UNITS, combineShapesSideBySide, type NormalizedShape, type Zone } from '@/font/geometry/shape'
 import { DEFAULT_GAPS, finalGapContext, finalGapPair, gapContext, gapPair, minimumGap, type GapProfile } from './gap-profile'
-import { allowsOverlap } from './overlap-policy'
+import { allowsOverlap, finalBoxGap } from './overlap-policy'
 import { EMPTY_PROPORTIONS, jamoSize, learnedRatios, proportionContext, proportionPair, type ProportionProfile } from './proportion-profile'
 import { selectJamoSource, sourceKey } from './source-selection'
 
@@ -346,8 +346,18 @@ export function layoutSyllable(input: SyllableLayoutInput) {
     }
   }
   if (final) {
-    const notch = allowsOverlap('medial-final', chars.medial, chars.final) ? 90 : 0
+    const floor = finalBoxGap(chars.medial, chars.final)
+    const notch = floor < 0 ? 90 : 0
     separate([initial, medial].filter((slot): slot is Slot => Boolean(slot)), final, 'y', -1, Math.max(0, minimumGap - finalGap) + notch)
+    // Clear ink is not enough: the final's box stays below the upper body's
+    // box, or enters it only as far as an interlocking pair may, whatever
+    // gap was learned.
+    const fixed = upperSlots().filter((slot) => slot.group !== final.group)
+    const f = bounds(final.path)
+    if (f && fixed.length) {
+      const upper = union(fixed.map((slot) => bounds(slot.path)!))
+      if (f.y2 > upper.y1 - floor) move(final, 0, upper.y1 - floor - f.y2)
+    }
   }
 
   const parts: Record<HangulRole, opentype.Path> = { initial: new opentype.Path(), medial: new opentype.Path(), final: new opentype.Path() }

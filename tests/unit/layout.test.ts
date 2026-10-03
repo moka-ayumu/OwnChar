@@ -6,7 +6,8 @@ import { composeStandaloneJamoPath } from '@/font/glyphs/standalone-jamo'
 import { appendNumeral } from '@/font/glyphs/symbols'
 import { composeHangulParts } from '@/font/layout/compose-syllable'
 import { selectJamoSource, sourceKey } from '@/font/layout/source-selection'
-import { minimumGap } from '@/font/layout/gap-profile'
+import { DEFAULT_GAPS, minimumGap, type GapProfile } from '@/font/layout/gap-profile'
+import { finalBoxGap } from '@/font/layout/overlap-policy'
 import { layoutSyllable, medialSpace } from '@/font/layout/syllable-layout'
 import { DEFAULT_COMPOSITION_SETTINGS } from '@/font/settings'
 import { composedHangulParts, composedHangulPath, composeFont, precomposeHangulRange } from '@/generation/font-builder'
@@ -128,9 +129,50 @@ describe('syllable layout', () => {
       }
     }
     expect(measure('눈').gap).toBeLessThan(0)
+    // The stem goes in no further than the gap it would otherwise keep.
+    const placed = layoutSyllable({ codePoint: '눈'.codePointAt(0)!, shapes, penScale: 1 }).parts
+    expect(Math.min(boxOf(placed.initial).y1, boxOf(placed.medial).y1) - boxOf(placed.final).y2).toBeGreaterThanOrEqual(-minimumGap - 1e-6)
     expect(measure('눈').crossing).toBe(0)
     expect(measure('국').gap).toBeGreaterThanOrEqual(0)
     expect(measure('국').offCentre).toBeLessThan(1)
+  })
+
+  test('only ㄴ and ㅂ interlock with a downward stem; every other final keeps its box below the upper body', () => {
+    expect(finalBoxGap('ㅜ', 'ㄴ')).toBe(-minimumGap)
+    expect(finalBoxGap('ㅞ', 'ㅂ')).toBe(-minimumGap)
+    // Two consonants side by side may come up to the stem, not around it.
+    expect(finalBoxGap('ㅟ', 'ㅄ')).toBe(0)
+    expect(finalBoxGap('ㅜ', 'ㄲ')).toBe(0)
+    expect(finalBoxGap('ㅠ', 'ㄱ')).toBe(minimumGap)
+    expect(finalBoxGap('ㅙ', 'ㄶ')).toBe(minimumGap)
+    expect(finalBoxGap('ㅗ', 'ㄴ')).toBe(minimumGap)
+
+    const closedTop = () => shapeOf([penStroke('g', 20, 100, [[0, 0], [100, 0], [100, 30]])])
+    // ㅙ whose stems reach below its ㅗ.
+    const wae = shapeOf([
+      penStroke('o1', 10, 100, [[0, 0], [70, 0]]), penStroke('o2', 45, 80, [[0, 0], [0, 20]]),
+      penStroke('a1', 108, 20, [[0, 0], [0, 110]]), penStroke('a2', 108, 65, [[0, 0], [25, 0]]), penStroke('a3', 133, 20, [[0, 0], [0, 110]]),
+    ])
+    const shapes = new Map([
+      ['ㄱ', giyeok()], ['ㅜ', u()], ['ㅙ', wae],
+      [sourceKey('final', 0, 'ㄱ'), closedTop()], [sourceKey('final', 0, 'ㄲ'), closedTop()], [sourceKey('final', 0, 'ㄶ'), closedTop()],
+    ])
+    // A writer whose samples pull the final far into the vowel.
+    const learned = { advanceGap: -80, crossOffset: 0, sampleCount: 4 }
+    const gaps = { ...DEFAULT_GAPS, final: -80, medialFinalPairs: { 'ㅜ:ㄱ': learned, 'ㅜ:ㄲ': learned, 'ㅙ:ㄶ': learned } }
+    const gap = (char: string, profile?: GapProfile) => {
+      const { parts } = layoutSyllable({ codePoint: char.codePointAt(0)!, shapes, penScale: 1, gaps: profile })
+      const upper = new opentype.Path()
+      upper.commands.push(...parts.initial.commands, ...parts.medial.commands)
+      return boxOf(upper).y1 - boxOf(parts.final).y2
+    }
+    console.log(['괞', '국', '굮'].map((c) => [c, gap(c), gap(c, gaps)]))
+    for (const profile of [undefined, gaps]) {
+      expect(gap('괞', profile)).toBeGreaterThanOrEqual(minimumGap - 1e-6)
+      expect(gap('국', profile)).toBeGreaterThanOrEqual(minimumGap - 1e-6)
+      expect(gap('굮', profile)).toBeGreaterThanOrEqual(-1e-6)
+    }
+    expect(gap('굮', gaps)).toBeLessThan(minimumGap)
   })
 
   test('a vowel stem entering the initial keeps the regular gap, and the final follows the vowel up', () => {
