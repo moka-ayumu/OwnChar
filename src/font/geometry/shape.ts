@@ -181,6 +181,31 @@ export function combineShapesSideBySide(left: NormalizedShape, right: Normalized
   return { aspectRatio: width / height, frame: { x: 0, y: 0, width, height }, strokes, synthesized: true }
 }
 
+/**
+ * `shape` made `factor` times as wide about the left of its ink, its height
+ * kept. Centerlines move with their contours, so the pen keeps its width.
+ */
+export function stretchShapeWidth(shape: NormalizedShape, factor: number): NormalizedShape {
+  const { frame } = shape
+  const map = ([x, y]: Point) => [frame.x + (x - frame.x) * factor, y] as Point
+  return {
+    ...shape,
+    aspectRatio: shape.aspectRatio * factor,
+    frame: { ...frame, width: frame.width * factor },
+    strokes: shape.strokes.map((stroke) => ({
+      ...stroke,
+      contours: stroke.contours.map((contour) => contour.map(map)),
+      centerline: {
+        ...stroke.centerline,
+        points: stroke.centerline.points.map(([x, y]) => {
+          const [mappedX] = map([x / stroke.centerline.cellSize, y])
+          return [mappedX * stroke.centerline.cellSize, y] as Point
+        }),
+      },
+    })),
+  }
+}
+
 /** `zone` scaled about its own centre. */
 export function scaleZone(zone: Zone, factor: number): Zone {
   return {

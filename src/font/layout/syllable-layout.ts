@@ -1,8 +1,9 @@
 import opentype from 'opentype.js'
 import { COMPOUND_FINALS, decomposeHangul, HANGUL_ROLES, type HangulRole, type VowelKind } from '@/font/hangul'
 import { hasInkClearance, maximizeSafeIntrusion } from '@/font/geometry/collision'
+import { inkBalance } from '@/font/geometry/optical'
 import { centerX as cx, centerY as cy, clamp, pathBounds as bounds, pathOf, pointsBox, splitContours, translatePath, unionBox as union, type Box } from '@/font/geometry/path-ops'
-import { appendShape, CELL_UNITS, combineShapesSideBySide, type NormalizedShape, type Zone } from '@/font/geometry/shape'
+import { appendShape, CELL_UNITS, combineShapesSideBySide, stretchShapeWidth, type NormalizedShape, type Zone } from '@/font/geometry/shape'
 import { DEFAULT_GAPS, finalGapContext, finalGapPair, gapContext, gapPair, minimumGap, type GapProfile } from './gap-profile'
 import { allowsOverlap, finalBoxGap } from './overlap-policy'
 import { EMPTY_PROPORTIONS, jamoSize, learnedRatios, proportionContext, proportionPair, type ProportionProfile } from './proportion-profile'
@@ -39,11 +40,63 @@ interface Slot {
 const asBox = (zone: Zone): Box => ({ x1: zone.x, y1: zone.y, x2: zone.x + zone.width, y2: zone.y + zone.height })
 const contourBoxes = (path: opentype.Path): Box[] => splitContours(path).map((contour) => contour.getBoundingBox())
 
-/** Main vertical strokes carry alignment weight; horizontal arms do not. */
-function verticalStem(path: opentype.Path) {
+/** The vowel's main vertical strokes; arms and bars are not among them. */
+function verticalStem(path: opentype.Path): Box | undefined {
   const box = bounds(path)!
   const stems = contourBoxes(path).filter((b) => b.y2 - b.y1 > (box.y2 - box.y1) * 0.65 && b.x2 - b.x1 < (b.y2 - b.y1) * 0.35)
-  return stems.length ? union(stems) : box
+  return stems.length ? union(stems) : undefined
+}
+
+/** A jamo where it was drawn: its outline, and the shape and cell scale the outline was made from. */
+export interface PlacedJamo {
+  path: opentype.Path
+  shape?: NormalizedShape
+  /** Cell widths of the shape per `CELL_UNITS` of the outline. */
+  scale?: number
+}
+
+/**
+ * Where a final's centre sits between the left of the upper body and the
+ * right of the vowel's stem. Not the middle: the stem is the edge the eye
+ * holds the final against, while the initial's side is open.
+ */
+const STEM_SHARE = 0.6
+/** Furthest the bulk of a final may reach past either side of the upper body, in upper body widths. */
+const FINAL_OVERHANG = 0.05
+/** Furthest a final's visual centre may sit from the centre of its box, in box widths. */
+const ANCHOR_REACH = 0.25
+/** Furthest a learned sideways offset may move a final, in upper body widths. */
+const CROSS_OFFSET_REACH = 0.06
+
+const inkScale = (jamo: PlacedJamo) => jamo.shape ? CELL_UNITS * (jamo.scale ?? 0) : 0
+
+/**
+ * The point of a final that reads as its centre: the middle of the bulk of
+ * its ink, so a tick reaching out of ㅂ does not push its body off centre.
+ */
+export function finalAnchorX(final: PlacedJamo) {
+  const f = bounds(final.path)!
+  const reach = (f.x2 - f.x1) * ANCHOR_REACH
+  return cx(f) + clamp(final.shape ? inkBalance(final.shape).core * inkScale(final) : 0, -reach, reach)
+}
+
+/** Width of the bulk of a final's ink, never more than its box. */
+function finalBulk(final: PlacedJamo) {
+  const f = bounds(final.path)!
+  return final.shape ? Math.min(f.x2 - f.x1, inkBalance(final.shape).span * inkScale(final)) : f.x2 - f.x1
+}
+
+/**
+ * Where the visual centre of the final belongs under the upper pair: under a
+ * vowel with a stem on the right, a fixed share of the way from the left of
+ * the body to the right of the stem, whatever arms the vowel has; under a
+ * vowel without one, the middle of the body.
+ */
+export function finalTargetX(kind: VowelKind, initial: PlacedJamo | undefined, medial: PlacedJamo | undefined) {
+  const i = initial && bounds(initial.path); const m = medial && bounds(medial.path)
+  const body = union([i, m].filter((box): box is Box => Boolean(box)))
+  const stem = !medial || !m ? undefined : kind === 'vertical' ? verticalStem(medial.path) : kind === 'mixed' ? medialSpace(medial.path)?.vertical : undefined
+  return stem ? body.x1 + (stem.x2 - body.x1) * STEM_SHARE : cx(body)
 }
 
 function hasLargeLoop(shape: NormalizedShape | undefined) {
@@ -326,23 +379,43 @@ export function layoutSyllable(input: SyllableLayoutInput) {
       }
     }
   }
+  // A written final wider than 90% of the settled upper body is narrowed, not
+  // shrunk: it keeps its height, so it does not read as a smaller jamo.
+  if (final?.shape && !final.shape.synthesized && groups.get(final.group)!.length === 1 && !isPlaceholder('final')) {
+    const upper = upperSlots()
+    if (upper.length && bounds(final.path)) {
+      const body = union(upper.map((slot) => bounds(slot.path)!))
+      // The pen does not narrow with the jamo, so one correction falls short.
+      for (let pass = 0; pass < 3; pass += 1) {
+        const fitted = bounds(final.path)!
+        const factor = Math.min(1, (body.x2 - body.x1) * 0.9 / (fitted.x2 - fitted.x1))
+        if (factor < 1) { final.shape = stretchShapeWidth(final.shape, factor); resize(final, 1) }
+      }
+    }
+  }
   // The final hangs from the upper pair where it settled, not where it started.
   if (final) {
     const f = bounds(final.path); const upper = upperSlots()
     if (f && upper.length) {
       const body = union(upper.map((slot) => bounds(slot.path)!))
       const anchor = kind === 'mixed' && medial ? medialSpace(medial.path)?.horizontal ?? body : body
-      // A narrow final balances the consonant and the vowel's main stem;
-      // wide compound finals use the full upper body. Arms are empty-space
-      // boundaries, not extra weight pulling the final to the right.
       const m = medial && bounds(medial.path)
       const i = initial && bounds(initial.path)
-      const stemX = medial && m ? cx(verticalStem(medial.path)) : cx(body)
-      const balance = kind === 'vertical' && i && m && initial?.group !== medial?.group ? cx(i) * 0.65 + stemX * 0.35 : cx(body)
-      const spread = Math.max(0, Math.min(1, (f.x2 - f.x1) / (f.y2 - f.y1) - 1))
-      const finalCenter = kind === 'mixed' && m ? cx(m) : balance * (1 - spread) + cx(body) * spread
+      const placed = (slot: Slot | undefined): PlacedJamo | undefined => slot && bounds(slot.path)
+        ? { path: slot.path, shape: isPlaceholder(slot.role) ? undefined : slot.shape, scale: geometry.scales[slot.role] } : undefined
       const spaceGap = Math.min(Math.max(minimumGap, finalGap), (m ? m.y2 - m.y1 : body.y2 - body.y1) * 0.1)
-      if (!upper.some((slot) => slot.group === final.group)) move(final, finalCenter - cx(f) + (finalPlacement?.crossOffset ?? 0), anchor.y1 - f.y2 - spaceGap)
+      if (!upper.some((slot) => slot.group === final.group)) {
+        const self = placed(final)!
+        // What the writer adds to the rule is a nuance, not a second rule.
+        const nuance = (body.x2 - body.x1) * CROSS_OFFSET_REACH
+        const centre = finalAnchorX(self)
+        const dx = finalTargetX(kind, placed(initial), placed(medial)) - centre + clamp(finalPlacement?.crossOffset ?? 0, -nuance, nuance)
+        // The bulk of the final stays under the body; only the thin end of a
+        // stroke may reach further past it.
+        const overhang = (body.x2 - body.x1) * FINAL_OVERHANG; const half = finalBulk(self) / 2
+        const sides = [body.x1 - overhang - (centre - half), body.x2 + overhang - (centre + half)]
+        move(final, clamp(dx, Math.min(...sides), Math.max(...sides)), anchor.y1 - f.y2 - spaceGap)
+      }
       else if (initial && medial && initial.group !== final.group && medial.group === final.group && kind === 'vertical') {
         // A slot can exist before its source jamo has been written.
         if (i) move(initial, 2 * cx(f) - body.x2 - i.x1, 0)

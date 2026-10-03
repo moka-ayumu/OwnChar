@@ -1,9 +1,9 @@
 import opentype from 'opentype.js'
 import type { WritingSessionRecord } from '@/collection/records'
 import { decomposeHangul, type VowelKind } from '@/font/hangul'
-import { appendShape, normalizeRawStrokes } from '@/font/geometry/shape'
+import { appendShape, CELL_UNITS, normalizeRawStrokes } from '@/font/geometry/shape'
 import { finalGapContext, finalGapPair, gapContext, gapPair, minimumGap, type GapProfile, type LearnedPlacement } from '@/font/layout/gap-profile'
-import { medialSpace } from '@/font/layout/syllable-layout'
+import { finalAnchorX, finalTargetX, medialSpace, type PlacedJamo } from '@/font/layout/syllable-layout'
 import { penDiameter, strokePolygon, type RawStroke } from '@/font/stroke/outline'
 import { collect, completedHangulCells, trimmedMean } from './samples'
 
@@ -52,14 +52,18 @@ export function learnGaps(sessions: Record<string, WritingSessionRecord>, endpoi
     const { kind, chars } = decomposeHangul(cell.char.codePointAt(0)!)
     const scaledGap = (gap: number) => Math.max(-minimumGap * 2, Math.min(300, gap * 1000 / session.cellSize))
 
-    // A compound vowel meets the initial with its horizontal part only.
-    let medialAnchor = medial
-    if (kind === 'mixed') {
-      const local = assigned[1].map((stroke) => ({ ...stroke, x: stroke.x - cellX, y: stroke.y - cellY }))
+    /** A written jamo as the layout sees a placed one, in canvas pixels (y up). */
+    const placed = (strokes: RawStroke[]): PlacedJamo => {
+      const local = strokes.map((stroke) => ({ ...stroke, x: stroke.x - cellX, y: stroke.y - cellY }))
       const shape = normalizeRawStrokes(local, session.cellSize, endpointStabilization)
       const path = new opentype.Path()
       if (shape) appendShape(path, shape, { x: 0, y: 0, width: session.cellSize, height: session.cellSize }, true, session.cellSize / 1000)
-      const space = medialSpace(path)?.horizontal
+      return { path, shape, scale: session.cellSize / CELL_UNITS }
+    }
+    // A compound vowel meets the initial with its horizontal part only.
+    let medialAnchor = medial
+    if (kind === 'mixed') {
+      const space = medialSpace(placed(assigned[1]).path)?.horizontal
       if (space) medialAnchor = { left: space.x1, right: space.x2, top: session.cellSize - space.y2, bottom: session.cellSize - space.y1 }
     }
     const upperGap = scaledGap(kind === 'vertical' ? medial.left - initial.right : medialAnchor.top - initial.bottom)
@@ -76,11 +80,12 @@ export function learnGaps(sessions: Record<string, WritingSessionRecord>, endpoi
     if (!final) continue
 
     const finalGap = scaledGap(final.top - Math.max(initial.bottom, medialAnchor.bottom))
+    // Measured against the point the layout aims the final at, so the offset
+    // holds only what the writer does differently from that rule.
+    const written = placed(assigned[2])
     const lower: Placement = {
       advanceGap: finalGap,
-      crossOffset: ((final.left + final.right) - (kind === 'mixed'
-        ? medial.left + medial.right
-        : Math.min(initial.left, medial.left) + Math.max(initial.right, medial.right))) * 500 / session.cellSize,
+      crossOffset: (finalAnchorX(written) - finalTargetX(kind, placed(assigned[0]), placed(assigned[1]))) * 1000 / session.cellSize,
     }
     kinds.final.push(finalGap)
     collect(finalContexts, finalGapContext(kind, chars.final), finalGap)

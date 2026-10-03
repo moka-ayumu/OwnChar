@@ -8,12 +8,16 @@ import { composeHangulParts } from '@/font/layout/compose-syllable'
 import { selectJamoSource, sourceKey } from '@/font/layout/source-selection'
 import { DEFAULT_GAPS, minimumGap, type GapProfile } from '@/font/layout/gap-profile'
 import { finalBoxGap } from '@/font/layout/overlap-policy'
-import { layoutSyllable, medialSpace } from '@/font/layout/syllable-layout'
+import { finalAnchorX, layoutSyllable, medialSpace } from '@/font/layout/syllable-layout'
+import { decomposeHangul } from '@/font/hangul'
 import { DEFAULT_COMPOSITION_SETTINGS } from '@/font/settings'
 import { composedHangulParts, composedHangulPath, composeFont, precomposeHangulRange } from '@/generation/font-builder'
 import { boxOf, CELL, centerOf, contourBoxes, isFinite, penStroke, shapeOf, unlearned } from './helpers'
 
 const compose = (char: string, shapes: Map<string, NormalizedShape>, options = {}) => composeHangulParts(char.codePointAt(0)!, shapes, DEFAULT_COMPOSITION_SETTINGS, options)
+
+/** The point of a placed final that the layout centres: the middle of the bulk of its ink. */
+const anchorOf = (result: Pick<ReturnType<typeof layoutSyllable>, 'parts' | 'geometry'>, shape: NormalizedShape) => finalAnchorX({ path: result.parts.final, shape, scale: result.geometry.scales.final })
 
 // Jamo written one per cell, so nothing ties their positions together.
 const bar = (id: string) => shapeOf([penStroke(id, 10, 74, [[0, 0], [128, 0]])])
@@ -90,7 +94,47 @@ describe('syllable layout', () => {
     const sy = (placed[1].y - placed[0].y) / (native[1].y - native[0].y)
     expect(sx / sy).toBeCloseTo(1, 1)
     const upper = [boxOf(result.parts.initial), boxOf(result.parts.medial)]
-    expect(centerOf(result.parts.final).x).toBeCloseTo((Math.min(...upper.map((b) => b.x1)) + Math.max(...upper.map((b) => b.x2))) / 2, 5)
+    expect(anchorOf(result, final)).toBeCloseTo((Math.min(...upper.map((b) => b.x1)) + Math.max(...upper.map((b) => b.x2))) / 2, 5)
+  })
+
+  test('under a vertical vowel a final is placed by the bulk of its ink, toward the stem', () => {
+    /** ㅏ: a stem with an arm reaching right. */
+    const a = (arm = 30) => shapeOf([penStroke('a1', 90, 15, [[0, 0], [0, 110]]), penStroke('a2', 90, 70, [[0, 0], [arm, 0]])])
+    /** ㅂ: two stems and two bars, the upper bar running `tick` past the right stem. */
+    const bieup = (tick = 0) => shapeOf([
+      penStroke('b1', 40, 40, [[0, 0], [0, 50]]), penStroke('b2', 90, 40, [[0, 0], [0, 50]]),
+      penStroke('b3', 40, 65, [[0, 0], [50 + tick, 0]]), penStroke('b4', 40, 90, [[0, 0], [50, 0]]),
+    ])
+    const place = (vowel: NormalizedShape, final: NormalizedShape, gaps?: GapProfile) => {
+      const result = layoutSyllable({ codePoint: '갑'.codePointAt(0)!, shapes: new Map([['ㄱ', giyeok()], ['ㅏ', vowel], [sourceKey('final', 0, 'ㅂ'), final]]), penScale: 1, gaps })
+      const [left, right] = contourBoxes(result.parts.final)
+      return { ...result, stems: (left.x1 + right.x2) / 2, anchor: anchorOf(result, final) }
+    }
+    const plain = place(a(), bieup())
+    const [stem] = contourBoxes(plain.parts.medial)
+    expect(plain.anchor).toBeGreaterThan(centerOf(plain.parts.initial).x)
+    expect(plain.anchor).toBeLessThan(stem.x1)
+    expect(plain.anchor).toBeCloseTo(centerOf(plain.parts.final).x, 5)
+
+    // A tick widens the box to the right; the body of ㅂ is still what is centred.
+    const ticked = place(a(), bieup(20))
+    expect(centerOf(ticked.parts.final).x - ticked.stems).toBeGreaterThan(20)
+    expect(Math.abs(ticked.stems - ticked.anchor)).toBeLessThan(10)
+
+    // It sits 60% of the way from the left of the body to the right of the stem.
+    const left = boxOf(plain.parts.initial).x1
+    expect(plain.anchor).toBeCloseTo(left + (stem.x2 - left) * 0.6, 5)
+
+    // The stem is what the final is held against: a longer arm does not move it.
+    const longArm = place(a(60), bieup())
+    const added = boxOf(longArm.parts.medial).x2 - boxOf(longArm.parts.medial).x1 - (boxOf(plain.parts.medial).x2 - boxOf(plain.parts.medial).x1)
+    expect(added).toBeGreaterThan(50)
+    expect((longArm.anchor - boxOf(longArm.parts.initial).x1) - (plain.anchor - left)).toBeCloseTo(0, 5)
+
+    // A learned sideways offset is a nuance of at most 6% of the body.
+    const learned = { ...DEFAULT_GAPS, medialFinalPairs: { 'ㅏ:ㅂ': { advanceGap: minimumGap, crossOffset: 400, sampleCount: 3 } } }
+    const body = Math.max(boxOf(plain.parts.initial).x2, boxOf(plain.parts.medial).x2) - Math.min(boxOf(plain.parts.initial).x1, boxOf(plain.parts.medial).x1)
+    expect(place(a(), bieup(), learned).anchor - plain.anchor).toBeCloseTo(body * 0.06, 5)
   })
 
   test('jamo written together are separated when their ink would cross', () => {
@@ -119,13 +163,13 @@ describe('syllable layout', () => {
     const closedTop = shapeOf([penStroke('g', 20, 100, [[0, 0], [100, 0], [100, 30]])])
     const shapes = new Map([['ㄴ', smallNieun()], ['ㄱ', giyeok()], ['ㅜ', u()], [sourceKey('final', 0, 'ㄴ'), openTop], [sourceKey('final', 0, 'ㄱ'), closedTop]])
     const measure = (char: string) => {
-      const { parts } = compose(char, shapes)
+      const { parts, geometry } = compose(char, shapes)
       const upper = new opentype.Path()
       upper.commands.push(...parts.initial.commands, ...parts.medial.commands)
       return {
         gap: boxOf(upper).y1 - boxOf(parts.final).y2,
         crossing: inkIntersectionArea(upper, parts.final),
-        offCentre: Math.abs(centerOf(upper).x - centerOf(parts.final).x),
+        offCentre: Math.abs(centerOf(upper).x - anchorOf({ parts, geometry }, shapes.get(sourceKey('final', 0, decomposeHangul(char.codePointAt(0)!).chars.final))!)),
       }
     }
     expect(measure('눈').gap).toBeLessThan(0)
@@ -198,6 +242,22 @@ describe('syllable layout', () => {
     expect(entered.finalGap).toBeCloseTo(measure('묙').finalGap, 5)
   })
 
+  test('a written final wider than 90% of the upper body is narrowed without losing height', () => {
+    const stem = () => shapeOf([penStroke('i1', 74, 15, [[0, 0], [0, 110]])])
+    const mieum = (width: number) => shapeOf([penStroke('m1', 10, 60, [[0, 0], [width, 0], [width, 40], [0, 40], [0, 0]])])
+    const place = (width: number) => {
+      const { parts } = layoutSyllable({ codePoint: '김'.codePointAt(0)!, shapes: new Map([['ㄱ', giyeok()], ['ㅣ', stem()], [sourceKey('final', 0, 'ㅁ'), mieum(width)]]), penScale: 1 })
+      const i = boxOf(parts.initial); const m = boxOf(parts.medial); const f = boxOf(parts.final)
+      return { body: Math.max(i.x2, m.x2) - Math.min(i.x1, m.x1), width: f.x2 - f.x1, height: f.y2 - f.y1, pen: contourBoxes(parts.medial)[0].x2 - contourBoxes(parts.medial)[0].x1 }
+    }
+    const wide = place(120)
+    expect(wide.width).toBeLessThanOrEqual(wide.body * 0.9 + 1)
+    // Shrinking it as a whole would have kept 120 : 40.
+    expect((wide.width - wide.pen) / (wide.height - wide.pen)).toBeLessThan(120 / 40 * 0.9)
+    const narrow = place(40)
+    expect((narrow.width - narrow.pen) / (narrow.height - narrow.pen)).toBeCloseTo(1, 1)
+  })
+
   test('a compound final built from parts stays within 90% of the upper body by narrowing its wider part', () => {
     /** ㅏ: a stem with an arm reaching right. */
     const a = () => shapeOf([penStroke('a1', 90, 15, [[0, 0], [0, 110]]), penStroke('a2', 90, 70, [[0, 0], [30, 0]])])
@@ -217,7 +277,7 @@ describe('syllable layout', () => {
     expect(right.x2 - right.x1).toBeLessThan(left.x2 - left.x1)
   })
 
-  test('with a compound vowel, the initial sits in its left compartment and the final under the whole vowel', () => {
+  test('with a compound vowel, the initial sits in its left compartment and the final is held against the right stem', () => {
     // ㅙ: ㅗ on the left, then two stems joined by a short bar.
     const medial = shapeOf([
       penStroke('o1', 10, 100, [[0, 0], [70, 0]]), penStroke('o2', 45, 80, [[0, 0], [0, 20]]),
@@ -231,7 +291,9 @@ describe('syllable layout', () => {
     expect(centerOf(parts.initial).x).toBeLessThan(space.vertical.x1)
     expect(i.y1).toBeGreaterThan(space.horizontal.y2)
     expect(i.y2 - m.y2).toBeLessThan((m.y2 - m.y1) * 0.45)
-    expect(centerOf(parts.final).x).toBeCloseTo(centerOf(parts.medial).x, 5)
+    // The final follows the same rule as under ㅏ: held against the right stem.
+    const left = Math.min(i.x1, m.x1)
+    expect(centerOf(parts.final).x).toBeCloseTo(left + (space.vertical.x2 - left) * 0.6, 5)
   })
 
   test('a long stem under ㅜ stays in the left compartment, and the initial stays inside it', () => {
