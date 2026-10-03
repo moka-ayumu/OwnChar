@@ -1,7 +1,7 @@
 import opentype from 'opentype.js'
 import { describe, expect, test } from 'vitest'
 import { hasInkClearance, inkIntersectionArea } from '@/font/geometry/collision'
-import { appendShape, type NormalizedShape } from '@/font/geometry/shape'
+import { appendShape, combineShapesSideBySide, type NormalizedShape } from '@/font/geometry/shape'
 import { composeStandaloneJamoPath } from '@/font/glyphs/standalone-jamo'
 import { appendNumeral } from '@/font/glyphs/symbols'
 import { composeHangulParts } from '@/font/layout/compose-syllable'
@@ -154,6 +154,25 @@ describe('syllable layout', () => {
     expect(measure('교').upperGap).toBeLessThan(0)
     // However far the vowel went into the initial, the final stays as close as under a closed one.
     expect(entered.finalGap).toBeCloseTo(measure('묙').finalGap, 5)
+  })
+
+  test('a compound final built from parts stays within 90% of the upper body by narrowing its wider part', () => {
+    /** ㅏ: a stem with an arm reaching right. */
+    const a = () => shapeOf([penStroke('a1', 90, 15, [[0, 0], [0, 110]]), penStroke('a2', 90, 70, [[0, 0], [30, 0]])])
+    const wideNieun = () => shapeOf([penStroke('wn', 10, 60, [[0, 0], [0, 30], [128, 30]])])
+    const narrow = () => shapeOf([penStroke('h', 60, 60, [[0, 0], [20, 30]])])
+    const shapes = new Map([
+      ['ㄱ', giyeok()], ['ㅏ', a()],
+      [sourceKey('final', 0, 'ㄴ'), wideNieun()], [sourceKey('final', 0, 'ㅎ'), narrow()],
+      [sourceKey('final', 0, 'ㄶ'), { ...combineShapesSideBySide(wideNieun(), narrow()), sourceRole: 'final' as const }],
+    ])
+    const { parts } = layoutSyllable({ codePoint: '갆'.codePointAt(0)!, shapes, penScale: 1 })
+    const i = boxOf(parts.initial); const m = boxOf(parts.medial); const f = boxOf(parts.final)
+    expect(f.x2 - f.x1).toBeLessThanOrEqual((Math.max(i.x2, m.x2) - Math.min(i.x1, m.x1)) * 0.9 + 1)
+    // Both parts keep one height: the narrow one was not shrunk to make room.
+    const [left, right] = contourBoxes(parts.final)
+    expect((right.y2 - right.y1) / (left.y2 - left.y1)).toBeCloseTo(1, 1)
+    expect(right.x2 - right.x1).toBeLessThan(left.x2 - left.x1)
   })
 
   test('with a compound vowel, the initial sits in its left compartment and the final under the whole vowel', () => {

@@ -3,7 +3,7 @@ import { describe, expect, test } from 'vitest'
 import { prepareCffPath } from '@/font/geometry/cff'
 import { hasInkClearance, inkIntersectionArea, maximizeSafeIntrusion } from '@/font/geometry/collision'
 import { translatePath } from '@/font/geometry/path-ops'
-import { appendShape, combineShapesSideBySide } from '@/font/geometry/shape'
+import { appendShape, combineShapesSideBySide, type NormalizedShape } from '@/font/geometry/shape'
 import { outlineStroke } from '@/font/stroke/outline'
 import { contourBoxes, penStroke, ring, shapeOf } from './helpers'
 
@@ -43,21 +43,36 @@ describe('shapes', () => {
     expect((smallBar.x2 - smallBar.x1 - smallPen) / (largeBar.x2 - largeBar.x1 - largePen)).toBeCloseTo(0.5, 1)
   })
 
-  test('a compound final is its two parts side by side, each scaled uniformly with its pen unchanged', () => {
-    const left = shapeOf([penStroke('left', 40, 20, [[0, 0], [20, 40]])])
-    const right = shapeOf([penStroke('right', 40, 20, [[20, 0], [0, 60]])])
-    const compound = combineShapesSideBySide(left, right)
+  const span = (shape: NormalizedShape, index: number, axis: 0 | 1) => {
+    const values = shape.strokes[index].centerline.points.map((point) => point[axis])
+    return Math.max(...values) - Math.min(...values)
+  }
+  const wide = () => shapeOf([penStroke('wide', 20, 60, [[0, 0], [0, 30], [50, 30]])])
+  const narrow = () => shapeOf([penStroke('narrow', 60, 60, [[0, 0], [20, 30]])])
+
+  test('a compound final is its two parts side by side at one height, their widths drawn together and the pen unchanged', () => {
+    const compound = combineShapesSideBySide(wide(), narrow())
     expect(compound.synthesized).toBe(true)
-    for (const [index, original] of [left, right].entries()) {
-      const before = original.strokes[0].centerline.points
-      const after = compound.strokes[index].centerline.points
-      const sx = (after[1][0] - after[0][0]) / (before[1][0] - before[0][0])
-      const sy = (after[1][1] - after[0][1]) / (before[1][1] - before[0][1])
-      expect(sx).toBeCloseTo(sy, 9)
+    for (const [index, original] of [wide(), narrow()].entries()) {
+      expect(span(compound, index, 1)).toBeCloseTo(span(original, 0, 1), 1)
       expect(compound.strokes[index].centerline.diameter).toBe(original.strokes[0].centerline.diameter)
     }
+    expect(span(compound, 0, 0)).toBeLessThan(span(wide(), 0, 0))
+    expect(span(compound, 1, 0)).toBeGreaterThan(span(narrow(), 0, 0))
+    expect(span(compound, 0, 0)).toBeGreaterThan(span(compound, 1, 0))
     const [first, second] = compound.strokes.map((stroke) => stroke.contours.flat().map(([x]) => x))
     expect(Math.min(...second)).toBeGreaterThan(Math.max(...first))
+  })
+
+  test('a compound final over its width limit narrows only its wider part, keeping both heights', () => {
+    const free = combineShapesSideBySide(wide(), narrow())
+    const limited = combineShapesSideBySide(wide(), narrow(), free.aspectRatio * 0.98)
+    expect(limited.aspectRatio).toBeCloseTo(free.aspectRatio * 0.98, 9)
+    expect(limited.frame.height).toBe(free.frame.height)
+    expect(span(limited, 0, 0)).toBeLessThan(span(free, 0, 0))
+    expect(span(limited, 0, 1)).toBeCloseTo(span(free, 0, 1), 9)
+    expect(span(limited, 1, 0)).toBeCloseTo(span(free, 1, 0), 9)
+    expect(span(limited, 1, 1)).toBeCloseTo(span(free, 1, 1), 9)
   })
 })
 

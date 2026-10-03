@@ -1,7 +1,7 @@
 import opentype from 'opentype.js'
 import type { HangulRole } from '@/font/hangul'
 import { outlineStroke, penDiameter, type RawStroke, type StrokeOutline } from '@/font/stroke/outline'
-import type { Point } from './path-ops'
+import { clamp, type Point } from './path-ops'
 
 export interface Zone {
   x: number
@@ -135,22 +135,32 @@ export function appendShape(path: opentype.Path, shape: NormalizedShape, targetZ
 }
 
 /**
- * Two captured jamo uniformly scaled to the same height and set side by side
- * as a compound final such as ㄺ. Centerlines move with
- * their contours, so the result is re-outlined at the recorded pen width.
+ * Two captured jamo scaled to the same height and set side by side as a
+ * compound final such as ㄺ, their widths drawn toward their average.
+ * Centerlines move with their contours, so the result is re-outlined at the
+ * recorded pen width. A result wider than `maxAspect` (width / height) is
+ * narrowed horizontally, the wider part first.
  */
-export function combineShapesSideBySide(left: NormalizedShape, right: NormalizedShape): NormalizedShape {
+export function combineShapesSideBySide(left: NormalizedShape, right: NormalizedShape, maxAspect = Infinity): NormalizedShape {
   // Stay at the written cell scale: the pen is re-outlined at its recorded
   // width, so the gap between the parts is measured in pen diameters.
   const height = (left.frame.height + right.frame.height) / 2
   const pen = Math.max(...[...left.strokes, ...right.strokes].map((stroke) => stroke.centerline.diameter / stroke.centerline.cellSize))
   const gap = pen * 1.5 + height * 0.05
+  const natural = [left, right].map((part) => part.frame.width * height / part.frame.height)
+  // Past these limits a jamo stops reading as itself.
+  const widths = natural.map((width) => width * clamp((natural[0] + natural[1]) / 2 / width, 0.6, 1.4))
+  const available = maxAspect * height - gap
+  // Only the wider part gives way until both are equally wide. Neither goes
+  // below what the wider can bear: the caller takes the rest off the whole.
+  const widest = widths[0] + widths[1] > available ? Math.max(available - Math.min(...widths), available / 2, Math.max(...natural) * 0.6) : Infinity
   const strokes: NormalizedStroke[] = []
   let offsetX = 0
-  for (const part of [left, right]) {
+  for (const [index, part] of [left, right].entries()) {
     const frame = part.frame
     const scale = height / frame.height
-    const map = ([x, y]: Point) => [offsetX + (x - frame.x) * scale, (y - frame.y) * scale] as Point
+    const stretch = Math.min(widths[index], widest) / natural[index]
+    const map = ([x, y]: Point) => [offsetX + (x - frame.x) * scale * stretch, (y - frame.y) * scale] as Point
     for (const stroke of part.strokes) {
       const centerline = stroke.centerline
       strokes.push({
@@ -165,7 +175,7 @@ export function combineShapesSideBySide(left: NormalizedShape, right: Normalized
         },
       })
     }
-    offsetX += frame.width * scale + gap
+    offsetX += natural[index] * stretch + gap
   }
   const width = offsetX - gap
   return { aspectRatio: width / height, frame: { x: 0, y: 0, width, height }, strokes, synthesized: true }

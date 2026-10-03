@@ -1,12 +1,12 @@
 import opentype from 'opentype.js'
-import { decomposeHangul, HANGUL_ROLES, type HangulRole, type VowelKind } from '@/font/hangul'
+import { COMPOUND_FINALS, decomposeHangul, HANGUL_ROLES, type HangulRole, type VowelKind } from '@/font/hangul'
 import { hasInkClearance, maximizeSafeIntrusion } from '@/font/geometry/collision'
 import { centerX as cx, centerY as cy, clamp, pathBounds as bounds, pathOf, pointsBox, splitContours, translatePath, unionBox as union, type Box } from '@/font/geometry/path-ops'
-import { appendShape, CELL_UNITS, type NormalizedShape, type Zone } from '@/font/geometry/shape'
+import { appendShape, CELL_UNITS, combineShapesSideBySide, type NormalizedShape, type Zone } from '@/font/geometry/shape'
 import { DEFAULT_GAPS, finalGapContext, finalGapPair, gapContext, gapPair, minimumGap, type GapProfile } from './gap-profile'
 import { allowsOverlap } from './overlap-policy'
 import { EMPTY_PROPORTIONS, jamoSize, learnedRatios, proportionContext, proportionPair, type ProportionProfile } from './proportion-profile'
-import { selectJamoSource } from './source-selection'
+import { selectJamoSource, sourceKey } from './source-selection'
 
 export interface LayoutGeometry {
   zones: Partial<Record<HangulRole, Box>>
@@ -301,6 +301,25 @@ export function layoutSyllable(input: SyllableLayoutInput) {
       const notch = !upperPlacement && allowsOverlap('initial-medial', chars.initial, chars.medial) ? 90 : 0
       // Interlocking ink keeps the same gap as jamo that merely sit side by side.
       separate([initial], medial, kind === 'vertical' ? 'x' : 'y', kind === 'vertical' ? 1 : -1, Math.max(0, minimumGap - upperGap) + notch, minimumGap)
+    }
+  }
+  // A final built from parts has no written width: it stays within 90% of the
+  // settled upper body, narrowing its wider part before shrinking as a whole.
+  if (final?.shape?.synthesized && COMPOUND_FINALS[chars.final]) {
+    const upper = upperSlots(); const f = bounds(final.path)
+    if (upper.length && f) {
+      const body = union(upper.map((slot) => bounds(slot.path)!))
+      const limit = (body.x2 - body.x1) * 0.9
+      const [left, right] = COMPOUND_FINALS[chars.final].map((part) => input.shapes.get(sourceKey('final', 0, part)))
+      if (f.x2 - f.x1 > limit && left && right) {
+        final.shape = { ...combineShapesSideBySide(left, right, limit / (f.y2 - f.y1)), sourceRole: 'final' }
+        resize(final, 1)
+      }
+      // The pen does not shrink with the jamo, so one correction falls short.
+      for (let pass = 0; pass < 3; pass += 1) {
+        const fitted = bounds(final.path)!
+        resize(final, Math.min(1, limit / (fitted.x2 - fitted.x1)))
+      }
     }
   }
   // The final hangs from the upper pair where it settled, not where it started.

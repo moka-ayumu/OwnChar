@@ -9,6 +9,9 @@ import { learnHangulMetrics } from './learning/metrics'
 import { learnProportions } from './learning/proportions'
 import type { CompositionProfile, RequestDrawing } from './request'
 
+/** Widest a standalone compound final built from parts may be, as width / height. */
+const STANDALONE_COMPOUND_ASPECT = 1.5
+
 /** Drawings in the worker format: strokes moved into their own cell's coordinates. */
 export function toRequestDrawings(drawings: Record<string, DrawingRecord>, sessions: Record<string, WritingSessionRecord>): Record<string, RequestDrawing> {
   return Object.fromEntries(Object.entries(drawings).map(([promptId, drawing]): [string, RequestDrawing] => {
@@ -49,7 +52,9 @@ export function shapesFromRequestDrawings(drawings: Record<string, RequestDrawin
     const combined = combineShapesSideBySide(left, right)
     combined.sourceRole = 'final'
     shapes.set(key, combined)
-    if (!shapes.has(compound)) shapes.set(compound, combined)
+    // On its own there is no upper body to measure against, so a wide part is
+    // narrowed toward the proportions of a written compound.
+    if (!shapes.has(compound)) shapes.set(compound, { ...combineShapesSideBySide(left, right, STANDALONE_COMPOUND_ASPECT), sourceRole: 'final' })
   }
   return shapes
 }
