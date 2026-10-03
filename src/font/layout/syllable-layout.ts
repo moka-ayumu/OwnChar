@@ -86,8 +86,12 @@ export function medialSpace(path: opentype.Path): { horizontal: Box; vertical: B
   const body = bounds(path)
   if (!body) return undefined
   const boxes = contourBoxes(path)
-  const stems = boxes.filter((box) => cx(box) > body.x1 + (body.x2 - body.x1) * 0.4
+  const tall = boxes.filter((box) => cx(box) > body.x1 + (body.x2 - body.x1) * 0.4
     && box.y2 - box.y1 > (body.y2 - body.y1) * 0.45 && box.x2 - box.x1 < (box.y2 - box.y1) * 0.5)
+  // A long stem hanging from ㅜ is still part of the left compartment: only
+  // strokes about as tall as the tallest one are the vowel's main stems.
+  const tallest = Math.max(...tall.map((box) => box.y2 - box.y1))
+  const stems = tall.filter((box) => box.y2 - box.y1 >= tallest * 0.7)
   if (stems.length) {
     const vertical = union(stems)
     const left = boxes.filter((box) => !stems.includes(box) && cx(box) < vertical.x1)

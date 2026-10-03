@@ -234,6 +234,21 @@ describe('syllable layout', () => {
     expect(centerOf(parts.final).x).toBeCloseTo(centerOf(parts.medial).x, 5)
   })
 
+  test('a long stem under ㅜ stays in the left compartment, and the initial stays inside it', () => {
+    // ㅟ whose ㅜ stem is right of centre and about half as tall as ㅣ.
+    const wi = () => shapeOf([
+      penStroke('u1', 20, 70, [[0, 0], [60, 0]]), penStroke('u2', 55, 70, [[0, 0], [0, 65]]),
+      penStroke('i1', 100, 5, [[0, 0], [0, 135]]),
+    ])
+    const { parts } = compose('뉘', new Map([['ㄴ', smallNieun()], ['ㅟ', wi()]]))
+    const space = medialSpace(parts.medial)!
+    const [, hanging, main] = contourBoxes(parts.medial)
+    expect(space.vertical.x1).toBeCloseTo(main.x1, 0)
+    expect(space.horizontal.y1).toBeCloseTo(hanging.y1, 0)
+    expect(centerOf(parts.initial).x).toBeGreaterThan(boxOf(parts.medial).x1)
+    expect(boxOf(parts.initial).x2).toBeLessThan(space.vertical.x1)
+  })
+
   test('uses the same jamo from the nearest other layout before one written in another role', () => {
     const sources = new Map([
       [sourceKey('initial', 1, 'ㄴ'), { sourceRole: 'initial' as const }],
