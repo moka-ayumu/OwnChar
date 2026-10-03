@@ -264,32 +264,10 @@ export function layoutSyllable(input: SyllableLayoutInput) {
       else move(initial, cx(anchor) - cx(i) - cross, anchor.y2 - i.y1 + Math.max(minimumGap, upperGap))
     }
   }
-  if (final) {
-    const f = bounds(final.path); const upper = upperSlots()
-    if (f && upper.length) {
-      const body = union(upper.map((slot) => bounds(slot.path)!))
-      const anchor = kind === 'mixed' && medial ? medialSpace(medial.path)?.horizontal ?? body : body
-      // A narrow final balances the consonant and the vowel's main stem;
-      // wide compound finals use the full upper body. Arms are empty-space
-      // boundaries, not extra weight pulling the final to the right.
-      const m = medial && bounds(medial.path)
-      const i = initial && bounds(initial.path)
-      const stemX = medial && m ? cx(verticalStem(medial.path)) : cx(body)
-      const balance = kind === 'vertical' && i && m && initial?.group !== medial?.group ? cx(i) * 0.65 + stemX * 0.35 : cx(body)
-      const spread = Math.max(0, Math.min(1, (f.x2 - f.x1) / (f.y2 - f.y1) - 1))
-      const finalCenter = kind === 'mixed' && m ? cx(m) : balance * (1 - spread) + cx(body) * spread
-      const spaceGap = Math.min(Math.max(minimumGap, finalGap), (m ? m.y2 - m.y1 : body.y2 - body.y1) * 0.1)
-      if (!upper.some((slot) => slot.group === final.group)) move(final, finalCenter - cx(f) + (finalPlacement?.crossOffset ?? 0), anchor.y1 - f.y2 - spaceGap)
-      else if (initial && medial && initial.group !== final.group && medial.group === final.group && kind === 'vertical') {
-        // A slot can exist before its source jamo has been written.
-        if (i) move(initial, 2 * cx(f) - body.x2 - i.x1, 0)
-      }
-    }
-  }
 
-  const clearance = minimumGap * (kind === 'mixed' ? 0.2 : 0.8)
+  const inkClearance = minimumGap * (kind === 'mixed' ? 0.2 : 0.8)
   /** Moves `moving` away from `fixed` until their ink is clear, then back in by at most `maximum` while it stays clear. */
-  const separate = (fixed: Slot[], moving: Slot, axis: 'x' | 'y' | 'corner', direction: -1 | 1, maximum = 0) => {
+  const separate = (fixed: Slot[], moving: Slot, axis: 'x' | 'y' | 'corner', direction: -1 | 1, maximum = 0, clearance = inkClearance) => {
     const stationary = fixed.filter((slot) => slot.group !== moving.group && slot.path.commands.length)
     if (!stationary.length || !moving.path.commands.length) return
     const path = pathOf(stationary.flatMap((slot) => slot.path.commands))
@@ -321,7 +299,31 @@ export function layoutSyllable(input: SyllableLayoutInput) {
     else {
       // A pair the writer has sampled already carries its own overlap.
       const notch = !upperPlacement && allowsOverlap('initial-medial', chars.initial, chars.medial) ? 90 : 0
-      separate([initial], medial, kind === 'vertical' ? 'x' : 'y', kind === 'vertical' ? 1 : -1, Math.max(0, minimumGap - upperGap) + notch)
+      // Interlocking ink keeps the same gap as jamo that merely sit side by side.
+      separate([initial], medial, kind === 'vertical' ? 'x' : 'y', kind === 'vertical' ? 1 : -1, Math.max(0, minimumGap - upperGap) + notch, minimumGap)
+    }
+  }
+  // The final hangs from the upper pair where it settled, not where it started.
+  if (final) {
+    const f = bounds(final.path); const upper = upperSlots()
+    if (f && upper.length) {
+      const body = union(upper.map((slot) => bounds(slot.path)!))
+      const anchor = kind === 'mixed' && medial ? medialSpace(medial.path)?.horizontal ?? body : body
+      // A narrow final balances the consonant and the vowel's main stem;
+      // wide compound finals use the full upper body. Arms are empty-space
+      // boundaries, not extra weight pulling the final to the right.
+      const m = medial && bounds(medial.path)
+      const i = initial && bounds(initial.path)
+      const stemX = medial && m ? cx(verticalStem(medial.path)) : cx(body)
+      const balance = kind === 'vertical' && i && m && initial?.group !== medial?.group ? cx(i) * 0.65 + stemX * 0.35 : cx(body)
+      const spread = Math.max(0, Math.min(1, (f.x2 - f.x1) / (f.y2 - f.y1) - 1))
+      const finalCenter = kind === 'mixed' && m ? cx(m) : balance * (1 - spread) + cx(body) * spread
+      const spaceGap = Math.min(Math.max(minimumGap, finalGap), (m ? m.y2 - m.y1 : body.y2 - body.y1) * 0.1)
+      if (!upper.some((slot) => slot.group === final.group)) move(final, finalCenter - cx(f) + (finalPlacement?.crossOffset ?? 0), anchor.y1 - f.y2 - spaceGap)
+      else if (initial && medial && initial.group !== final.group && medial.group === final.group && kind === 'vertical') {
+        // A slot can exist before its source jamo has been written.
+        if (i) move(initial, 2 * cx(f) - body.x2 - i.x1, 0)
+      }
     }
   }
   if (final) {

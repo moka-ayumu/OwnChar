@@ -1,12 +1,13 @@
 import opentype from 'opentype.js'
 import { describe, expect, test } from 'vitest'
-import { inkIntersectionArea } from '@/font/geometry/collision'
+import { hasInkClearance, inkIntersectionArea } from '@/font/geometry/collision'
 import { appendShape, type NormalizedShape } from '@/font/geometry/shape'
 import { composeStandaloneJamoPath } from '@/font/glyphs/standalone-jamo'
 import { appendNumeral } from '@/font/glyphs/symbols'
 import { composeHangulParts } from '@/font/layout/compose-syllable'
 import { selectJamoSource, sourceKey } from '@/font/layout/source-selection'
-import { medialSpace } from '@/font/layout/syllable-layout'
+import { minimumGap } from '@/font/layout/gap-profile'
+import { layoutSyllable, medialSpace } from '@/font/layout/syllable-layout'
 import { DEFAULT_COMPOSITION_SETTINGS } from '@/font/settings'
 import { composedHangulParts, composedHangulPath, composeFont, precomposeHangulRange } from '@/generation/font-builder'
 import { boxOf, CELL, centerOf, contourBoxes, isFinite, penStroke, shapeOf, unlearned } from './helpers'
@@ -130,6 +131,29 @@ describe('syllable layout', () => {
     expect(measure('눈').crossing).toBe(0)
     expect(measure('국').gap).toBeGreaterThanOrEqual(0)
     expect(measure('국').offCentre).toBeLessThan(1)
+  })
+
+  test('a vowel stem entering the initial keeps the regular gap, and the final follows the vowel up', () => {
+    /** ㅛ: a bar with two stems reaching up. */
+    const yo = () => shapeOf([penStroke('yo1', 10, 90, [[0, 0], [128, 0]]), penStroke('yo2', 50, 60, [[0, 0], [0, 30]]), penStroke('yo3', 90, 60, [[0, 0], [0, 30]])])
+    /** ㅁ: closed at the bottom. */
+    const mieum = () => shapeOf([penStroke('m1', 30, 40, [[0, 0], [55, 0], [55, 60], [0, 60], [0, 0]])])
+    const wideGiyeok = () => shapeOf([penStroke('wg', 10, 40, [[0, 0], [128, 0], [128, 40]])])
+    const shapes = new Map([[sourceKey('initial', 0, 'ㄱ'), wideGiyeok()], ['ㅁ', mieum()], ['ㅛ', yo()], [sourceKey('final', 0, 'ㄱ'), giyeok()]])
+    const measure = (char: string) => {
+      const { parts } = layoutSyllable({ codePoint: char.codePointAt(0)!, shapes, penScale: 1 })
+      return {
+        parts,
+        upperGap: boxOf(parts.initial).y1 - boxOf(parts.medial).y2,
+        finalGap: boxOf(parts.medial).y1 - boxOf(parts.final).y2,
+      }
+    }
+    const entered = measure('굑')
+    expect(entered.upperGap).toBeLessThan(0)
+    expect(hasInkClearance(entered.parts.initial, entered.parts.medial, minimumGap - 1)).toBe(true)
+    expect(measure('교').upperGap).toBeLessThan(0)
+    // However far the vowel went into the initial, the final stays as close as under a closed one.
+    expect(entered.finalGap).toBeCloseTo(measure('묙').finalGap, 5)
   })
 
   test('with a compound vowel, the initial sits in its left compartment and the final under the whole vowel', () => {
