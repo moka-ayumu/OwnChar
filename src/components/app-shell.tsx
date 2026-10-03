@@ -1,6 +1,6 @@
 import { Link, Outlet } from '@tanstack/react-router'
 import { CircleHelp } from 'lucide-react'
-import { useProject } from '@/hooks/use-project'
+import { useProject } from '@/project/use-project'
 
 export function AppShell() {
   const hydrated = useProject((state) => state.hydrated)

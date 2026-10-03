@@ -9,17 +9,14 @@
     "preview": "vite preview",
     "typecheck": "tsc -b --pretty false",
     "lint": "eslint .",
-    "test": "playwright test",
+    "test": "vitest run",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "latest",
     "@radix-ui/react-progress": "latest",
-    "@radix-ui/react-scroll-area": "latest",
     "@radix-ui/react-slider": "latest",
-    "@radix-ui/react-tabs": "latest",
-    "@radix-ui/react-tooltip": "latest",
     "@tanstack/react-router": "latest",
     "@tanstack/react-store": "latest",
     "@tanstack/react-virtual": "latest",
@@ -31,8 +28,6 @@
     "perfect-freehand": "1.2.0",
     "react": "latest",
     "react-dom": "latest",
-    "sonner": "latest",
-    "svg-path-parser": "latest",
     "tailwind-merge": "latest"
   },
   "devDependencies": {
@@ -44,7 +39,6 @@
     "@types/opentype.js": "latest",
     "@types/react": "latest",
     "@types/react-dom": "latest",
-    "@types/svg-path-parser": "latest",
     "@vitejs/plugin-react": "latest",
     "eslint": "latest",
     "eslint-plugin-react-hooks": "latest",
@@ -53,6 +47,7 @@
     "tailwindcss": "latest",
     "typescript": "^5.9.3",
     "typescript-eslint": "latest",
-    "vite": "latest"
+    "vite": "latest",
+    "vitest": "latest"
   }
 }

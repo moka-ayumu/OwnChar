@@ -1,92 +1,47 @@
-import opentype from 'opentype.js'
-import type { CompositionSettings, HangulRole } from '@/types/project'
-import type { NormalizedShape, Box } from './path-geometry'
-import type { GapProfile } from './gap-profile'
-import type { ProportionProfile } from './proportion-profile'
-import { INITIALS, MEDIALS, FINALS, decomposeHangul } from './hangul-structure'
-import { sourceKey } from './source-selection'
-import { layoutSyllable, translatePath, type LayoutGeometry } from './syllable-layout'
-import { normalizationFactor } from './size-normalization'
-import { alignVerticalCenter } from './vertical-alignment'
+export type HangulRole = 'initial' | 'medial' | 'final'
+export const HANGUL_ROLES: readonly HangulRole[] = ['initial', 'medial', 'final']
 
-export const CHOSEONG = INITIALS.map(char => [char])
-export const JUNGSEONG = MEDIALS.map(char => [char])
-export const JONGSEONG = FINALS.map(char => char ? [char] : [])
-export const variantShapeKey = sourceKey
-export function getHangulVariantSelection(codePoint: number) { return decomposeHangul(codePoint).variants }
-export interface HangulComposeOptions {
-  omitRoles?: HangulRole[]
-  placeholderRoles?: HangulRole[]
-  gaps?: GapProfile
-  proportions?: ProportionProfile
-  targetHeight?: number
-  targetCenter?: number
-  penScale?: number
+/** How a vowel sits next to its initial: beside it, below it, or both. */
+export type VowelKind = 'vertical' | 'horizontalUp' | 'horizontalDown' | 'mixed'
+
+export const INITIALS = [...'ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ']
+export const MEDIALS = [...'ㅏㅐㅑㅒㅓㅔㅕㅖㅗㅘㅙㅚㅛㅜㅝㅞㅟㅠㅡㅢㅣ']
+export const FINALS = ['', ...'ㄱㄲㄳㄴㄵㄶㄷㄹㄺㄻㄼㄽㄾㄿㅀㅁㅂㅄㅅㅆㅇㅈㅊㅋㅌㅍㅎ']
+
+/** Compound finals are composed from their two single finals when not written directly. */
+export const COMPOUND_FINALS: Record<string, [string, string]> = {
+  ㄳ: ['ㄱ', 'ㅅ'], ㄵ: ['ㄴ', 'ㅈ'], ㄶ: ['ㄴ', 'ㅎ'], ㄺ: ['ㄹ', 'ㄱ'], ㄻ: ['ㄹ', 'ㅁ'], ㄼ: ['ㄹ', 'ㅂ'],
+  ㄽ: ['ㄹ', 'ㅅ'], ㄾ: ['ㄹ', 'ㅌ'], ㄿ: ['ㄹ', 'ㅍ'], ㅀ: ['ㄹ', 'ㅎ'], ㅄ: ['ㅂ', 'ㅅ'],
 }
-export type InkBox = Box
-export interface HangulParts {
-  path: opentype.Path
-  parts: Record<HangulRole, opentype.Path>
-  placeholders: Partial<Record<HangulRole, InkBox>>
-  geometry: LayoutGeometry
+
+export const HANGUL_BASE = 0xac00
+export const HANGUL_COUNT = 11_172
+
+export function isHangulSyllable(codePoint: number) {
+  return codePoint >= HANGUL_BASE && codePoint < HANGUL_BASE + HANGUL_COUNT
 }
-const pointKeys = [['x', 'y'], ['x1', 'y1'], ['x2', 'y2']] as const
-export function composeHangulPath(codePoint: number, shapes: Map<string, NormalizedShape>, settings: CompositionSettings, options?: HangulComposeOptions) {
-  return composeHangulParts(codePoint, shapes, settings, options).path
+
+function vowelKind(index: number): VowelKind {
+  return index <= 7 || index === 20 ? 'vertical' : [8, 12].includes(index) ? 'horizontalUp' : [13, 17, 18].includes(index) ? 'horizontalDown' : 'mixed'
 }
-export function composeHangulParts(codePoint: number, shapes: Map<string, NormalizedShape>, settings: CompositionSettings, options: HangulComposeOptions = {}): HangulParts {
-  const build = (penScale: number) => {
-    const result = layoutSyllable({ codePoint, shapes, penScale, gaps: options.gaps, proportions: options.proportions,
-      omit: new Set(options.omitRoles), placeholder: new Set(options.placeholderRoles),
-      scales: { initial: settings.singleInitialScale, medial: settings.vowelScale, final: settings.finalScale },
-    })
-    const path = new opentype.Path()
-    path.commands.push(...Object.values(result.parts).flatMap(part => part.commands))
-    return { ...result, path }
+
+// Initial layout of an open syllable, per vowel.
+// 0 vertical, 1 ㅗ/ㅛ/ㅡ, 2 ㅜ/ㅠ, 3 ㅘ/ㅙ/ㅚ/ㅢ, 4 ㅝ/ㅞ/ㅟ; with a final: 5 vertical, 6 horizontal, 7 mixed.
+const openVariants = [0, 0, 0, 0, 0, 0, 0, 0, 1, 3, 3, 3, 1, 2, 4, 4, 4, 2, 1, 3, 0]
+
+export function decomposeHangul(codePoint: number) {
+  const offset = codePoint - HANGUL_BASE
+  const initialIndex = Math.floor(offset / 588)
+  const vowelIndex = Math.floor(offset % 588 / 28)
+  const finalIndex = offset % 28
+  const kind = vowelKind(vowelIndex)
+  return { initialIndex, vowelIndex, finalIndex, kind,
+    chars: { initial: INITIALS[initialIndex], medial: MEDIALS[vowelIndex], final: FINALS[finalIndex] },
+    variants: { initial: finalIndex ? kind === 'vertical' ? 5 : kind === 'mixed' ? 7 : 6 : openVariants[vowelIndex], medial: finalIndex ? 1 : 0, final: 0 },
   }
-  const factorFor = (path: opentype.Path) => {
-    if (!path.commands.length) return 1
-    const box = path.getBoundingBox()
-    return Math.min(normalizationFactor(box.y2 - box.y1, options.targetHeight ?? 760, settings.hangulNormalization), 950 / Math.max(1, box.x2 - box.x1, box.y2 - box.y1))
-  }
-  const basePen = options.penScale ?? 1
-  let built = build(basePen)
-  // Re-outline in the final pen space; only similarity transforms reach the ink.
-  let factor = factorFor(built.path)
-  for (let iteration = 0; iteration < 2 && Math.abs(factor - 1) > 0.005; iteration += 1) {
-    built = build(Math.round(basePen / factor * 200) / 200)
-    factor = factorFor(built.path)
-  }
-  for (const command of built.path.commands) for (const [x, y] of pointKeys) {
-    if (x in command && y in command) {
-      const point = command as unknown as Record<string, number>
-      point[x] *= factor; point[y] *= factor
-    }
-  }
-  if (built.path.commands.length) {
-    const box = built.path.getBoundingBox()
-    translatePath(built.path, 500 - (box.x1 + box.x2) / 2, box.y1 < 0 ? -box.y1 : box.y2 > 1000 ? 1000 - box.y2 : 0)
-  }
-  alignVerticalCenter(built.path, options.targetCenter ?? 500, settings.verticalAlignment)
-  const placeholders: HangulParts['placeholders'] = {}
-  for (const role of ['initial', 'medial', 'final'] as const) {
-    const part = built.parts[role]
-    if (part.commands.length) {
-      const b = part.getBoundingBox()
-      built.geometry.anchors[role] = { x: (b.x1 + b.x2) / 2, y: (b.y1 + b.y2) / 2 }
-      if (built.geometry.scales[role] !== undefined) built.geometry.scales[role]! *= factor
-      // Available space follows the same final transform as its role.
-      const zone = built.geometry.zones[role]!
-      const width = (zone.x2 - zone.x1) * factor; const height = (zone.y2 - zone.y1) * factor
-      const center = built.geometry.anchors[role]!
-      built.geometry.zones[role] = { x1: center.x - width / 2, y1: center.y - height / 2, x2: center.x + width / 2, y2: center.y + height / 2 }
-      if (options.placeholderRoles?.includes(role)) {
-        placeholders[role] = { x1: b.x1, y1: b.y1, x2: b.x2, y2: b.y2 }
-        const hidden = new Set(part.commands)
-        built.path.commands = built.path.commands.filter(command => !hidden.has(command))
-        built.parts[role] = new opentype.Path()
-      }
-    }
-  }
-  return { path: built.path, parts: built.parts, placeholders, geometry: built.geometry }
+}
+
+/** The roles a syllable has: every syllable has an initial and a medial. */
+export function syllableRoles(codePoint: number): readonly HangulRole[] {
+  return decomposeHangul(codePoint).finalIndex ? HANGUL_ROLES : ['initial', 'medial']
 }

@@ -74,16 +74,6 @@ button { cursor: pointer; }
   flex-direction: column;
 }
 
-.canvas-region {
-  display: flex;
-  min-width: 0;
-  min-height: 0;
-  align-items: flex-start;
-  justify-content: center;
-  overflow: auto;
-  padding: 20px 22px;
-}
-
 .sentence-canvas-region {
   min-width: 0;
   min-height: 0;
@@ -185,67 +175,6 @@ button { cursor: pointer; }
 .capture-card small { margin-top: 1px; color: #92969d; font-size: 9px; }
 .capture-empty { align-self: center; margin: 0; color: #92969d; font-size: 12px; }
 
-.canvas-workspace {
-  display: flex;
-  flex: none;
-  flex-direction: column;
-  margin-block: auto;
-}
-
-.canvas-prompt {
-  display: flex;
-  min-height: 54px;
-  flex: none;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 20px;
-  padding: 0 2px 10px;
-}
-
-.canvas-prompt-group,
-.canvas-prompt-description {
-  margin: 0;
-  color: #92969d;
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.canvas-prompt-character {
-  display: flex;
-  align-items: baseline;
-  gap: 7px;
-  margin-top: 4px;
-  line-height: 1;
-}
-
-.canvas-prompt-character strong {
-  color: #2457f5;
-  font-size: 36px;
-  font-weight: 600;
-  letter-spacing: -.06em;
-}
-
-.canvas-example-char {
-  color: #17181a;
-  font-size: 28px;
-  font-weight: 500;
-  letter-spacing: -.05em;
-}
-
-.canvas-prompt-connector {
-  color: #92969d;
-  font-size: 13px;
-}
-
-.canvas-prompt-description {
-  min-width: 0;
-  overflow: hidden;
-  padding-bottom: 3px;
-  text-align: right;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .canvas-toolbar {
   display: flex;
   min-height: 44px;
@@ -288,47 +217,6 @@ button { cursor: pointer; }
 
 .canvas-stroke-slider { width: 112px; }
 .canvas-stroke-value { width: 28px; text-align: right; font-variant-numeric: tabular-nums; }
-
-.panel-character-grid {
-  display: grid;
-  min-height: 0;
-  flex: 1;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 5px;
-  overflow-y: auto;
-  border: 1px solid #eef0f2;
-  border-radius: 8px;
-  padding: 5px;
-  scrollbar-width: thin;
-}
-
-.character-chip {
-  display: grid;
-  width: 100%;
-  height: 38px;
-  place-items: center;
-  overflow: hidden;
-  border: 1px solid transparent;
-  border-radius: 7px;
-  background: transparent;
-  color: #92969d;
-  font-size: 14px;
-  transition: 150ms;
-}
-
-.character-chip:hover { background: #eef0f2; color: #17181a; }
-.character-chip.complete { border-color: #e5e7eb; background: #fff; color: #17181a; }
-.character-chip.current { border-color: #2457f5; box-shadow: 0 0 0 2px rgb(36 87 245 / 10%); color: #2457f5; }
-.character-chip span, .character-chip svg { display: block; width: 28px; height: 28px; }
-
-.canvas-guide {
-  pointer-events: none;
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  width: 100%;
-  height: 100%;
-}
 
 .editor-layout {
   display: grid;

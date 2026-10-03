@@ -1,0 +1,167 @@
+import { getStroke } from 'perfect-freehand'
+import { EndType, FillRule, JoinType, inflatePaths, union } from 'clipper2-ts'
+import type { Point } from '@/font/geometry/path-ops'
+import { stabilizeStroke } from './stabilizer'
+
+/** One pen stroke as captured: points are relative to (x, y), in canvas pixels. */
+export interface RawStroke {
+  id: string
+  x: number
+  y: number
+  width: number
+  height: number
+  points: Point[]
+  pressures: number[]
+  strokeWidth: number
+  version: number
+  isDeleted?: boolean
+  /** null while the stroke is still being drawn. */
+  lastCommittedPoint?: Point | null
+}
+
+export interface StrokeOutline {
+  contours: Point[][]
+  /** A single perfect-freehand polygon, drawn with curves; merged contours are drawn with lines. */
+  smooth: boolean
+}
+
+export const REFERENCE_CELL_SIZE = 148
+export const STROKE_SIZE_FACTOR = 4.25
+
+/** Pen diameter in the pixels of a `cellSize` writing cell. */
+export function penDiameter(strokeWidth: number, cellSize: number) {
+  return strokeWidth * STROKE_SIZE_FACTOR * cellSize / REFERENCE_CELL_SIZE
+}
+
+function pressureResponse(pressure: number): number {
+  const x = Math.max(0, Math.min(1, Number.isFinite(pressure) ? pressure : 1))
+  if (x >= 0.1) return 1
+  const t = x / 0.1
+  return 3 * t * t - 2 * t * t * t
+}
+
+export function strokePolygon(
+  points: readonly Point[],
+  pressures: readonly number[],
+  size: number,
+  complete = true,
+  strength = 1,
+  conditionSize = size,
+): Point[] {
+  if (!points.length) return []
+  // The centerline is conditioned at the pen size it was written with, so a
+  // glyph rendered at another outline size keeps the exact captured path.
+  const conditioned = stabilizeStroke(points, pressures, conditionSize, complete ? 'complete' : 'live', strength)
+  const input = conditioned.points.map(([x, y], index) => {
+    let pressure = conditioned.pressures[index]
+    if ((index === 0 || index === points.length - 1) && pressure < 0.1) {
+      const neighbor = index === 0 ? pressures.find((value) => value > 0) : [...pressures].reverse().find((value) => value > 0)
+      pressure = Math.max(0.1, neighbor ?? 0.1)
+    }
+    return [x, y, pressure]
+  }).filter((point, index, all) => index === 0 || Math.hypot(point[0] - all[index - 1][0], point[1] - all[index - 1][1]) > 1e-3)
+  // The stabilizer already removed hand jitter; a strong streamline on top of
+  // it would only lag behind the pen and round off intentional corners.
+  const amount = Math.max(0, Math.min(1, Number.isFinite(strength) ? strength : 1))
+  return getStroke(input, {
+    size,
+    thinning: 1,
+    smoothing: 0.1,
+    streamline: 0.5 - 0.35 * amount,
+    last: complete,
+    simulatePressure: false,
+    easing: pressureResponse,
+    start: { cap: true, taper: 0 },
+    end: { cap: true, taper: 0 },
+  }) as Point[]
+}
+
+const CLIPPER_PRECISION = 1024
+const toClipper = (points: readonly Point[]) => points.map(([x, y]) => ({ x: Math.round(x * CLIPPER_PRECISION), y: Math.round(y * CLIPPER_PRECISION) }))
+const fromClipper = (contours: Array<Array<{ x: number; y: number }>>) => contours
+  .filter((contour) => contour.length >= 3)
+  .map((contour) => contour.map(({ x, y }) => [x / CLIPPER_PRECISION, y / CLIPPER_PRECISION] as Point))
+
+function segmentsCross(a: Point, b: Point, c: Point, d: Point) {
+  const cross = (p: Point, q: Point, r: Point) => (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0])
+  return cross(a, b, c) * cross(a, b, d) < 0 && cross(c, d, a) * cross(c, d, b) < 0
+}
+
+function polygonCrossesItself(polygon: readonly Point[]) {
+  for (let first = 0; first < polygon.length; first += 1) {
+    const a = polygon[first]; const b = polygon[(first + 1) % polygon.length]
+    for (let second = first + 2; second < polygon.length; second += 1) {
+      if (first === 0 && second === polygon.length - 1) continue
+      if (segmentsCross(a, b, polygon[second], polygon[(second + 1) % polygon.length])) return true
+    }
+  }
+  return false
+}
+
+/**
+ * A stroke that closes on itself, crosses itself, or turns so tightly that its
+ * widened outline crosses itself cannot be kept as one polygon: CFF fills
+ * even-odd, so the overlap would become a hole.
+ */
+function needsUnion(points: readonly Point[], size: number, polygon: () => Point[]) {
+  if (points.length < 3) return false
+  const first = points[0]
+  const last = points.at(-1)!
+  if (Math.hypot(first[0] - last[0], first[1] - last[1]) <= size * 2) return true
+  for (let firstSegment = 0; firstSegment < points.length - 1; firstSegment += 1) {
+    for (let secondSegment = firstSegment + 2; secondSegment < points.length - 1; secondSegment += 1) {
+      if (segmentsCross(points[firstSegment], points[firstSegment + 1], points[secondSegment], points[secondSegment + 1])) return true
+    }
+  }
+  return polygonCrossesItself(polygon())
+}
+
+/**
+ * The filled outline of a pen stroke at pen diameter `size`. `conditionSize`
+ * is the diameter the stroke was written with, when it is rendered at another.
+ */
+export function outlineStroke(
+  points: readonly Point[],
+  pressures: readonly number[],
+  size: number,
+  complete = true,
+  strength = 1,
+  conditionSize = size,
+): StrokeOutline {
+  let settled: Point[] | undefined
+  const settledPolygon = () => settled ??= strokePolygon(points, pressures, size, true, strength, conditionSize)
+  const polygon = () => complete ? settledPolygon() : strokePolygon(points, pressures, size, false, strength, conditionSize)
+  if (!needsUnion(points, size, settledPolygon)) return { contours: [polygon()], smooth: true }
+
+  const closedCenterline = Math.hypot(points[0][0] - points.at(-1)![0], points[0][1] - points.at(-1)![1]) <= Math.max(0.25, conditionSize * 0.2)
+  if (closedCenterline) {
+    // A ring keeps its counter: widen the closed centerline instead of merging a capped stroke.
+    const centerline = stabilizeStroke(points, pressures, conditionSize, 'complete', strength).points.slice(0, -1)
+    return { contours: fromClipper(inflatePaths([toClipper(centerline)], size * CLIPPER_PRECISION / 2, JoinType.Round, EndType.Joined)), smooth: false }
+  }
+  const outline = polygon()
+  if (outline.length < 3) return { contours: outline.length ? [outline] : [], smooth: false }
+  return { contours: fromClipper(union([toClipper(outline)], [], FillRule.NonZero)), smooth: false }
+}
+
+function polygonSvgPath(points: readonly Point[]): string {
+  if (!points.length) return ''
+  const p = (point: readonly number[]) => `${point[0].toFixed(2)} ${point[1].toFixed(2)}`
+  const commands = [`M ${p(points[0])}`]
+  for (let index = 1; index < points.length; index += 1) {
+    const next = points[(index + 1) % points.length]
+    commands.push(`Q ${p(points[index])} ${p([(points[index][0] + next[0]) / 2, (points[index][1] + next[1]) / 2])}`)
+  }
+  commands.push(`Q ${p(points[0])} ${p(points[0])} Z`)
+  return commands.join(' ')
+}
+
+/** SVG path data of a stroke, relative to its own (x, y). */
+export function strokeSvgPath(stroke: RawStroke, cellSize: number, strength = 1): string {
+  const complete = stroke.lastCommittedPoint !== null
+  const outline = outlineStroke(stroke.points, stroke.pressures, penDiameter(stroke.strokeWidth, cellSize), complete, strength)
+  if (outline.smooth) return polygonSvgPath(outline.contours[0])
+  return outline.contours
+    .map((contour) => `M ${contour.map(([x, y]) => `${x.toFixed(2)} ${y.toFixed(2)}`).join(' L ')} Z`)
+    .join(' ')
+}

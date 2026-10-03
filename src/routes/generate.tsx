@@ -3,10 +3,10 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { LoaderCircle, RotateCcw, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
-import { useProject } from '@/hooks/use-project'
-import { projectActions, projectStore } from '@/store/project-store'
-import type { GenerationEvent, GenerationRequest } from '@/types/project'
-import { buildGenerationInputs } from '@/font/composition-inputs'
+import { useProject } from '@/project/use-project'
+import { projectActions, projectStore } from '@/project/store'
+import type { GenerationEvent, GenerationRequest } from '@/generation/request'
+import { buildGenerationInputs } from '@/generation/inputs'
 
 export const Route = createFileRoute('/generate')({ component: GeneratePage })
 
@@ -19,13 +19,13 @@ function GeneratePage() {
   const run = useCallback(() => {
     const state = projectStore.state
     workerRef.current?.terminate()
-    const worker = new Worker(new URL('../workers/font.worker.ts', import.meta.url), { type: 'module' })
+    const worker = new Worker(new URL('../generation/font.worker.ts', import.meta.url), { type: 'module' })
     workerRef.current = worker
     projectActions.startGeneration()
 
     worker.onmessage = (event: MessageEvent<GenerationEvent>) => {
       const message = event.data
-      if (message.type === 'progress') projectActions.updateGenerationProgress(message.stage, message.progress, message.message)
+      if (message.type === 'progress') projectActions.updateGenerationProgress(message.progress, message.message)
       if (message.type === 'complete') {
         projectActions.completeGeneration(message.buffer)
         worker.terminate()
@@ -46,7 +46,6 @@ function GeneratePage() {
       overrides: state.glyphOverrides,
       globalMetrics: state.globalMetrics,
       compositionSettings: state.compositionSettings,
-      unitsPerEm: 1000,
     }
     worker.postMessage(request)
   }, [navigate])

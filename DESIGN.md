@@ -485,24 +485,9 @@ The canvas should provide generous empty space.
 
 ---
 
-## 12. Excalidraw Usage
+## 12. Drawing Surface
 
-Excalidraw is used as a drawing engine, not as the visible product interface.
-
-Do not expose unnecessary Excalidraw UI.
-
-Hide or disable tools unrelated to handwriting:
-
-* rectangle
-* diamond
-* arrow
-* text
-* image
-* library
-* collaboration
-* file controls
-
-The primary interaction is free drawing.
+The writing canvas is the app's own SVG surface (pointer events + perfect-freehand outlines), not an embedded drawing tool.
 
 Expose only the controls the user needs:
 
@@ -771,7 +756,7 @@ When implementing UI:
 1. Read this document before making visual decisions.
 2. Preserve the left-control / right-canvas structure.
 3. Use shadcn/ui for standard UI primitives.
-4. Treat Excalidraw as a drawing engine only.
+4. Keep the drawing surface free of tool chrome; controls live in the app UI.
 5. Keep surfaces bright and neutral.
 6. Use Cobalt Blue only for important interactive states.
 7. Do not introduce additional visual styles without a product reason.

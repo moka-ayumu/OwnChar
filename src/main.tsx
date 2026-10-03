@@ -1,7 +1,6 @@
 import ReactDOM from 'react-dom/client'
 import { createRouter, RouterProvider } from '@tanstack/react-router'
-import { Toaster } from 'sonner'
-import { initializePersistence } from '@/lib/persistence'
+import { initializePersistence } from '@/project/persistence'
 import { routeTree } from './routeTree.gen'
 import './styles.css'
 
@@ -15,9 +14,4 @@ declare module '@tanstack/react-router' {
 
 void initializePersistence()
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <>
-    <RouterProvider router={router} />
-    <Toaster position="bottom-center" richColors />
-  </>,
-)
+ReactDOM.createRoot(document.getElementById('root')!).render(<RouterProvider router={router} />)

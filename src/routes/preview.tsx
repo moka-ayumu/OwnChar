@@ -3,11 +3,10 @@ import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { Download, PenLine, Settings2, Sparkles } from 'lucide-react'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
-import { useFontFace } from '@/hooks/use-font-face'
-import { useProject } from '@/hooks/use-project'
-import { downloadArrayBuffer, safeFilename } from '@/lib/utils'
-import { projectActions } from '@/store/project-store'
-import { cn } from '@/lib/utils'
+import { useFontFace } from '@/lib/use-font-face'
+import { useProject } from '@/project/use-project'
+import { cn, downloadArrayBuffer, safeFilename } from '@/lib/utils'
+import { projectActions } from '@/project/store'
 
 export const Route = createFileRoute('/preview')({ component: PreviewPage })
 

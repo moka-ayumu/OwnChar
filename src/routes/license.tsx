@@ -24,7 +24,7 @@ function LicensePage() {
 
       <section className="mt-10 border-t border-[#E5E7EB] pt-8">
         <h2 className="text-lg font-semibold">사용 라이브러리</h2>
-        <p className="mt-4 text-sm leading-7 text-[#62656B]">React, Vite, TanStack Router, TanStack Store, Tailwind CSS, shadcn/ui/Radix UI, Excalidraw, opentype.js, Lucide를 사용합니다. 각 라이브러리에는 해당 프로젝트의 오픈소스 라이선스가 적용됩니다.</p>
+        <p className="mt-4 text-sm leading-7 text-[#62656B]">React, Vite, TanStack Router, TanStack Store, Tailwind CSS, shadcn/ui/Radix UI, perfect-freehand, Clipper2, opentype.js, Lucide를 사용합니다. 각 라이브러리에는 해당 프로젝트의 오픈소스 라이선스가 적용됩니다.</p>
       </section>
     </article>
   )

@@ -1,10 +1,10 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { ArrowRight, PenLine, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { useProject } from '@/hooks/use-project'
-import { completedPromptCount, PROMPT_COUNT } from '@/lib/prompts'
-import { clearPersistedProject } from '@/lib/persistence'
-import { projectActions } from '@/store/project-store'
+import { useProject } from '@/project/use-project'
+import { completedPromptCount, PROMPT_COUNT } from '@/collection/prompts'
+import { clearPersistedProject } from '@/project/persistence'
+import { projectActions } from '@/project/store'
 
 export const Route = createFileRoute('/')({ component: HomePage })
 
