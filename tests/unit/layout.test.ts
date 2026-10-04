@@ -97,6 +97,29 @@ describe('syllable layout', () => {
     expect(anchorOf(result, final)).toBeCloseTo((Math.min(...upper.map((b) => b.x1)) + Math.max(...upper.map((b) => b.x2))) / 2, 5)
   })
 
+  test('an initial and a final written together around another vowel are set apart, in reading order', () => {
+    // Written as 는: ㄴ over ㄴ, with only a thin ㅡ's worth of room between them.
+    const initial = () => shapeOf([penStroke('i', 45, 35, [[0, 0], [0, 30], [55, 30]])], 'captured')
+    const final = () => shapeOf([penStroke('f', 45, 90, [[0, 0], [0, 25], [55, 25]])], 'captured')
+    /** ㅗ: a bar with a stem reaching up. */
+    const o = shapeOf([penStroke('o1', 20, 90, [[0, 0], [108, 0]]), penStroke('o2', 74, 50, [[0, 0], [0, 40]])], 'other')
+    /** ㅏ: a stem with an arm reaching right. */
+    const a = shapeOf([penStroke('a1', 90, 15, [[0, 0], [0, 110]]), penStroke('a2', 90, 70, [[0, 0], [30, 0]])], 'other')
+
+    const non = compose('논', new Map([[sourceKey('initial', 6, 'ㄴ'), initial()], [sourceKey('medial', 1, 'ㅗ'), o], [sourceKey('final', 0, 'ㄴ'), final()]]))
+    expect(non.geometry.groups.initial).not.toBe(non.geometry.groups.final)
+    expect(boxOf(non.parts.initial).y1).toBeGreaterThan(boxOf(non.parts.medial).y2)
+    expect(boxOf(non.parts.medial).y1).toBeGreaterThan(boxOf(non.parts.final).y2)
+
+    const nan = compose('난', new Map([[sourceKey('initial', 5, 'ㄴ'), initial()], [sourceKey('medial', 1, 'ㅏ'), a], [sourceKey('final', 0, 'ㄴ'), final()]]))
+    expect(nan.geometry.groups.initial).not.toBe(nan.geometry.groups.final)
+    expect(boxOf(nan.parts.initial).x2).toBeLessThan(boxOf(nan.parts.medial).x1)
+    expect(boxOf(nan.parts.initial).y1).toBeGreaterThan(boxOf(nan.parts.final).y2)
+    // The final is centred by the rule again instead of keeping its written offset.
+    expect(centerOf(nan.parts.final).x).toBeGreaterThan(boxOf(nan.parts.initial).x1)
+    expect(centerOf(nan.parts.final).x).toBeLessThan(boxOf(nan.parts.medial).x2)
+  })
+
   test('under a vertical vowel a final is placed by the bulk of its ink, toward the stem', () => {
     /** ㅏ: a stem with an arm reaching right. */
     const a = (arm = 30) => shapeOf([penStroke('a1', 90, 15, [[0, 0], [0, 110]]), penStroke('a2', 90, 70, [[0, 0], [arm, 0]])])

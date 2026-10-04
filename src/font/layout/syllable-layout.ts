@@ -193,6 +193,11 @@ export function layoutSyllable(input: SyllableLayoutInput) {
     return { role, shape, zone: zones[role], scale: input.scales?.[role] ?? 1, group, path: new opentype.Path() }
   })
   const byRole = Object.fromEntries(slots.map((slot) => [slot.role, slot])) as Partial<Record<HangulRole, Slot>>
+  // Only the upper pair is recombined as written. A final captured with the
+  // initial alone would drag it below the vowel it is set under.
+  if (byRole.final && byRole.initial?.group === byRole.final.group && byRole.medial?.group !== byRole.final.group) {
+    byRole.initial.group = 'initial'; byRole.final.group = 'final'
+  }
   const groups = new Map<string, Slot[]>()
   for (const slot of slots) groups.set(slot.group, [...(groups.get(slot.group) ?? []), slot])
   const geometry: LayoutGeometry = { zones: {}, anchors: {}, scales: {}, groups: {} }
