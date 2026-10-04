@@ -8,7 +8,7 @@ test('writes a jamo, generates the font, traces a glyph back to its cell, and gu
   await startProject(page)
   const { stroke } = await writingCanvas(page)
   await stroke(6, 25, 34, 74, 34) // ㄹ of 리
-  await expect(page.getByText('리 · ㄹ')).toBeVisible()
+  await expect(page.getByTestId('cell-popover').getByText('남은 획 2')).toBeVisible()
   await savedProject(page, (saved) => Boolean(saved.drawings[`initial-0-${'ㄹ'.codePointAt(0)}`]))
 
   // Generating with characters missing asks first.
@@ -58,7 +58,7 @@ test('writes a jamo, generates the font, traces a glyph back to its cell, and gu
   await page.getByRole('link', { name: /글자 다시 쓰기/ }).click()
   const canvas = await writingCanvas(page)
   await canvas.stroke(1, 40, 35, 100, 35)
-  await expect(page.getByText('고 · ㄱ')).toBeVisible()
+  await expect(page.getByTestId('cell-popover').getByRole('button', { name: '중성 ㅗ' })).toHaveAttribute('aria-pressed', 'true')
   await savedProject(page, (saved) => saved.sourceDirty)
   await page.getByRole('button', { name: '지금 폰트 만들기' }).click()
   await page.getByRole('button', { name: '그래도 생성하기' }).click()

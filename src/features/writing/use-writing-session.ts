@@ -8,10 +8,12 @@ import { hangulComposeOptions } from '@/generation/font-builder'
 import { useCompositionContext } from '@/generation/use-composition-context'
 import { projectActions } from '@/project/store'
 import { useProject } from '@/project/use-project'
-import { assignStrokes, captureRecords, cellIndexOf, editableSlots, fixedSlots, reflowStrokes, validBoundaries, visibleStrokes, type CanvasGrid } from './stroke-assignment'
+import { assignStrokes, boundariesThrough, captureRecords, cellIndexOf, cellProgress, completedCells, fixedSlots, holdBoundaries, reflowStrokes, visibleStrokes, type CanvasGrid } from './stroke-assignment'
 
 type Boundaries = Record<number, JamoBoundary[]>
 type Guides = Record<number, StoredCellGuide>
+/** For a cell, the position of the editable slot its writer keeps open. */
+type Holds = Record<number, number>
 
 /** Two guide maps are the same when every cell keeps the same stored role outlines. */
 function sameGuides(left: Guides, right: Guides) {
@@ -45,7 +47,10 @@ export function useWritingSession(exercise: WritingExercise, viewport: RefObject
   const [boundaries, setBoundaries] = useState<Boundaries>(saved?.boundaries ?? {})
   const [storedGuides, setStoredGuides] = useState<Guides>(saved?.guides ?? {})
   const [boundaryWarning, setBoundaryWarning] = useState('')
+  const [holds, setHolds] = useState<Holds>({})
+  const [focus, setFocus] = useState<number | null>(null)
   const boundariesRef = useRef(boundaries)
+  const holdsRef = useRef(holds)
   const guidesRef = useRef(storedGuides)
   const saveTimer = useRef<number | undefined>(undefined)
   const lastRevision = useRef('')
@@ -112,10 +117,11 @@ export function useWritingSession(exercise: WritingExercise, viewport: RefObject
     projectActions.saveSessionGuides(exercise.id, next)
   }, [strokes, cellGuides, grid, cellCount, exercise.id])
 
-  const save = (nextStrokes: readonly RawStroke[], requestedBoundaries = boundariesRef.current, target: CanvasGrid = grid) => {
+  const save = (nextStrokes: readonly RawStroke[], confirmedBoundaries = boundariesRef.current, target: CanvasGrid = grid) => {
+    const requestedBoundaries = holdBoundaries(confirmedBoundaries, holdsRef.current, nextStrokes, target, exercise, drawings)
     const assigned = assignStrokes(nextStrokes, target, exercise, drawings, requestedBoundaries)
     if (JSON.stringify(assigned.boundaries) !== JSON.stringify(boundaries)) {
-      if (countBoundaries(assigned.boundaries) < countBoundaries(requestedBoundaries)) setBoundaryWarning('경계로 지정한 획이 지워져 이후 자모 경계를 다시 확인해 주세요.')
+      if (countBoundaries(assigned.boundaries) < countBoundaries(requestedBoundaries)) setBoundaryWarning('나눠 둔 획이 지워졌어요. 자모가 맞게 나뉘었는지 확인해 주세요.')
       boundariesRef.current = assigned.boundaries
       setBoundaries(assigned.boundaries)
     }
@@ -135,23 +141,44 @@ export function useWritingSession(exercise: WritingExercise, viewport: RefObject
   }
   current.current = { strokes, grid, save }
 
-  const setRequestedBoundaries = (next: Boundaries) => {
+  const reset = (nextBoundaries: Boundaries) => {
+    boundariesRef.current = nextBoundaries
+    setBoundaries(nextBoundaries)
+    setBoundaryWarning('')
+    holdsRef.current = {}
+    setHolds({})
+    setFocus(null)
+  }
+
+  /** Sets the confirmed boundaries of one cell and which of its slots, if any, stays open. */
+  const divideCell = (cellIndex: number, cellBoundaries: JamoBoundary[], held?: number) => {
+    const nextHolds = { ...holdsRef.current }
+    if (held === undefined) delete nextHolds[cellIndex]
+    else nextHolds[cellIndex] = held
+    holdsRef.current = nextHolds
+    setHolds(nextHolds)
+    const next = { ...boundaries }
+    if (cellBoundaries.length) next[cellIndex] = cellBoundaries
+    else delete next[cellIndex]
     setBoundaryWarning('')
     boundariesRef.current = next
     setBoundaries(next)
     save(strokes, next)
   }
 
-  // The cell of the latest stroke is the one whose jamo boundaries can be set.
+  const finished = useMemo(() => completedCells(strokes, grid, exercise, capture.groups, boundaries, holds), [strokes, grid, exercise, capture, boundaries, holds])
+
+  // The cell being collected is the one of the latest stroke, or one the writer reopened.
   const latest = visibleStrokes(strokes).at(-1)
-  const activeCellIndex = latest ? cellIndexOf(latest, grid, cellCount) : null
-  const activeCell = activeCellIndex === null ? null : exercise.cells[activeCellIndex]
-  const activeStrokes = activeCellIndex === null ? [] : visibleStrokes(strokes).filter((stroke) => cellIndexOf(stroke, grid, cellCount) === activeCellIndex)
-  const activeSlots = activeCell && activeCellIndex !== null ? editableSlots(activeCell, activeCellIndex, exercise, drawings) : []
-  const activeBoundaries = activeCellIndex === null ? [] : validBoundaries(activeStrokes, activeSlots, boundaries[activeCellIndex] ?? [])
-  const activeTarget = activeSlots[activeBoundaries.length]
-  const lastBoundaryStroke = activeBoundaries.length ? activeStrokes.findIndex((stroke) => stroke.id === activeBoundaries.at(-1)!.afterElementId) : -1
-  const canCompleteTarget = Boolean(activeTarget && activeStrokes.length > lastBoundaryStroke + 1)
+  const latestCellIndex = latest ? cellIndexOf(latest, grid, cellCount) : null
+  const activeCellIndex = focus ?? latestCellIndex
+  const confirmed = activeCellIndex === null ? [] : boundaries[activeCellIndex] ?? []
+  // A hold counts only while the boundaries before it stand.
+  const held = activeCellIndex !== null && holds[activeCellIndex] !== undefined && confirmed.length >= holds[activeCellIndex] ? holds[activeCellIndex] : undefined
+  const slots = activeCellIndex === null ? [] : cellProgress(activeCellIndex, capture.groups, boundaries, held)
+  const open = slots.findIndex((slot) => !slot.done)
+  const writing = open < 0 ? null : open
+  const target = writing === null ? undefined : slots[writing]
 
   return {
     grid,
@@ -160,13 +187,18 @@ export function useWritingSession(exercise: WritingExercise, viewport: RefObject
     capture,
     cellGuides,
     boundaryWarning,
+    /** Whether each cell has collected everything it can. */
+    finished,
     /** The cell size can change only while nothing is written. */
     setCellSize,
-    save,
+    save(next: readonly RawStroke[]) {
+      // Writing in another cell leaves the reopened one.
+      const written = visibleStrokes(next).at(-1)
+      if (focus !== null && written && written.id !== latest?.id && cellIndexOf(written, grid, cellCount) !== focus) setFocus(null)
+      save(next)
+    },
     clear() {
-      boundariesRef.current = {}
-      setBoundaries({})
-      setBoundaryWarning('')
+      reset({})
       save([], {})
     },
     /** Switches to another sentence, as it was last saved. */
@@ -174,34 +206,41 @@ export function useWritingSession(exercise: WritingExercise, viewport: RefObject
       const session = sessions[next.id] as WritingSessionRecord | undefined
       lastRevision.current = ''
       setStrokes(session?.elements ?? [])
-      boundariesRef.current = session?.boundaries ?? {}
-      setBoundaries(boundariesRef.current)
-      setBoundaryWarning('')
+      reset(session?.boundaries ?? {})
       guidesRef.current = session?.guides ?? {}
       setStoredGuides(guidesRef.current)
       setCellSize(session?.cellSize ?? REFERENCE_CELL_SIZE)
       setColumns(session?.columns ?? Math.min(6, next.cells.length))
     },
-    active: { cell: activeCell, target: activeTarget, hasBoundaries: activeBoundaries.length > 0, canComplete: canCompleteTarget },
-    /** Declares the jamo being written finished after the latest stroke. */
-    completeActiveTarget(confirmedAt: number) {
-      if (!canCompleteTarget || activeCellIndex === null || !activeTarget) return
-      setRequestedBoundaries({
-        ...boundaries,
-        [activeCellIndex]: [...activeBoundaries, {
-          slotIndex: activeTarget.slotIndex,
-          promptId: activeTarget.slot.promptId,
-          afterElementId: activeStrokes.at(-1)!.id,
-          confirmedAt,
-        }],
-      })
+    active: {
+      /** The cell whose jamo are being collected, when it collects any. */
+      cellIndex: slots.length ? activeCellIndex : null,
+      /** The jamo the cell collects, in writing order, and the position of the one being written. */
+      slots,
+      current: writing,
+      /** Strokes the jamo being written usually still takes. */
+      remaining: target ? Math.max(0, target.slot.expectedStrokes - target.count) : 0,
+      canFinish: Boolean(target && target.count > 0),
+      /** The writer opened this cell by hand, so it stays open when finished. */
+      reopened: focus !== null,
     },
-    undoActiveBoundary() {
-      if (activeCellIndex === null || !activeBoundaries.length) return
-      const next = { ...boundaries }
-      if (activeBoundaries.length > 1) next[activeCellIndex] = activeBoundaries.slice(0, -1)
-      else delete next[activeCellIndex]
-      setRequestedBoundaries(next)
+    /** Declares the jamo being written finished after the latest stroke of its cell. */
+    finishActiveSlot() {
+      if (activeCellIndex === null || writing === null || !target?.count) return
+      const next = boundariesThrough(activeCellIndex, writing + 1, capture.groups, confirmed.slice(0, writing), Date.now())
+      if (next) divideCell(activeCellIndex, next)
     },
+    /** Moves collection to another jamo of the cell: the jamo before it end where they stand, and it takes the strokes after them. */
+    collectActiveSlot(index: number) {
+      if (activeCellIndex === null || index === writing || !slots[index]) return
+      const next = boundariesThrough(activeCellIndex, index, capture.groups, confirmed.slice(0, index), Date.now())
+      if (!next) return
+      // Going back holds the jamo open past its usual stroke count; the last one takes every further stroke anyway.
+      const back = writing === null || index < writing
+      divideCell(activeCellIndex, next, back && index < slots.length - 1 ? index : undefined)
+    },
+    /** Opens the jamo of a written cell, so their division can be changed. */
+    reopenCell(cellIndex: number) { setFocus(cellIndex) },
+    closeCell() { setFocus(null) },
   }
 }

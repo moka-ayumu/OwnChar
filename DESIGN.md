@@ -194,7 +194,7 @@ Three working values (ink, white, lime) on a neutral ground, with greys only for
 - **Ink** (`ink`, #101114): text, 1px structural lines, and every solid mark of state: primary buttons, the current row in a rail list, the pressed segment, the selected glyph cell, progress and slider fill, the focus outline, the user's strokes. On hover a solid ink button lifts to **Ink Hover** (`ink-hover`, #2c2e34).
 
 ### Secondary
-- **Lime Field** (`lime`, #c6f432): the colour of the surface that frames the work. Full-bleed on the flow rail, the editor top bar, the home demonstration half, and the phone-size notice. Smaller uses are all "this is live": text selection, the source-cell highlight on the writing grid (40% tint), the dashed placeholder for a jamo not yet written (22% tint), a source link on hover, the film's live jamo zone, raw-trace line, outline fill, worker fronts and finish box, and the action button on an ink bar.
+- **Lime Field** (`lime`, #c6f432): the colour of the surface that frames the work. Full-bleed on the flow rail, the editor top bar, the home demonstration half, and the phone-size notice. Smaller uses are all "this is live": text selection, the source-cell highlight on the writing grid (40% tint), the wash of a finished cell (24% tint) and a done jamo in the cell popover (40% tint), the dashed placeholder for a jamo not yet written (22% tint), a source link on hover, the film's live jamo zone, raw-trace line, outline fill, worker fronts and finish box, and the action button on an ink bar.
 - **Lime Deep** (`lime-deep`, #b2e016): hover state of a lime button only.
 - **Lime Ink** (`lime-ink`, #3c4a0a): secondary text on lime (labels, notes, counts, steps not yet reached, the rail list's scrollbar). 7.5:1 on lime.
 
@@ -213,7 +213,7 @@ Translucent ink is used for three things only: hover wash on transparent control
 ### Named Rules
 **The Solid Ink Rule.** Selection, the live step, progress, and the primary action are solid ink with white text. If two things on one surface are solid ink, one of them is wrong, unless one is a toggle that is on.
 
-**The Lime Is A Field Rule.** Lime is a surface or a tint, never a text colour on white or ground (1.3:1). Lime text exists only on solid ink: the number of the current step, the count in the current rail row, the boundary notice on the ink bar, the dot in the logo mark.
+**The Lime Is A Field Rule.** Lime is a surface or a tint, never a text colour on white or ground (1.3:1). Lime text exists only on solid ink: the number of the current step, the count in the current rail row, the dot in the logo mark.
 
 **The One Red Rule.** Red means "this destroys work" or "this failed". It is never decoration, never a badge, never a second accent.
 
@@ -243,9 +243,9 @@ Translucent ink is used for three things only: hover wash on transparent control
 
 ## Layout
 
-**Shell.** A 56px header on ground with a 1px ink bottom line: logo at left (26px ink square with a 10px lime dot, wordmark 16px / 800), two quiet links at right. Everything below fills `100svh − 56px` and does not scroll as a page; panels scroll inside themselves with thin scrollbars.
+**Shell.** A 56px header on ground with a 1px ink bottom line: logo at left (26px ink square with a 10px lime dot, wordmark 16px / 800), two quiet links at right. Everything below fills `100svh − 56px` and does not scroll as a page; panels scroll inside themselves with thin scrollbars. The three flow pages (write, generate, preview) run without the header: their rail opens with the logo instead, and the stage takes the full height. On generate and preview the logo leads home and the two links sit at its right; on write the mark opens and closes the rail, the wordmark beside it leads home, and the links sit at the right end of the sentence row.
 
-**The rail-and-stage frame.** Write, Generate and Preview share one grid: a lime rail (280px; 244px at ≤1100px) with a 1px ink right edge, and a white stage taking the rest. The rail is a column with padding 24 / 22 / 20: at the top, what this step is (a headline with a one-line note, or a figure with its label); in the middle, the step's list or fields; at the bottom, pushed down by auto margin, the actions. The primary action is solid ink at the rail's bottom on all three pages, so it never changes position through the flow. The stage holds only the work: the writing canvas under one tool strip, the film, or the typed sentence.
+**The rail-and-stage frame.** Write, Generate and Preview share one grid: a lime rail (280px; 244px at ≤1100px; on write 232px, 216px at ≤1100px, closing to a 56px column of icons) with a 1px ink right edge, and a white stage taking the rest. The rail is a column with padding 24 / 22 / 20: at the top, what this step is (a headline with a one-line note, or a figure with its label); in the middle, the step's list or fields; at the bottom, pushed down by auto margin, the actions. The primary action is solid ink at the rail's bottom on all three pages, so it never changes position through the flow. The stage holds only the work: the writing canvas beside its 56px tool rail, the film, or the typed sentence.
 
 **Other pages inherit the same parts in a different arrangement.** Home is two columns (1.05fr / 0.95fr): copy on ground, demonstration on a lime half with an ink left edge. The editor is a 56px lime bar over white panels divided by 1px ink lines (glyph browser / preview well on ground / 280px settings; or examples / 340px controls). Help is a single 68ch column on ground with sections opened by a 1px ink top line.
 
@@ -270,7 +270,7 @@ All of it eases with one curve, `cubic-bezier(.16, 1, .3, 1)`. Entrances are sho
 
 ## Elevation & Depth
 
-Flat. There is no elevation: no drop shadows, no blur, no glass. Layers are told apart by field colour (ground → white → lime → ink) and by 1px lines. A dialog sits on a 45% ink scrim with a 1px ink border; the active boundary bar is a solid ink bar fixed over the stage; neither casts a shadow.
+Flat. There is no elevation: no drop shadows, no blur, no glass. Layers are told apart by field colour (ground → white → lime → ink) and by 1px lines. A dialog sits on a 45% ink scrim with a 1px ink border; the cell popover and the writing settings are white with a 1px ink border, laid over the canvas; none casts a shadow.
 
 `box-shadow` appears only as a zero-blur line: the 2px ink ring on a focused text input, and a 1px inset outline on an empty tile. `linear-gradient` appears only to draw the half-pixel centre guides of a writing cell. Neither is ever used for tone or lift.
 
@@ -297,7 +297,7 @@ Compact, square-shouldered, weight 600. Height 40px with 16px side padding (32px
 - **Primary:** solid ink, white text; hover lifts to ink-hover. One per surface, at the rail's bottom in the flow.
 - **Secondary:** transparent with a 1px ink border; hover is an 8% ink wash. The alternative next to a primary.
 - **Ghost:** no border; same hover wash. Toolbar tools, cancel, back links. A tool that is on switches to the primary style (`aria-pressed`).
-- **Lime:** lime with ink text, hover lime-deep. Only on a solid ink surface (the active boundary bar, the "변경됨" banner), where ink cannot be the mark.
+- **Lime:** lime with ink text, hover lime-deep. Only on a solid ink surface (the "변경됨" banner), where ink cannot be the mark.
 - **Inverse:** transparent, 1px white border at 60%, white text; the secondary on an ink surface.
 - **Destructive:** 1px red border and red text; fills red with white text on hover.
 - **States:** pressing scales to .97; disabled is 40% opacity with no pointer events; transitions are 150ms on colour, border and transform.
@@ -309,10 +309,10 @@ Compact, square-shouldered, weight 600. Height 40px with 16px side padding (32px
 - **Progress:** 6px rounded track in 15% ink with a solid ink fill, 200ms.
 
 ### Rail rows (sentence list, step list)
-A numbered row: a 22px column for the number (12px / 700, tabular) or a check when done, then the name at 14px / 600, then an optional count at 12px. 6px corner, 8px padding, bleeding 8px past the rail's text edge so the current row's ink block aligns with the text.
-- **Rest:** ink text (steps not yet reached: lime-ink); the count in lime-ink.
+A row with a 23px leading column, then the name at 14px / 600. In the step list the column holds the number (12px / 700, tabular) or a 14px check when done. In the sentence list it holds a progress ring (18px, 3px stroke: a 20% track and an ink arc filling clockwise) that becomes a check when the sentence is fully collected; the count ("43 / 44 자모") shows as a hint on hover or focus. 6px corner, 8px padding, bleeding 8px past the rail's text edge so the current row's ink block aligns with the text. With the write rail closed only the ring column remains, in the same place.
+- **Rest:** ink text (steps not yet reached: lime-ink).
 - **Hover (when clickable):** 9% ink wash.
-- **Current:** solid ink, white text, the number or count in lime; `aria-current="step"`.
+- **Current:** solid ink, white text, the number, ring arc or check in lime; `aria-current="step"`.
 
 ### Segmented control
 Two or more options inside a 1px ink border with 2px padding and a 6px corner; each option is 14px / 600 with 7px / 16px padding and a 4px corner. The pressed option is solid ink with white text. Centred in the editor bar.
@@ -321,12 +321,26 @@ Two or more options inside a 1px ink border with 2px padding and a 6px corner; e
 White, 1px ink border, 6px corner, 24px padding, max 448px, centred on a 45% ink scrim; a ghost close button at top right. Title 18px / 700, description 14px with a 24px line in ink-2, an optional inset list on ground. Actions sit at the bottom right (secondary, then primary), or stacked full-width when there are three choices (primary, destructive, ghost cancel). A destructive choice is confirmed in one.
 
 ### Ink bar
-A solid ink strip with white text for a state that needs an answer now. Two uses: the jamo boundary bar, which at rest is a rule-bordered row under the canvas and, while a cell is being written, becomes a fixed ink bar across the bottom of the stage (inset 32px, 20px from the bottom) with an inverse and a lime button; and the "변경됨" banner at the top of the preview stage with a small lime "변경 적용" button.
+A solid ink strip with white text for a state that needs an answer now: the "변경됨" banner at the top of the preview stage, with a small lime "변경 적용" button.
 
 ### Writing canvas
-The hero surface. A white frame with a 1px ink border and 6px corner, divided into square cells (112–184px) by rule lines with faint centre guides (6% ink) and the target character at 12px in the cell's bottom-right corner. Strokes are solid ink; an unwritten jamo's slot is a dashed, lime-tinted box; the cursor is a crosshair. One tool strip sits above it: pen / eraser, two sliders with readouts, the guide toggle, then undo, redo and (set 20px apart) clear.
+The hero surface, and everything to the right of the tool rail. Under the sentence row (the sentence alone at 26px / 700; at its right end a 22px progress ring for this sentence and the help and GitHub links; closed by a 1px ink line) the grid runs edge to edge: square cells (112–184px) divided by rule lines with faint centre guides (6% ink) and the target character at 12px in the cell's bottom-right corner. As many columns as fit; the grid is centred and only it scrolls. Strokes are solid ink; an unwritten jamo's slot is a dashed, lime-tinted box; the cursor is a crosshair.
 
-Below it, collected jamo arrive as 80px tiles (a 64px white box with a rule border, the jamo in ink, a 12px name and source beneath), each entering once with a short rise.
+- **Finished cell:** a 24% lime wash, 240ms. A cell is finished when every jamo it collects is done; a cell that collects nothing (a space, a jamo fixed elsewhere) is finished once a later cell has a stroke. Cells still to write stay white.
+- **Cell being written:** a 1px ink outline, with the cell popover attached to its side.
+- **Corner character:** in a written cell it is a 24px button (hover: solid ink) that opens that cell's popover again.
+
+### Hint
+A note for something that does not need to be on screen all the time: a count behind a progress ring, the reason a control is disabled, the name of an icon-only control in the closed rail. Solid ink, white text at 12px / 600 (tabular), 4px corner, 5px / 8px padding, 8px from what it describes, to its right or below it; it fades in over 140ms on hover or focus, and a touch or pen press shows it for about two seconds. It never carries an action.
+
+### Write rail
+232px (216px at ≤1100px), padding 15 / 16 / 16. Its top hangs on one leading column, 23px wide and centred 27.5px from the rail's left edge: the logo mark and each sentence's ring or check. From the top: the logo; the collected figure with its progress bar; the sentence list; then a 40px secondary icon button for the previous sentence beside the primary "다음 문장" (or "폰트 만들기" on the last sentence), with the ghost "지금 폰트 만들기" and the secondary existing-font button beneath. Pressing the logo mark closes the rail to 56px over 320ms: nothing in the leading column moves, sentence names are cut off by the rail's edge, text with no icon (the wordmark, the figure, the list's heading) fades out in 100ms, and the collected progress stands upright in the space the figure and the list heading leave (a 6px track from the top of that block down to 6px above the list, filling from the bottom). The two sentence buttons stack as icons and the two buttons beneath them are not shown. Closed, a hint names each row. The state is kept on the device.
+
+### Tool rail
+A 56px white column at the stage's left with a 1px ink right edge. It does not scroll. Icon buttons only, 40px, 18px Lucide icons, each with an aria-label and title: pen, eraser, a rule divider, undo, redo, a divider, clear sentence; writing settings sits at the bottom. The tool in use is solid ink. Writing settings opens a 248px white panel with a 1px ink border to the right of its button (cell size, stroke width, hand-shake correction, the guide toggle; the cell size is disabled once strokes exist and says why in a hint); it closes on a press anywhere else or Escape.
+
+### Cell popover
+A 148px white panel with a 1px ink border, attached to the right edge of the cell being written (to the left edge in the last column), its two inner corners square. From the top: the jamo the cell collects as a segmented control (the one being written solid ink, a done one on a 40% lime tint with a 10px check, one not yet reachable at 40%), the jamo's role and "남은 획 N" (the number at 18px / 800, tabular), then a small secondary button that ends the jamo early. Pressing another jamo moves collection to it. When the cell finishes the popover closes, so the next cell is free; reopened from the corner character it shows "수집 완료" and a close button.
 
 ### Cards and glyph cells
 - **Example card:** white, 1px rule border, 6px corner; a square canvas over a caption row separated by a rule line. No shadow, no hover lift.

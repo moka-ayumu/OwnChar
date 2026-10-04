@@ -1,21 +1,22 @@
-import { Link, Outlet } from '@tanstack/react-router'
-import { CircleHelp } from 'lucide-react'
+import { Link, Outlet, useRouterState } from '@tanstack/react-router'
 import { useProject } from '@/project/use-project'
+import { AppNav } from './app-nav'
+
+/** Pages whose rail carries the logo, so they run without the header. */
+const FLOW_PATHS = ['/write', '/generate', '/preview']
 
 export function AppShell() {
   const hydrated = useProject((state) => state.hydrated)
+  const inFlow = useRouterState({ select: (state) => FLOW_PATHS.includes(state.location.pathname) })
 
   return (
-    <div className="min-h-svh bg-ground text-ink">
+    <div className="app-shell min-h-svh bg-ground text-ink" data-flow={inFlow ? 'true' : undefined}>
       <header className="app-header">
         <Link to="/" className="app-logo">
           <span className="app-logo-mark" aria-hidden="true"><i /></span>
           OwnChar
         </Link>
-        <nav className="app-nav">
-          <Link to="/license"><CircleHelp className="size-4" /> 도움말</Link>
-          <a href="https://github.com/moka-ayumu/OwnChar" target="_blank" rel="noreferrer">GitHub</a>
-        </nav>
+        <AppNav />
       </header>
 
       <div className="phone-message">

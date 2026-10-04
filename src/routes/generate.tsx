@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { Check, FastForward, RotateCcw, X } from 'lucide-react'
+import { RailBrand } from '@/components/rail-brand'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { buildFilm, drawFilm, filmLength, filmStep, FILM_NOTES, FILM_STEPS, FINISH_STEP, GRID_STEP, type FilmData } from '@/features/generating/film'
@@ -139,6 +140,7 @@ function GeneratePage() {
   return (
     <div className="flow">
       <aside className="rail">
+        <RailBrand />
         <h1 className="text-[26px] font-extrabold leading-tight tracking-[-0.03em]">{finishing ? '폰트가 완성됐어요' : '폰트를 만들고 있어요'}</h1>
         <p className="rail-note mt-2 min-h-10" aria-live="polite">{FILM_NOTES[step]}</p>
 

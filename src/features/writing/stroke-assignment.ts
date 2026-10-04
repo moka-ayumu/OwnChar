@@ -133,3 +133,83 @@ export function captureRecords(groups: CaptureGroup[], grid: CanvasGrid, exercis
     }
   })
 }
+
+/** How far one editable slot of a cell has come. */
+export interface SlotProgress extends IndexedSlot {
+  count: number
+  /** Closed: it has its confirmed boundary or its usual stroke count, and is not held open. */
+  done: boolean
+}
+
+/**
+ * The editable slots of a cell with what each has collected. `held` is the
+ * slot the writer keeps open (see `holdBoundaries`), which is never done.
+ */
+export function cellProgress(cellIndex: number, groups: CaptureGroup[], boundaries: Record<number, JamoBoundary[]>, held?: number): SlotProgress[] {
+  const confirmed = boundaries[cellIndex]?.length ?? 0
+  return groups.filter((group) => group.cellIndex === cellIndex).map(({ slot, slotIndex, strokes }, index) => ({
+    slot, slotIndex, count: strokes.length,
+    done: index !== held && strokes.length > 0 && (index < confirmed || strokes.length >= slot.expectedStrokes),
+  }))
+}
+
+/**
+ * Whether each cell of the sentence is finished: every jamo it collects is
+ * done. A cell that collects nothing (a space, a jamo fixed elsewhere) is
+ * finished once the writer has moved on to a later cell; at the end of the
+ * sentence, where no later cell collects anything, it is finished with the
+ * rest of the sentence.
+ */
+export function completedCells(strokes: readonly RawStroke[], grid: CanvasGrid, exercise: WritingExercise, groups: CaptureGroup[], boundaries: Record<number, JamoBoundary[]>, holds: Record<number, number>) {
+  const lastWritten = Math.max(-1, ...visibleStrokes(strokes).map((stroke) => cellIndexOf(stroke, grid, exercise.cells.length)))
+  const progress = exercise.cells.map((_, cellIndex) => cellProgress(cellIndex, groups, boundaries, holds[cellIndex]))
+  const lastCollecting = progress.reduce((last, slots, cellIndex) => slots.length ? cellIndex : last, -1)
+  const allCollected = progress.every((slots) => slots.every((slot) => slot.done))
+  return progress.map((slots, cellIndex) => {
+    if (slots.length) return slots.every((slot) => slot.done)
+    return cellIndex < lastWritten || (cellIndex > lastCollecting && allCollected)
+  })
+}
+
+/**
+ * Boundaries that close the first `count` slots of a cell where its strokes
+ * divide now: a confirmed boundary stays, any other ends on the last stroke
+ * its slot was given. Null when one of those slots has no stroke to end on.
+ */
+export function boundariesThrough(cellIndex: number, count: number, groups: CaptureGroup[], confirmed: JamoBoundary[], confirmedAt: number): JamoBoundary[] | null {
+  const cellGroups = groups.filter((group) => group.cellIndex === cellIndex)
+  const result: JamoBoundary[] = []
+  for (let index = 0; index < count; index += 1) {
+    const group = cellGroups[index]
+    const last = group?.strokes.at(-1)
+    if (!last) return null
+    result.push(confirmed[index] ?? { slotIndex: group.slotIndex, promptId: group.slot.promptId, afterElementId: last.id, confirmedAt })
+  }
+  return result
+}
+
+/**
+ * `boundaries` with every held slot ending on the latest stroke of its cell,
+ * so a slot the writer reopened keeps all that is written there until it is
+ * released. `holds` maps a cell to the position of its held editable slot.
+ */
+export function holdBoundaries(boundaries: Record<number, JamoBoundary[]>, holds: Record<number, number>, strokes: readonly RawStroke[], grid: CanvasGrid, exercise: WritingExercise, drawings: Record<string, DrawingRecord>) {
+  const entries = Object.entries(holds)
+  if (!entries.length) return boundaries
+  const byCell = strokesByCell(strokes, grid, exercise.cells.length)
+  const next = { ...boundaries }
+  for (const [key, held] of entries) {
+    const cellIndex = Number(key)
+    const cellStrokes = byCell[cellIndex]
+    const slots = editableSlots(exercise.cells[cellIndex], cellIndex, exercise, drawings)
+    const requested = boundaries[cellIndex] ?? []
+    const before = validBoundaries(cellStrokes, slots, requested).slice(0, held)
+    const target = slots[held]
+    const latest = cellStrokes.at(-1)
+    const open = before.length === held && target && latest && latest.id !== before.at(-1)?.afterElementId
+    const closing = open ? [{ slotIndex: target.slotIndex, promptId: target.slot.promptId, afterElementId: latest.id, confirmedAt: requested[held]?.confirmedAt ?? Date.now() }] : []
+    if (before.length + closing.length) next[cellIndex] = [...before, ...closing]
+    else delete next[cellIndex]
+  }
+  return next
+}

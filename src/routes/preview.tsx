@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { Download, PenLine, RefreshCw, Settings2 } from 'lucide-react'
 import { BASE_CHARACTER_PROMPTS } from '@/collection/prompts'
+import { RailBrand } from '@/components/rail-brand'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { isHangulSyllable } from '@/font/hangul'
 import { Slider } from '@/components/ui/slider'
@@ -57,6 +58,7 @@ function PreviewPage() {
   return (
     <div className="flow">
       <aside className="rail">
+        <RailBrand />
         <h1 className="text-[26px] font-extrabold leading-tight tracking-[-0.03em]">손글씨가 폰트가 되었어요.</h1>
         <p className="rail-note mt-2">문장을 바꿔 보거나 글자 간격을 더 세밀하게 다듬어 보세요.</p>
 

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, test } from 'vitest'
 import { WRITING_EXERCISES } from '@/collection/exercises'
 import type { DrawingRecord } from '@/collection/records'
-import { assignStrokes, captureRecords, editableSlots } from '@/features/writing/stroke-assignment'
+import { assignStrokes, boundariesThrough, captureRecords, cellProgress, completedCells, editableSlots, holdBoundaries } from '@/features/writing/stroke-assignment'
 import { projectActions, projectStore } from '@/project/store'
 import { CELL, penStroke } from './helpers'
 
@@ -105,5 +105,50 @@ describe('project store', () => {
     projectActions.restoreProject(saved)
     expect(projectStore.state.currentExercise).toBe(3)
     expect(projectStore.state.hydrated).toBe(true)
+  })
+})
+
+describe('jamo collection of a cell', () => {
+  const progress = (strokes: ReturnType<typeof strokeIn>[], boundaries = {}, holds: Record<number, number> = {}) => {
+    const held = holdBoundaries(boundaries, holds, strokes, grid, exercise, {})
+    const { groups, boundaries: confirmed } = assignStrokes(strokes, grid, exercise, {}, held)
+    return { groups, confirmed, slots: cellProgress(1, groups, confirmed, holds[1]), finished: completedCells(strokes, grid, exercise, groups, confirmed, holds) }
+  }
+
+  test('a cell is finished when every jamo has its strokes, and a space once writing has passed it', () => {
+    // 고 = ㄱ(1) + ㅗ(2); cell 3 is the space before 너.
+    const partial = progress([strokeIn('a', 1), strokeIn('b', 1)])
+    expect(partial.slots.map((slot) => [slot.slot.char, slot.count, slot.done])).toEqual([['ㄱ', 1, true], ['ㅗ', 1, false]])
+    expect(partial.finished[1]).toBe(false)
+    const whole = progress([strokeIn('a', 1), strokeIn('b', 1), strokeIn('c', 1)])
+    expect(whole.finished.slice(0, 5)).toEqual([false, true, false, false, false])
+    expect(progress([strokeIn('a', 1), strokeIn('d', 4)]).finished[3]).toBe(true)
+  })
+
+  test('a last cell whose jamo are all fixed is finished with the rest of the sentence', () => {
+    // 요 ends the sentence; with both its jamo captured elsewhere it collects nothing here.
+    const last = exercise.cells.length - 1
+    const captured = Object.fromEntries(exercise.cells[last].slots.map((slot) => [slot.promptId, { capture: { exerciseId: 'elsewhere', cellIndex: 0, slotIndex: 0 } } as DrawingRecord]))
+    const finishedWith = (drawings: Record<string, DrawingRecord>) => {
+      const { groups, boundaries } = assignStrokes([], grid, exercise, drawings, {})
+      return completedCells([], grid, exercise, groups, boundaries, {})[last]
+    }
+    expect(finishedWith(captured)).toBe(false)
+    // Every other jamo of the sentence is fixed as well: nothing is left to write.
+    const all = Object.fromEntries(exercise.cells.flatMap((cell) => cell.slots).map((slot) => [slot.promptId, { capture: { exerciseId: 'elsewhere', cellIndex: 0, slotIndex: 0 } } as DrawingRecord]))
+    expect(finishedWith(all)).toBe(true)
+  })
+
+  test('a jamo ended by hand is done, and one held open keeps every later stroke of its cell', () => {
+    const strokes = [strokeIn('a', 1), strokeIn('b', 1), strokeIn('c', 1)]
+    // ㅗ ended after one stroke of its two.
+    const early = progress(strokes.slice(0, 2), { 1: boundariesThrough(1, 2, progress(strokes.slice(0, 2)).groups, [], 0)! })
+    expect(early.finished[1]).toBe(true)
+    // ㄱ held open: it takes all three strokes and is not done until released.
+    const held = progress(strokes, {}, { 1: 0 })
+    expect(held.slots.map((slot) => [slot.count, slot.done])).toEqual([[3, false], [0, false]])
+    expect(held.confirmed[1].map((boundary) => boundary.afterElementId)).toEqual(['c'])
+    // Released, the boundary it ended on stays.
+    expect(progress(strokes, held.confirmed).slots.map((slot) => [slot.count, slot.done])).toEqual([[3, true], [0, false]])
   })
 })
