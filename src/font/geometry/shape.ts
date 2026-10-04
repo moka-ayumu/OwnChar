@@ -1,7 +1,7 @@
 import opentype from 'opentype.js'
 import type { HangulRole } from '@/font/hangul'
-import { outlineStroke, penDiameter, type RawStroke, type StrokeOutline } from '@/font/stroke/outline'
-import { clamp, type Point } from './path-ops'
+import { outlineStroke, penDiameter, type RawStroke, type StrokeMemo, type StrokeOutline } from '@/font/stroke/outline'
+import { clamp, simplifyPolygon, type Point } from './path-ops'
 
 export interface Zone {
   x: number
@@ -79,7 +79,15 @@ function fitZone(shape: NormalizedShape, zone: Zone): Zone {
   return { ...zone, x: zone.x + (zone.width - width) / 2, width }
 }
 
+/**
+ * How far, in font units, a merged outline may be drawn from the pen's
+ * polygon. The polygon has a corner every few units, far more than a glyph
+ * can show: coordinates are whole units in the font.
+ */
+const OUTLINE_TOLERANCE = 0.75
+
 const centerlineOutlines = new WeakMap<StrokeCenterline, Map<string, StrokeOutline>>()
+const centerlineMemos = new WeakMap<StrokeCenterline, StrokeMemo>()
 
 /** Outline a captured centerline at `renderDiameter` source pixels, in source-cell fractions. */
 function outlineCenterline(centerline: StrokeCenterline, renderDiameter: number): StrokeOutline {
@@ -92,7 +100,14 @@ function outlineCenterline(centerline: StrokeCenterline, renderDiameter: number)
   const cached = cache.get(key)
   if (cached) return cached
   const { points, pressures, diameter, cellSize, strength } = centerline
-  const outline = toCell(outlineStroke(points, pressures, renderDiameter, true, strength, diameter), cellSize)
+  let memo = centerlineMemos.get(centerline)
+  if (!memo) centerlineMemos.set(centerline, memo = {})
+  const traced = outlineStroke(points, pressures, renderDiameter, true, strength, diameter, memo)
+  // The pen is rendered at its recorded width in font units, which gives the size of a font unit here.
+  const fontUnit = renderDiameter * cellSize / (diameter * CELL_UNITS)
+  // A smooth outline is drawn through its corners as curves; only straight-sided ones are thinned.
+  const contours = traced.smooth ? traced.contours : traced.contours.map((contour) => simplifyPolygon(contour, OUTLINE_TOLERANCE * fontUnit))
+  const outline = toCell({ contours, smooth: traced.smooth }, cellSize)
   if (cache.size > 96) cache.clear()
   cache.set(key, outline)
   return outline

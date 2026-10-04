@@ -1,7 +1,8 @@
 import opentype from 'opentype.js'
 import { flattenContours, type Point } from './path-ops'
 
-function flatten(path: opentype.Path, tolerance = 2): Point[][] {
+/** The closed polylines collision checks are made on. */
+export function flattenOutline(path: opentype.Path, tolerance = 2): Point[][] {
   const step = Math.max(0.5, tolerance)
   return flattenContours(
     path,
@@ -25,7 +26,7 @@ interface PreparedOutline {
 }
 
 function prepareOutline(path: opentype.Path, tolerance = 2): PreparedOutline {
-  const contours = flatten(path, tolerance)
+  const contours = flattenOutline(path, tolerance)
   const segments: PreparedSegment[] = []
   for (const contour of contours) for (let index = 0; index < contour.length; index += 1) {
     const start = contour[index]
@@ -94,7 +95,11 @@ function contains(contours: Point[][], x: number, y: number) {
 
 /** Whether two outlines cross, or one lies inside the other. */
 export function outlinesIntersect(first: opentype.Path, second: opentype.Path) {
-  const a = flatten(first); const b = flatten(second)
+  return contoursIntersect(flattenOutline(first), flattenOutline(second))
+}
+
+/** The same for outlines already flattened. */
+export function contoursIntersect(a: Point[][], b: Point[][]) {
   if (everySegment(a, (a0, a1) => everySegment(b, (b0, b1) => segmentsIntersect(a0, a1, b0, b1)))) return true
   const aPoint = a[0]?.[0]; const bPoint = b[0]?.[0]
   return Boolean((aPoint && contains(b, aPoint[0], aPoint[1])) || (bPoint && contains(a, bPoint[0], bPoint[1])))
@@ -162,8 +167,18 @@ function keepsClearance(fixed: PreparedOutline, moving: PreparedOutline, grid: S
 
 /** Whether two outlines stay at least `clearance` apart. */
 export function hasInkClearance(first: opentype.Path, second: opentype.Path, clearance: number) {
-  const a = prepareOutline(first); const b = prepareOutline(second)
-  return keepsClearance(a, b, buildGrid(b, Math.max(4, clearance)), 0, 0, clearance - 1e-3)
+  return clearanceProbe(first, second, clearance)(0, 0)
+}
+
+/**
+ * Whether `moving`, shifted by (dx, dy) from where it is now, stays at least
+ * `clearance` from `fixed`. Both outlines are prepared once, for a search
+ * that tries many positions.
+ */
+export function clearanceProbe(fixed: opentype.Path, moving: opentype.Path, clearance: number) {
+  const a = prepareOutline(fixed); const b = prepareOutline(moving)
+  const grid = buildGrid(b, Math.max(4, clearance))
+  return (dx: number, dy: number) => keepsClearance(a, b, grid, dx, dy, clearance - 1e-3)
 }
 
 interface SafeIntrusionOptions {
@@ -213,8 +228,8 @@ export function inkIntersectionArea(first: opentype.Path, second: opentype.Path)
   const bottom = Math.max(a.y1, b.y1)
   const top = Math.min(a.y2, b.y2)
   if (right <= left || top <= bottom) return 0
-  const firstContours = flatten(first)
-  const secondContours = flatten(second)
+  const firstContours = flattenOutline(first)
+  const secondContours = flattenOutline(second)
   const columns = Math.max(4, Math.min(16, Math.ceil((right - left) / 8)))
   const rows = Math.max(4, Math.min(16, Math.ceil((top - bottom) / 8)))
   let occupied = 0

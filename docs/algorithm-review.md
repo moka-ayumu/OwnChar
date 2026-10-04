@@ -4,6 +4,8 @@
 
 측정 기준: 로컬 fixture(192개 자모)로 11,172자를 단일 스레드에서 조합하면 약 136초, 글자당 12ms가 든다 (`tools/profile.mjs`).
 
+이후 3번을 적용하고 윤곽 점 수를 줄여(`OUTLINE_TOLERANCE`, `src/font/geometry/shape.ts`) 인코딩까지 글자당 약 6ms가 되었다. 1·2·4·5번은 그대로다.
+
 ## 1. 펜 굵기를 맞추기 위한 반복 조합
 
 위치: `composeHangulParts` (`src/font/layout/compose-syllable.ts`), `renderCalibratedGlyph` (`src/font/glyphs/calibration.ts`), `composeStandaloneJamoPath` (`src/font/glyphs/standalone-jamo.ts`), `appendAtInkHeight` (`src/font/glyphs/symbols.ts`)
@@ -32,7 +34,7 @@
 
 자모를 `clearance`만큼씩 옮기며 겹침이 풀릴 때까지 `hasInkClearance`를 부르는데, 이 함수는 호출마다 두 윤곽의 곡선을 선분으로 평탄화하고 격자를 새로 만든다. 고정된 쪽 윤곽은 루프 내내 같다. `keepsClearance`는 이미 이동량 `(dx, dy)`를 인자로 받으므로, 두 윤곽을 한 번만 준비하고 이동량만 바꿔 질의할 수 있다.
 
-이번에 적용하지 않은 이유: 지금 코드는 탐색 중에 경로 좌표 자체를 더했다 빼기 때문에 부동소수 오차(1e-13 수준)가 글리프 좌표에 남는다. 이동량 질의로 바꾸면 그 잔차가 사라져 출력이 바이트 단위로는 달라진다. 폰트 파일에 쓰일 때는 사라지는 차이지만 "출력 동일" 기준을 지키려고 남겨 두었다. 세 항목 중 위험이 가장 낮다.
+적용함: `separate`는 `clearanceProbe`로 두 윤곽을 한 번만 준비하고 이동량으로 질의한다. 탐색 중에 좌표를 더했다 빼던 부동소수 잔차(1e-13 수준)가 사라져 조합 좌표가 그만큼 달라졌고, 폰트에 쓰이는 정수 좌표는 같았다.
 
 같은 함수의 탐색 방식도 단순화할 수 있다. 지금은 최대 1200유닛까지 선형으로 걸어 나간 뒤, 허용된 침투량을 다시 선형 스텝 + 이분 탐색 12회로 찾는다.
 

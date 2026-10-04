@@ -11,7 +11,8 @@ import { finalBoxGap } from '@/font/layout/overlap-policy'
 import { finalAnchorX, layoutSyllable, medialSpace } from '@/font/layout/syllable-layout'
 import { decomposeHangul } from '@/font/hangul'
 import { DEFAULT_COMPOSITION_SETTINGS } from '@/font/settings'
-import { composedHangulParts, composedHangulPath, composeFont, precomposeHangulRange } from '@/generation/font-builder'
+import { composedHangulParts, composedHangulPath, composeFont, encodeGlyph, encodeHangulRange, hangulComposer } from '@/generation/font-builder'
+import { GlyphEncoder } from '@/generation/otf-writer'
 import { boxOf, CELL, centerOf, contourBoxes, isFinite, penStroke, shapeOf, unlearned } from './helpers'
 
 const compose = (char: string, shapes: Map<string, NormalizedShape>, options = {}) => composeHangulParts(char.codePointAt(0)!, shapes, DEFAULT_COMPOSITION_SETTINGS, options)
@@ -376,8 +377,11 @@ describe('composition with missing sources', () => {
 
     const request = { ...unlearned, type: 'compose-font' as const, drawings: {}, metadata: { familyName: 'Partial', styleName: 'Regular', designer: '', version: '1.0' }, overrides: {}, globalMetrics: { left: 0, right: 0, y: 0 } }
     const offset = codePoint - 0xac00
-    const [record] = await precomposeHangulRange(request, offset, offset + 1, undefined, { shapes, visualScale: 1 })
-    expect(record.commands).toEqual(result.path.commands)
+    const exported = encodeHangulRange(request, offset, offset + 1, hangulComposer(request, { shapes, visualScale: 1 }))
+    const preview = new GlyphEncoder()
+    encodeGlyph(preview, codePoint, result.path, 1000, request)
+    expect(exported).toEqual(preview.finish())
+    expect(exported.charstrings.length).toBeGreaterThan(result.path.commands.length)
   })
 })
 
@@ -401,8 +405,7 @@ describe('standalone glyphs', () => {
       overrides: {}, globalMetrics: { left: 0, right: 0, y: 0 },
     }
     // The syllables are not under test: hand the builder empty outlines for all of them.
-    const precomposedHangul = new Map(Array.from({ length: 11_172 }, (_, index) => [0xac00 + index, []]))
-    const { buffer, glyphCount } = await composeFont(request, { cancelled: () => false, progress: () => {}, precomposedHangul })
+    const { buffer, glyphCount } = await composeFont(request, { cancelled: () => false, progress: () => {}, hangulSource: () => [] })
     const font = opentype.parse(buffer)
     const box = (char: string) => font.charToGlyph(char).getBoundingBox()
     for (const digit of ['1', '4']) {

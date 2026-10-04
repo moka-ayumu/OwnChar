@@ -1,6 +1,6 @@
 import opentype from 'opentype.js'
 import { COMPOUND_FINALS, decomposeHangul, HANGUL_ROLES, type HangulRole, type VowelKind } from '@/font/hangul'
-import { hasInkClearance, maximizeSafeIntrusion } from '@/font/geometry/collision'
+import { clearanceProbe, hasInkClearance, maximizeSafeIntrusion } from '@/font/geometry/collision'
 import { inkBalance } from '@/font/geometry/optical'
 import { centerX as cx, centerY as cy, clamp, pathBounds as bounds, pathOf, pointsBox, splitContours, translatePath, unionBox as union, type Box } from '@/font/geometry/path-ops'
 import { appendShape, CELL_UNITS, combineShapesSideBySide, stretchShapeWidth, type NormalizedShape, type Zone } from '@/font/geometry/shape'
@@ -336,21 +336,21 @@ export function layoutSyllable(input: SyllableLayoutInput) {
     const movingPath = pathOf(groups.get(moving.group)!.flatMap((slot) => slot.path.commands))
     // Search around the preferred corner instead of forcing every conflict
     // along one diagonal, which used to eject the initial above the syllable.
-    if (axis === 'corner' && !hasInkClearance(path, movingPath, clearance)) {
+    // Both outlines are prepared once; every candidate position is a shift of the moving one.
+    const clear = clearanceProbe(path, movingPath, clearance)
+    if (axis === 'corner' && !clear(0, 0)) {
       const directions = [[-1, 0], [0, 1], [0, -1], [-Math.SQRT1_2, Math.SQRT1_2]]
       for (let radius = clearance; radius <= 1200; radius += clearance) {
         for (const [x, y] of directions) {
-          translatePath(movingPath, radius * x, radius * y)
-          const safe = hasInkClearance(path, movingPath, clearance)
-          translatePath(movingPath, -radius * x, -radius * y)
-          if (safe) { move(moving, radius * x, radius * y); return }
+          if (clear(radius * x, radius * y)) { move(moving, radius * x, radius * y); return }
         }
       }
     }
-    let distance = 0
-    while (!hasInkClearance(path, movingPath, clearance) && distance < 1200) {
-      move(moving, axis !== 'y' ? direction * clearance : 0, axis === 'corner' ? -direction * clearance : axis === 'y' ? direction * clearance : 0); distance += clearance
-    }
+    const stepX = axis !== 'y' ? direction * clearance : 0
+    const stepY = axis === 'corner' ? -direction * clearance : axis === 'y' ? direction * clearance : 0
+    let steps = 0
+    while (!clear(steps * stepX, steps * stepY) && steps * clearance < 1200) steps += 1
+    for (let step = 0; step < steps; step += 1) move(moving, stepX, stepY)
     if (maximum > 0 && axis !== 'corner') {
       const intrusion = maximizeSafeIntrusion(path, movingPath, { axis, direction: -direction as -1 | 1, clearance, maximum, step: clearance })
       move(moving, axis === 'x' ? -direction * intrusion : 0, axis === 'y' ? -direction * intrusion : 0)

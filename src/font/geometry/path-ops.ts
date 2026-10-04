@@ -84,6 +84,39 @@ export function pointsBox(points: ReadonlyArray<readonly [number, number]>): Box
 }
 
 /**
+ * A closed polygon with the corners left out that lie within `tolerance` of
+ * the side joining their kept neighbours (Ramer-Douglas-Peucker). The first
+ * corner and the one furthest from it are always kept.
+ */
+export function simplifyPolygon(points: Point[], tolerance: number): Point[] {
+  const count = points.length
+  if (count < 4 || !(tolerance > 0)) return points
+  let far = 0; let farthest = -1
+  for (let index = 1; index < count; index += 1) {
+    const distance = Math.hypot(points[index][0] - points[0][0], points[index][1] - points[0][1])
+    if (distance > farthest) { farthest = distance; far = index }
+  }
+  const keep = new Uint8Array(count + 1)
+  keep[0] = keep[far] = keep[count] = 1
+  // The polygon as two open runs between the anchors; index `count` is the first corner again.
+  const stack = [0, far, far, count]
+  while (stack.length) {
+    const to = stack.pop()!; const from = stack.pop()!
+    const [ax, ay] = points[from]; const [bx, by] = points[to % count]
+    const dx = bx - ax; const dy = by - ay; const length = Math.hypot(dx, dy)
+    let split = -1; let widest = tolerance
+    for (let index = from + 1; index < to; index += 1) {
+      const [x, y] = points[index]
+      const distance = length ? Math.abs(dy * (x - ax) - dx * (y - ay)) / length : Math.hypot(x - ax, y - ay)
+      if (distance > widest) { widest = distance; split = index }
+    }
+    if (split >= 0) { keep[split] = 1; stack.push(from, split, split, to) }
+  }
+  const kept = points.filter((_, index) => keep[index])
+  return kept.length < 3 ? points : kept
+}
+
+/**
  * Closed polylines of a path. `quadSteps` and `cubicSteps` choose how many
  * segments a curve gets from the length of its control polygon. Contours with
  * fewer than three points enclose nothing and are dropped.

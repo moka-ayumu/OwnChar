@@ -25,6 +25,16 @@ export interface StrokeOutline {
   smooth: boolean
 }
 
+/**
+ * What outlining a finished stroke works out that does not depend on the pen
+ * size it is rendered at. Kept by the owner of a stroke that is outlined at
+ * many sizes; the stroke must not change while it is in use.
+ */
+export interface StrokeMemo {
+  conditioned?: ReturnType<typeof stabilizeStroke>
+  centerlineCrosses?: boolean
+}
+
 export const REFERENCE_CELL_SIZE = 148
 export const STROKE_SIZE_FACTOR = 4.25
 
@@ -47,11 +57,13 @@ export function strokePolygon(
   complete = true,
   strength = 1,
   conditionSize = size,
+  memo?: StrokeMemo,
 ): Point[] {
   if (!points.length) return []
   // The centerline is conditioned at the pen size it was written with, so a
   // glyph rendered at another outline size keeps the exact captured path.
-  const conditioned = stabilizeStroke(points, pressures, conditionSize, complete ? 'complete' : 'live', strength)
+  const condition = () => stabilizeStroke(points, pressures, conditionSize, complete ? 'complete' : 'live', strength)
+  const conditioned = memo && complete ? memo.conditioned ??= condition() : condition()
   const input = conditioned.points.map(([x, y], index) => {
     let pressure = conditioned.pressures[index]
     if ((index === 0 || index === points.length - 1) && pressure < 0.1) {
@@ -87,12 +99,34 @@ function segmentsCross(a: Point, b: Point, c: Point, d: Point) {
   return cross(a, b, c) * cross(a, b, d) < 0 && cross(c, d, a) * cross(c, d, b) < 0
 }
 
+/** Whether two sides of a closed polygon that do not share a corner cross. */
 function polygonCrossesItself(polygon: readonly Point[]) {
-  for (let first = 0; first < polygon.length; first += 1) {
-    const a = polygon[first]; const b = polygon[(first + 1) % polygon.length]
-    for (let second = first + 2; second < polygon.length; second += 1) {
-      if (first === 0 && second === polygon.length - 1) continue
-      if (segmentsCross(a, b, polygon[second], polygon[(second + 1) % polygon.length])) return true
+  const count = polygon.length
+  if (count < 4) return false
+  let minX = Infinity; let minY = Infinity; let maxX = -Infinity; let maxY = -Infinity
+  for (const [x, y] of polygon) {
+    if (x < minX) minX = x
+    if (x > maxX) maxX = x
+    if (y < minY) minY = y
+    if (y > maxY) maxY = y
+  }
+  // Sides are bucketed on a grid, so each is only compared with the sides near it.
+  const GRID = 32
+  const size = Math.max(maxX - minX, maxY - minY, 1e-9) / GRID
+  const cell = (value: number, origin: number) => Math.min(GRID - 1, Math.floor((value - origin) / size))
+  const buckets: Array<number[] | undefined> = new Array(GRID * GRID)
+  for (let side = 0; side < count; side += 1) {
+    const a = polygon[side]; const b = polygon[(side + 1) % count]
+    const x2 = cell(Math.max(a[0], b[0]), minX); const y2 = cell(Math.max(a[1], b[1]), minY)
+    for (let x = cell(Math.min(a[0], b[0]), minX); x <= x2; x += 1) {
+      for (let y = cell(Math.min(a[1], b[1]), minY); y <= y2; y += 1) {
+        const bucket = buckets[x * GRID + y] ??= []
+        for (const other of bucket) {
+          if (side - other < 2 || (other === 0 && side === count - 1)) continue
+          if (segmentsCross(polygon[other], polygon[other + 1], a, b)) return true
+        }
+        bucket.push(side)
+      }
     }
   }
   return false
@@ -103,22 +137,28 @@ function polygonCrossesItself(polygon: readonly Point[]) {
  * widened outline crosses itself cannot be kept as one polygon: CFF fills
  * even-odd, so the overlap would become a hole.
  */
-function needsUnion(points: readonly Point[], size: number, polygon: () => Point[]) {
+function needsUnion(points: readonly Point[], size: number, polygon: () => Point[], memo?: StrokeMemo) {
   if (points.length < 3) return false
   const first = points[0]
   const last = points.at(-1)!
   if (Math.hypot(first[0] - last[0], first[1] - last[1]) <= size * 2) return true
+  if (memo ? memo.centerlineCrosses ??= centerlineCrosses(points) : centerlineCrosses(points)) return true
+  return polygonCrossesItself(polygon())
+}
+
+function centerlineCrosses(points: readonly Point[]) {
   for (let firstSegment = 0; firstSegment < points.length - 1; firstSegment += 1) {
     for (let secondSegment = firstSegment + 2; secondSegment < points.length - 1; secondSegment += 1) {
       if (segmentsCross(points[firstSegment], points[firstSegment + 1], points[secondSegment], points[secondSegment + 1])) return true
     }
   }
-  return polygonCrossesItself(polygon())
+  return false
 }
 
 /**
  * The filled outline of a pen stroke at pen diameter `size`. `conditionSize`
  * is the diameter the stroke was written with, when it is rendered at another.
+ * `memo` carries what an earlier size of the same finished stroke worked out.
  */
 export function outlineStroke(
   points: readonly Point[],
@@ -127,16 +167,17 @@ export function outlineStroke(
   complete = true,
   strength = 1,
   conditionSize = size,
+  memo?: StrokeMemo,
 ): StrokeOutline {
   let settled: Point[] | undefined
-  const settledPolygon = () => settled ??= strokePolygon(points, pressures, size, true, strength, conditionSize)
+  const settledPolygon = () => settled ??= strokePolygon(points, pressures, size, true, strength, conditionSize, memo)
   const polygon = () => complete ? settledPolygon() : strokePolygon(points, pressures, size, false, strength, conditionSize)
-  if (!needsUnion(points, size, settledPolygon)) return { contours: [polygon()], smooth: true }
+  if (!needsUnion(points, size, settledPolygon, memo)) return { contours: [polygon()], smooth: true }
 
   const closedCenterline = Math.hypot(points[0][0] - points.at(-1)![0], points[0][1] - points.at(-1)![1]) <= Math.max(0.25, conditionSize * 0.2)
   if (closedCenterline) {
     // A ring keeps its counter: widen the closed centerline instead of merging a capped stroke.
-    const centerline = stabilizeStroke(points, pressures, conditionSize, 'complete', strength).points.slice(0, -1)
+    const centerline = (memo?.conditioned ?? stabilizeStroke(points, pressures, conditionSize, 'complete', strength)).points.slice(0, -1)
     return { contours: fromClipper(inflatePaths([toClipper(centerline)], size * CLIPPER_PRECISION / 2, JoinType.Round, EndType.Joined)), smooth: false }
   }
   const outline = polygon()

@@ -11,17 +11,21 @@ import { composeHangulParts, composeHangulPath, type HangulComposeOptions, type 
 import { alignVerticalCenter, medianHeight, normalizationFactor } from '@/font/metrics'
 import type { CompositionSettings } from '@/font/settings'
 import { shapesFromRequestDrawings } from './inputs'
+import { GlyphEncoder, NOTDEF, writeOtf, type EncodedGlyphs } from './otf-writer'
 import type { CompositionProfile, GenerationRequest, GlyphOverride } from './request'
 
 export interface ComposeOptions {
   cancelled: () => boolean
   progress: (stage: string, progress: number, message: string) => void
   yieldControl?: () => Promise<void>
-  precomposedHangul?: Map<number, opentype.Path['commands']>
+  /** Every syllable, already encoded in code point order. */
+  encodedHangul?: EncodedGlyphs[]
+  /** Outlines to use for the syllables instead of composing them. */
+  hangulSource?: HangulSource
   preparedContext?: PreparedCompositionContext
 }
 
-export interface HangulGlyphRecord { codePoint: number; commands: opentype.Path['commands'] }
+export type HangulSource = (codePoint: number) => opentype.Path['commands']
 export interface PreparedCompositionContext {
   shapes: Map<string, NormalizedShape>
   visualScale: number
@@ -31,10 +35,6 @@ export interface PreparedCompositionContext {
 export type HangulCompositionInputs = CompositionProfile & { compositionSettings: CompositionSettings }
 
 const LATIN_ZONE: Zone = { x: 90, y: 80, width: 820, height: 720 }
-
-function glyphName(codePoint: number) {
-  return `uni${codePoint.toString(16).toUpperCase().padStart(4, '0')}`
-}
 
 function createNotdef() {
   const path = new opentype.Path()
@@ -48,7 +48,7 @@ function createNotdef() {
   path.lineTo(550, 710)
   path.lineTo(150, 710)
   path.close()
-  return new opentype.Glyph({ name: '.notdef', index: 0, advanceWidth: 700, path })
+  return path
 }
 
 /** Letters sharing a height and baseline: capitals, x-height letters, ascenders, descenders. */
@@ -86,7 +86,10 @@ function applyOverride(path: opentype.Path, override: GlyphOverride) {
   })
 }
 
-function glyphWithMetrics(codePoint: number, path: opentype.Path, baseAdvanceWidth: number, override: GlyphOverride, mode: CompositionSettings['widthMode']) {
+/** Writes a glyph into `out` with its overrides and metrics applied, its overlapping contours merged. */
+export function encodeGlyph(out: GlyphEncoder, codePoint: number, path: opentype.Path, baseAdvanceWidth: number, request: GenerationRequest) {
+  const override = mergedOverride(request, codePoint)
+  const mode = request.compositionSettings.widthMode
   if (path.commands.length) applyOverride(path, override)
   path = prepareCffPath(path)
   let advanceWidth = baseAdvanceWidth + override.left + override.right
@@ -99,7 +102,7 @@ function glyphWithMetrics(codePoint: number, path: opentype.Path, baseAdvanceWid
   } else if (path.commands.length && override.left) {
     translatePath(path, override.left, 0)
   }
-  return new opentype.Glyph({ name: glyphName(codePoint), unicode: codePoint, advanceWidth, path })
+  out.add(codePoint, path, advanceWidth)
 }
 
 export function hangulComposeOptions(request: CompositionProfile): Required<Pick<HangulComposeOptions, 'gaps' | 'proportions' | 'targetHeight' | 'targetCenter'>> {
@@ -154,20 +157,25 @@ export function composedHangulParts(codePoint: number, shapes: Map<string, Norma
   return result!
 }
 
-export async function precomposeHangulRange(request: GenerationRequest, start: number, end: number, progress?: (completed: number) => void, prepared?: PreparedCompositionContext) {
-  const { shapes, visualScale } = prepared ?? prepareCompositionContext(request)
-  const records: HangulGlyphRecord[] = []
+/** Composes each syllable from the prepared shapes. */
+export function hangulComposer(request: GenerationRequest, prepared: PreparedCompositionContext): HangulSource {
+  return (codePoint) => composedHangulPath(codePoint, prepared.shapes, request, prepared.visualScale).commands
+}
+
+/** The syllables from index `start` up to `end`, encoded as they are written to the font. */
+export function encodeHangulRange(request: GenerationRequest, start: number, end: number, source: HangulSource, progress?: (completed: number) => void): EncodedGlyphs {
+  const out = new GlyphEncoder()
   for (let index = start; index < end; index += 1) {
     const codePoint = HANGUL_BASE + index
-    records.push({ codePoint, commands: composedHangulPath(codePoint, shapes, request, visualScale).commands })
+    encodeGlyph(out, codePoint, pathOf(source(codePoint)), 1000, request)
     if ((index - start) % 112 === 0) progress?.(index - start + 1)
   }
   progress?.(end - start)
-  return records
+  return out.finish()
 }
 
 /** Standalone jamo, Latin letters, numerals and the symbols that were written. */
-function composeBaseGlyphs(request: GenerationRequest, shapes: Map<string, NormalizedShape>, visualScale: number) {
+function encodeBaseGlyphs(out: GlyphEncoder, request: GenerationRequest, shapes: Map<string, NormalizedShape>, visualScale: number) {
   const settings = request.compositionSettings
   const fixedWidth = settings.widthMode === 'fixed'
   const reference = jamoReference(shapes, request, visualScale)
@@ -188,7 +196,6 @@ function composeBaseGlyphs(request: GenerationRequest, shapes: Map<string, Norma
   const targetHeight = (prompt: CharacterPrompt) => medianHeight(heights.get(latinClass(prompt)) ?? [], 720)
   const targetCenter = (prompt: CharacterPrompt) => medianHeight(centers.get(latinClass(prompt)) ?? [], 440)
 
-  const glyphs: opentype.Glyph[] = []
   for (const prompt of BASE_CHARACTER_PROMPTS) {
     const shape = shapes.get(prompt.char)
     if (prompt.group === 'symbol' && !shape) continue
@@ -217,44 +224,38 @@ function composeBaseGlyphs(request: GenerationRequest, shapes: Map<string, Norma
     const anchor = isMark ? symbolCalibrationAnchor(markChar) : isJamo ? request.hangulTargetCenter : targetCenter(prompt)
     const path = renderCalibratedGlyph(render, visualScale, anchor, isJamo ? 450 : anchor, fixedWidth, isMark ? symbolMaximumHeight(markChar) : 950)
     const baseAdvanceWidth = isJamo ? 1000 : prompt.group === 'symbol' ? 500 : 680
-    glyphs.push(glyphWithMetrics(prompt.codePoint, path, baseAdvanceWidth, mergedOverride(request, prompt.codePoint), settings.widthMode))
+    encodeGlyph(out, prompt.codePoint, path, baseAdvanceWidth, request)
   }
-  return glyphs
 }
 
 export async function composeFont(request: GenerationRequest, options: ComposeOptions) {
-  const { shapes, visualScale } = options.preparedContext ?? prepareCompositionContext(request)
-  const glyphs: opentype.Glyph[] = [createNotdef()]
-  glyphs.push(new opentype.Glyph({ name: 'space', unicode: 32, advanceWidth: 400, path: new opentype.Path() }))
+  const prepared = options.preparedContext ?? prepareCompositionContext(request)
+  const base = new GlyphEncoder()
+  base.add(NOTDEF, createNotdef(), 700)
+  base.add(32, new opentype.Path(), 400)
 
-  options.progress('latin', options.precomposedHangul ? 94 : 2, '영문과 숫자를 정리하고 있어요')
-  glyphs.push(...composeBaseGlyphs(request, shapes, visualScale))
+  options.progress('latin', options.encodedHangul ? 94 : 2, '영문과 숫자를 정리하고 있어요')
+  encodeBaseGlyphs(base, request, prepared.shapes, prepared.visualScale)
+  const blocks = [base.finish()]
 
-  if (!options.precomposedHangul) options.progress('hangul', 3, '한글 음절을 조합하고 있어요')
-  for (let index = 0; index < HANGUL_COUNT; index++) {
-    if (options.cancelled()) throw new DOMException('Generation cancelled', 'AbortError')
-    const codePoint = HANGUL_BASE + index
-    const commands = options.precomposedHangul?.get(codePoint) ?? composedHangulPath(codePoint, shapes, request, visualScale).commands
-    glyphs.push(glyphWithMetrics(codePoint, pathOf(commands), 1000, mergedOverride(request, codePoint), request.compositionSettings.widthMode))
-
-    if (!options.precomposedHangul && index % 112 === 0) {
-      const progress = 3 + Math.round((index / HANGUL_COUNT) * 91)
-      options.progress('hangul', progress, `${index.toLocaleString()} / ${HANGUL_COUNT.toLocaleString()} 글자 조합 중`)
-      await options.yieldControl?.()
+  if (options.encodedHangul) blocks.push(...options.encodedHangul)
+  else {
+    // A given source is not composition: it is read through without reporting or pausing.
+    const composing = !options.hangulSource
+    if (composing) options.progress('hangul', 3, '한글 음절을 조합하고 있어요')
+    const source = options.hangulSource ?? hangulComposer(request, prepared)
+    for (let index = 0; index < HANGUL_COUNT; index += 112) {
+      if (options.cancelled()) throw new DOMException('Generation cancelled', 'AbortError')
+      blocks.push(encodeHangulRange(request, index, Math.min(HANGUL_COUNT, index + 112), source))
+      if (composing) {
+        const progress = 3 + Math.round((index / HANGUL_COUNT) * 91)
+        options.progress('hangul', progress, `${index.toLocaleString()} / ${HANGUL_COUNT.toLocaleString()} 글자 조합 중`)
+        await options.yieldControl?.()
+      }
     }
   }
 
   options.progress('serialize', 96, 'OTF 파일을 마무리하고 있어요')
-  const font = new opentype.Font({
-    familyName: request.metadata.familyName,
-    styleName: request.metadata.styleName,
-    designer: request.metadata.designer,
-    manufacturer: 'OwnChar',
-    version: request.metadata.version,
-    unitsPerEm: 1000,
-    ascender: 900,
-    descender: -100,
-    glyphs,
-  })
-  return { buffer: font.toArrayBuffer(), glyphCount: glyphs.length }
+  const glyphCount = blocks.reduce((sum, block) => sum + block.codePoints.length, 0)
+  return { buffer: writeOtf(request.metadata, blocks), glyphCount }
 }
