@@ -8,7 +8,7 @@ import { hangulComposeOptions } from '@/generation/font-builder'
 import { useCompositionContext } from '@/generation/use-composition-context'
 import { projectActions } from '@/project/store'
 import { useProject } from '@/project/use-project'
-import { assignStrokes, captureRecords, cellIndexOf, editableSlots, fixedSlots, validBoundaries, visibleStrokes, type CanvasGrid } from './stroke-assignment'
+import { assignStrokes, captureRecords, cellIndexOf, editableSlots, fixedSlots, reflowStrokes, validBoundaries, visibleStrokes, type CanvasGrid } from './stroke-assignment'
 
 type Boundaries = Record<number, JamoBoundary[]>
 type Guides = Record<number, StoredCellGuide>
@@ -53,18 +53,24 @@ export function useWritingSession(exercise: WritingExercise, viewport: RefObject
   const grid = useMemo<CanvasGrid>(() => ({ cellSize, columns }), [cellSize, columns])
   const cellCount = exercise.cells.length
 
-  // An empty canvas fills the available width; once written on, its layout is fixed.
+  // The canvas always fills the available width; written strokes follow their cells.
+  const current = useRef({ strokes, grid, save: (() => {}) as (next: readonly RawStroke[], requested: Boundaries, grid: CanvasGrid) => void })
   useEffect(() => {
     const element = viewport.current
-    if (!element || strokes.length > 0) return
+    if (!element) return
     const observer = new ResizeObserver(([entry]) => {
-      const available = Math.max(cellSize, entry.contentRect.width - 2)
+      const { strokes: written, grid: shown, save: persist } = current.current
+      const available = Math.max(cellSize, entry.contentRect.width)
       const next = Math.max(1, Math.min(cellCount, Math.floor(available / cellSize)))
-      setColumns((current) => current === next ? current : next)
+      if (next === shown.columns) return
+      setColumns(next)
+      if (!written.length) return
+      lastRevision.current = ''
+      persist(reflowStrokes(written, shown, { cellSize, columns: next }, cellCount), boundariesRef.current, { cellSize, columns: next })
     })
     observer.observe(element)
     return () => observer.disconnect()
-  }, [cellSize, cellCount, exercise.id, strokes.length, viewport])
+  }, [cellSize, cellCount, exercise.id, viewport])
 
   const capture = useMemo(() => assignStrokes(strokes, grid, exercise, drawings, boundaries), [strokes, grid, exercise, drawings, boundaries])
 
@@ -106,8 +112,8 @@ export function useWritingSession(exercise: WritingExercise, viewport: RefObject
     projectActions.saveSessionGuides(exercise.id, next)
   }, [strokes, cellGuides, grid, cellCount, exercise.id])
 
-  const save = (nextStrokes: readonly RawStroke[], requestedBoundaries = boundariesRef.current) => {
-    const assigned = assignStrokes(nextStrokes, grid, exercise, drawings, requestedBoundaries)
+  const save = (nextStrokes: readonly RawStroke[], requestedBoundaries = boundariesRef.current, target: CanvasGrid = grid) => {
+    const assigned = assignStrokes(nextStrokes, target, exercise, drawings, requestedBoundaries)
     if (JSON.stringify(assigned.boundaries) !== JSON.stringify(boundaries)) {
       if (countBoundaries(assigned.boundaries) < countBoundaries(requestedBoundaries)) setBoundaryWarning('경계로 지정한 획이 지워져 이후 자모 경계를 다시 확인해 주세요.')
       boundariesRef.current = assigned.boundaries
@@ -123,10 +129,11 @@ export function useWritingSession(exercise: WritingExercise, viewport: RefObject
         exerciseId: exercise.id, text: exercise.text,
         elements: structuredClone(nextStrokes),
         assignments: assigned.assignments, boundaries: assigned.boundaries,
-        cellSize, columns, updatedAt: Date.now(), guides: guidesRef.current,
-      }, captureRecords(assigned.groups, grid, exercise.id, settings.endpointStabilization))
+        cellSize: target.cellSize, columns: target.columns, updatedAt: Date.now(), guides: guidesRef.current,
+      }, captureRecords(assigned.groups, target, exercise.id, settings.endpointStabilization))
     }, 250)
   }
+  current.current = { strokes, grid, save }
 
   const setRequestedBoundaries = (next: Boundaries) => {
     setBoundaryWarning('')

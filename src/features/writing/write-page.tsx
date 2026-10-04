@@ -180,7 +180,7 @@ export function WritePage({ exerciseId: sourceExerciseId, cellIndex: sourceCellI
                     return <div key={index} data-source-cell={isSource ? 'true' : undefined} className={isSource ? 'source-cell-highlight' : undefined} style={{ width: grid.cellSize }}><span>{cell.char}</span></div>
                   })}
                 </div>
-                <WritingSurface key={exercise.id} ref={surface} initialStrokes={sessions[exercise.id]?.elements ?? []} cellSize={grid.cellSize} width={canvasWidth} height={canvasHeight} strokeWidth={strokeWidth} endpointStabilization={endpointStabilization} tool={tool} onChange={(next) => session.save(next)} />
+                <WritingSurface key={`${exercise.id}:${grid.columns}`} ref={surface} initialStrokes={strokes} cellSize={grid.cellSize} width={canvasWidth} height={canvasHeight} strokeWidth={strokeWidth} endpointStabilization={endpointStabilization} tool={tool} onChange={(next) => session.save(next)} />
               </div>
             </div>
             <BoundaryControls

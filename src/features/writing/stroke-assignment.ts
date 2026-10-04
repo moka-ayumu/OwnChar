@@ -25,6 +25,16 @@ export function cellIndexOf(stroke: RawStroke, grid: CanvasGrid, cellCount: numb
   return Math.max(0, Math.min(cellCount - 1, row * grid.columns + column))
 }
 
+/** Moves every stroke with its cell when the grid is rewrapped to another column count. */
+export function reflowStrokes(strokes: readonly RawStroke[], from: CanvasGrid, to: CanvasGrid, cellCount: number): RawStroke[] {
+  return strokes.map((stroke) => {
+    const index = cellIndexOf(stroke, from, cellCount)
+    const before = cellOrigin(index, from.columns, from.cellSize)
+    const after = cellOrigin(index, to.columns, to.cellSize)
+    return { ...stroke, x: stroke.x + after.x - before.x, y: stroke.y + after.y - before.y, version: stroke.version + 1 }
+  })
+}
+
 function strokesByCell(strokes: readonly RawStroke[], grid: CanvasGrid, cellCount: number) {
   const byCell = Array.from({ length: cellCount }, () => [] as RawStroke[])
   for (const stroke of visibleStrokes(strokes)) byCell[cellIndexOf(stroke, grid, cellCount)].push(stroke)
