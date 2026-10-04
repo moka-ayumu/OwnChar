@@ -14,7 +14,7 @@ Audience and job: a first-time, non-designer writer at a tablet or desktop turni
 Confirmed constraints (user, 2026-10-04):
 - Avoid paper/stationery imitation, the common SaaS/AI-tool look, and a dark technical look.
 - Few colours, simple, motion-graphic.
-- First generation plays the full algorithm sequence (about 8–10 s minimum, with a skip control). Regeneration through 변경 적용 plays a short version (about 3 s).
+- Every generation, a regeneration through 변경 적용 included, plays the full algorithm sequence with a skip control (user, 2026-10-04: no short version, since composing takes the same time either way).
 - Generation must show the real stages on the user's own strokes; preview opens with the sample sentence typing itself.
 
 ## Direction contract

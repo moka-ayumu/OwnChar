@@ -46,7 +46,8 @@ export interface GenerationRequest extends CompositionProfile {
 export type FontWorkerRequest = GenerationRequest | { type: 'cancel' }
 
 export type GenerationEvent =
-  | { type: 'progress'; stage: string; progress: number; message: string }
+  /** `lanes` is the share of its own range each child worker has composed, in worker order. */
+  | { type: 'progress'; stage: string; progress: number; message: string; lanes?: number[] }
   | { type: 'complete'; buffer: ArrayBuffer; glyphCount: number }
   | { type: 'error'; message: string }
   | { type: 'cancelled' }

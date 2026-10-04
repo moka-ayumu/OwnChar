@@ -60,7 +60,7 @@ function latinClass(prompt: CharacterPrompt) {
 }
 
 /** The per-glyph override on top of the global metrics. */
-function mergedOverride(request: GenerationRequest, codePoint: number): GlyphOverride {
+export function mergedOverride(request: Pick<GenerationRequest, 'overrides' | 'globalMetrics'>, codePoint: number): GlyphOverride {
   const specific = request.overrides[codePoint]
   return {
     left: request.globalMetrics.left + (specific?.left ?? 0),

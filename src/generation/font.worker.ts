@@ -22,19 +22,16 @@ async function parallelHangul(request: GenerationRequest, prepared: PreparedComp
   const count = Math.min(8, Math.max(1, available - 1))
   if (count === 1) return undefined
   const completed = new Array<number>(count).fill(0)
+  const bounds = Array.from({ length: count + 1 }, (_, id) => Math.floor(INITIALS.length * id / count) * 588)
   const results = await Promise.all(Array.from({ length: count }, (_, id) => new Promise<EncodedGlyphs>((resolve, reject) => {
-    const chunk: ChunkRequest = {
-      request, prepared,
-      start: Math.floor(INITIALS.length * id / count) * 588,
-      end: Math.floor(INITIALS.length * (id + 1) / count) * 588,
-    }
+    const chunk: ChunkRequest = { request, prepared, start: bounds[id], end: bounds[id + 1] }
     const child = new Worker(new URL('./font-chunk.worker.ts', import.meta.url), { type: 'module' })
     children.push(child)
     child.onmessage = ({ data }: MessageEvent<ChunkEvent>) => {
       if (data.type === 'progress') {
         completed[id] = data.completed
         const done = completed.reduce((sum, value) => sum + value, 0)
-        post({ type: 'progress', stage: 'hangul', progress: 3 + Math.round(done / HANGUL_COUNT * 91), message: `${done.toLocaleString()} / ${HANGUL_COUNT.toLocaleString()} 글자 조합 중` })
+        post({ type: 'progress', stage: 'hangul', progress: 3 + Math.round(done / HANGUL_COUNT * 91), message: `${done.toLocaleString()} / ${HANGUL_COUNT.toLocaleString()} 글자 조합 중`, lanes: completed.map((value, lane) => value / (bounds[lane + 1] - bounds[lane])) })
       } else if (data.type === 'complete') {
         child.terminate(); resolve(data.glyphs)
       } else {

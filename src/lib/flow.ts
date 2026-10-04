@@ -7,15 +7,16 @@ export interface StageOrigin {
   clip: { x: number; y: number; width: number; height: number }
 }
 
-let origin: StageOrigin | null = null
-let typedArrival = false
+/** The sentence generation ends on and the preview opens with, and the size both set it at. */
+export const LEAD_SENTENCE = '오늘 하루도 좋은 하루 보내세요.'
+export const LEAD_SIZE = 80
 
-/** One-shot hand-offs between the writing, generation and preview pages, so each can pick up where the last left off. */
+let origin: StageOrigin | null = null
+
+/** One-shot hand-off from the writing page to generation, so the film opens on the sentence where it was left. */
 export const flow = {
   leaveWriting(value: StageOrigin | null) { origin = value },
   takeOrigin() { const value = origin; origin = null; return value },
-  finishGeneration() { typedArrival = true },
-  takeTypedArrival() { const value = typedArrival; typedArrival = false; return value },
 }
 
 export const prefersReducedMotion = () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches

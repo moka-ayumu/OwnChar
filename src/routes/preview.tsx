@@ -6,7 +6,7 @@ import { RailBrand } from '@/components/rail-brand'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { isHangulSyllable } from '@/font/hangul'
 import { Slider } from '@/components/ui/slider'
-import { flow, prefersReducedMotion } from '@/lib/flow'
+import { LEAD_SENTENCE, LEAD_SIZE } from '@/lib/flow'
 import { useFontFace } from '@/lib/use-font-face'
 import { useProject } from '@/project/use-project'
 import { cn, downloadArrayBuffer, safeFilename } from '@/lib/utils'
@@ -15,15 +15,12 @@ import { projectActions } from '@/project/store'
 export const Route = createFileRoute('/preview')({ component: PreviewPage })
 
 const samples = [
-  '오늘 하루도 좋은 하루 보내세요.',
+  LEAD_SENTENCE,
   '가나다라마바사아자차카타파하',
   'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
   'abcdefghijklmnopqrstuvwxyz',
   '0123456789',
 ]
-
-/** Milliseconds between typed characters when arriving from generation. */
-const TYPE_INTERVAL = 85
 
 function PreviewPage() {
   const navigate = useNavigate()
@@ -36,20 +33,12 @@ function PreviewPage() {
   const writable = (text: string) => [...text].some((char) => isHangulSyllable(char.codePointAt(0)!) || BASE_CHARACTER_PROMPTS.some((prompt) => prompt.char === char && drawings[prompt.id]))
   const fontReady = useFontFace(buffer, revision)
   const [sample, setSample] = useState(samples[0])
-  const [fontSize, setFontSize] = useState(80)
-  // Arriving from generation, the sentence types itself; the first character is the glyph generation ended on.
-  const [typed, setTyped] = useState(() => flow.takeTypedArrival() && !prefersReducedMotion() ? 1 : null)
-  const typing = typed !== null
+  // Generation ends on the first sample at this size, standing exactly where it is shown here.
+  const [fontSize, setFontSize] = useState(LEAD_SIZE)
 
   useEffect(() => {
     if (!buffer) void navigate({ to: '/write' })
   }, [buffer, navigate])
-
-  useEffect(() => {
-    if (typed === null) return
-    const timer = window.setTimeout(() => setTyped(typed >= samples[0].length ? null : typed + 1), typed === 1 ? 760 : typed >= samples[0].length ? 500 : TYPE_INTERVAL)
-    return () => window.clearTimeout(timer)
-  }, [typed])
 
   if (!buffer) return null
   const fontFamily = fontReady ? 'OwnCharPreview' : 'inherit'
@@ -87,7 +76,7 @@ function PreviewPage() {
             </div>
           )}
 
-          <div className="flex items-center justify-between gap-6">
+          <div className="flex h-6 items-center justify-between gap-6">
             <label htmlFor="sample" className="text-sm font-semibold text-ink-2">직접 입력해 보세요</label>
             <div className="flex w-64 items-center gap-3">
               <label htmlFor="preview-size" className="shrink-0 text-xs font-semibold text-ink-2">글자 크기</label>
@@ -101,22 +90,16 @@ function PreviewPage() {
               id="sample"
               value={sample}
               onChange={(event) => setSample(event.target.value)}
-              onFocus={() => setTyped(null)}
               className="font-preview min-h-64 w-full resize-y border-0 bg-transparent p-0 outline-none placeholder:text-ink-3"
-              style={{ ...textStyle, opacity: typing ? 0 : 1 }}
+              style={textStyle}
             />
-            {typing && (
-              <div className="font-preview type-overlay" aria-hidden="true" style={textStyle}>
-                <span className="lead">{samples[0][0]}</span>{samples[0].slice(1, typed)}<i className="type-caret" />
-              </div>
-            )}
           </div>
 
-          <div className={cn('mt-10', !typing && 'settle')}>
+          <div className="settle mt-10">
             {samples.slice(1).map((text) => (
               writable(text)
-                ? <button key={text} onClick={() => setSample(text)} className="font-preview sample-row" style={{ fontFamily, visibility: typing ? 'hidden' : undefined }}><span>{text}</span></button>
-                : <button key={text} onClick={() => setSample(text)} className="sample-row unwritten" style={{ visibility: typing ? 'hidden' : undefined }}><span>{text}</span><small>아직 쓰지 않은 글자예요</small></button>
+                ? <button key={text} onClick={() => setSample(text)} className="font-preview sample-row" style={{ fontFamily }}><span>{text}</span></button>
+                : <button key={text} onClick={() => setSample(text)} className="sample-row unwritten"><span>{text}</span><small>아직 쓰지 않은 글자예요</small></button>
             ))}
           </div>
         </div>

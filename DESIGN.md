@@ -204,7 +204,7 @@ Three working values (ink, white, lime) on a neutral ground, with greys only for
 ### Neutral
 - **White** (`white`, #ffffff): the stage, the writing canvas, inputs, cards, dialogs, the specimen tile on lime. Text on solid ink.
 - **Ground** (`ground`, #ecede8): the page behind everything: header, home copy column, the editor's glyph preview well, an inset list inside a dialog, glyph-cell hover.
-- **Rule** (`rule`, #d9dad5): quiet hairlines inside white: writing-grid cell lines, input and card borders at rest, sample-row dividers, toolbar dividers, the film's specimen box and the unfilled cells of the 11,172 field.
+- **Rule** (`rule`, #d9dad5): quiet hairlines inside white: writing-grid cell lines, input and card borders at rest, sample-row dividers, toolbar dividers, the film's specimen boxes, trail tiles and unfilled lanes.
 - **Ink 2** (`ink-2`, #4a4c52): secondary text on white and ground (descriptions, field labels).
 - **Ink 3** (`ink-3`, #666970): tertiary text: placeholders, captions, cell characters in the writing grid. 5.5:1 on white, 4.7:1 on ground.
 
@@ -221,7 +221,7 @@ Translucent ink is used for three things only: hover wash on transparent control
 
 **Display Font:** Wanted Sans Variable (with Wanted Sans, -apple-system, Apple SD Gothic Neo, Malgun Gothic, Segoe UI, sans-serif)
 **Body Font:** the same family
-**Specimen Font:** the user's generated font (`OwnCharPreview`), only for their own text: the lead glyph, the preview sentence, sample rows, glyph cells.
+**Specimen Font:** the user's generated font (`OwnCharPreview`), only for their own text: the preview sentence, sample rows, glyph cells.
 
 **Character:** One heavy, tight Korean grotesque doing everything by weight. Headings are 800 and tightly tracked; the interface underneath is 14px at 600. The only expressive letterforms on screen are the writer's own.
 
@@ -253,15 +253,15 @@ Translucent ink is used for three things only: hover wash on transparent control
 
 **Responsive.** At ≤1100px the rail narrows to 244px, toolbar dividers drop, the editor loses its preview well and the example grid goes from three columns to two. At ≤767px the app is replaced by a lime full-height notice ("더 넓은 화면이 필요해요"); writing needs a tablet or desktop. Minimum width is 320px.
 
-**Route motion.** Navigations inside the flow use view transitions with three named parts:
+**Route motion.** Navigations inside the flow use view transitions with two named parts:
 - `rail`: the lime field holds still (the group is painted lime for 420ms); the old contents leave upward 8px over 150ms ease-in, then the new rise 10px into place over 320ms.
 - `stage`: the white field holds still for 420ms; its contents cross-fade.
-- `lead`: one glyph travels. Generation ends on the first character of the preview sentence in the user's font, and that same glyph moves and scales into the first typed character of the preview over 640ms.
+- The first sentence of the preview does not travel: generation ends with it standing exactly where the preview shows it, so the stage cross-fade leaves it still.
 - Everything else cross-fades in 200ms.
 
 All of it eases with one curve, `cubic-bezier(.16, 1, .3, 1)`. Entrances are short and one-directional (360–520ms, a rise of 8–14px or a scale from .86–.94); nothing bounces or loops except the typing caret.
 
-**Reduced motion.** With `prefers-reduced-motion`, all transitions and animations collapse to instant and view transitions are disabled. The generation film is not played: the stage shows only the 11,172 field filling from real progress, with no skip control and no hold. The preview shows the whole sentence at once. The home demonstration stops cycling.
+**Reduced motion.** With `prefers-reduced-motion`, all transitions and animations collapse to instant and view transitions are disabled. The generation film is not played: the stage shows only the worker lanes filling from real progress, with no skip control, no trail and no hand-over. The home demonstration stops cycling.
 
 ### Named Rules
 **The Same Place Rule.** A page in the write → generate → preview flow uses the rail-and-stage frame, puts its primary action at the rail's bottom, and names its rail `rail` and its stage `stage` so the frame holds across the navigation.
@@ -348,30 +348,37 @@ A 148px white panel with a 1px ink border, attached to the right edge of the cel
 - **Source link:** a full-width row with a rule border and a chevron; on hover the border turns ink and the row fills lime.
 
 ### The generation film (signature)
-One canvas filling the stage, redrawn every frame from a clock and from the worker's real progress. The rail carries the headline, one sentence explaining the live step, the eight-step list, the percent figure with progress and the worker's message, then skip (secondary) and cancel (ghost).
+One canvas filling the stage, redrawn every frame from a clock and from the worker's real progress. The rail carries the headline, one sentence explaining the live step, the twelve-step list (it scrolls inside the rail when the rail is short, keeping the live step in view), the percent figure with progress and the worker's message, then skip (secondary) and cancel (ghost).
 
-The specimen is a syllable the writer wrote whole, from the sentence they just left, in a square box (56% of stage height, max 460px) centred at 46% of the stage height. Its strokes change pose in place:
+The specimens are up to three syllables the writer wrote whole, of different layouts (vowel beside, vowel below, with a final), from the sentence they just left. They stand in a row of equal square boxes (46% of stage height, max 340px, 32px apart) centred at 43% of the stage height, and go through every step together, each 5% behind the one before. Their strokes change pose in place:
 
 | # | Step | Starts at | What the strokes do |
 |---|------|-----------|---------------------|
-| 1 | 원본 필기 | 0s | The sentence sits exactly where it was on the writing page; the other cells fade and the view closes on the specimen's cell. |
-| 2 | 손떨림 보정 | 1.5s | Ink fades to 10%; the sampled path shows as a thin ink line with dots, the raw path stays behind as a 5px lime trace while the line settles. |
-| 3 | 윤곽선 만들기 | 3.0s | The line swells to pen width, becomes a lime shape with a 2px ink contour, then fills ink. |
-| 4 | 자모 분리 | 4.2s | Each jamo drifts apart into its own labelled 1px box: initial outlined, medial on a lime fill, final dashed. |
-| 5 | 크기 정규화 | 5.4s | The boxed jamo move into a row of equal tiles. |
-| 6 | 문맥별 조합 | 6.4s | The jamo fly into the zones of a composed syllable, then the same jamo are shown in up to six sibling syllables, one every 0.24s, with a caption. |
-| 7 | 11,172자 조합 | 8.4s | The specimen box shrinks to 62% and a 147-column field of 11,172 cells fills in ink from each worker's start, the leading row of each front in lime; the box shows the syllable being composed and a running count. |
-| 8 | OTF 마무리 | when done, no earlier than 9.6s | The field is full; the box turns lime and holds the first glyph of the preview sentence in the new font for 700ms, then hands over. |
+| 1 | 원본 필기 | 0s | The sentence sits exactly where it was on the writing page; the other cells fade and the specimens' cells travel into their boxes. |
+| 2 | 간격·비율 학습 | 1.4s | Ink fades to 35%. Dimension lines with end ticks grow on each specimen: the height of the syllable at its left, and the space between its jamo on a 7px lime band. Then two dotted lines (1 4) mark the height every syllable is brought to and the height dimension settles onto them. Each dimension carries its measure as a share of the cell (12px, 700). A caption gives the number of syllables measured. |
+| 3 | 손떨림 보정 | 3.1s | Ink fades to 10%; the sampled path shows as a thin ink line with dots, the raw path stays behind as a 5px lime trace while the line settles. A round glass at the box's top right (17% of the box, 1px ink ring) shows, four times larger, the place the correction moves the path most; a small ring marks that place on the specimen. |
+| 4 | 윤곽선 만들기 | 4.6s | The line swells to pen width, becomes a lime shape with a 2px ink contour, then fills ink. |
+| 5 | 자모 분리 | 5.3s | Each stroke first shows its place in the writing order in a 9px ink disc with a white number; then each jamo drifts apart into its own labelled 1px box: initial outlined, medial on a lime fill, final dashed. |
+| 6 | 크기 정규화 | 6.1s | The boxed jamo move into a row of equal tiles. |
+| 7 | 문맥형 선택 | 7.2s | Under each tile, one small square per context form of that jamo (8 for an initial, 2 for a medial, 1 for a final): ink for a form that was written, a dashed outline that fills lime for one borrowed from the nearest form. Beneath, "8벌 중 5벌 씀" in ink-2. A caption gives the share of all placements that use a written form. |
+| 8 | 문맥별 조합 | 8.7s | The jamo fly into the zones of a composed syllable, then the same jamo are shown in up to three sibling syllables, with a caption. |
+| 9 | 받침 가운데 맞춤 | 9.9s | Each box shows a syllable with the same upper jamo and a final placed by rule. A dimension line grows above it from the left of the upper pair to the right of the vowel's stem (to the right of the pair when there is no stem); a dot and a dotted line (1 4) mark the target, labelled 60% or 가운데. Under the final, a rule line shows its whole width, a 6px lime band the bulk of its ink and a 2px ink tick the middle of that band; the final then slides from where centring its box would put it to where centring its ink puts it. See `docs/decision/final-optical-centre`. |
+| 10 | 윤곽 병합 | 12.3s | The syllable as separate overlapping closed lines (lime, 2px ink contour) becomes one merged outline, then fills ink. |
+| 11 | 11,172자 조합 | 13.0s | The first specimen's box shrinks into a window at the top showing the syllable being composed, over a running count. Below it, one lane per worker (12px, 22px apart, labelled with its run of initials) fills in ink with a 6px lime front. |
+| 12 | OTF 묶기 | when done, no earlier than 13.7s | Over 0.6s the lanes slide into one strip in code order, 가 at its left and 힣 at its right. |
 
-- **Full film:** first generation; it runs at least 9.6s even if the font is ready sooner, and waits on step 7 if it is not.
-- **Short film:** regeneration through 변경 적용; opens on step 6, field at 1.5s, may finish at 3s.
-- **Skip:** jumps the clock to the end of the film; the field then simply follows real progress. The control disappears once the film has played.
-- **Progress is real:** the field's fill is the worker's progress (3–94% mapped to 0–1), eased toward its target with a 120ms time constant so it follows closely at any frame rate. The percent and message in the rail are the worker's own.
-- **Colour in the film** is the system's: ink strokes, rule for empty cells and the box, lime for the live part. Step easing is a quartic ease-out.
+- **Result trail:** a row of ten small tiles at the bottom of the stage, one per specimen step. Steps not reached are dashed rule outlines, the live one is a 1px ink outline. When a step ends its result leaves the first specimen's box and docks in its tile over 0.4s, so what is done stays on screen and the next step starts from it.
+- **Hand-over:** after the strip, each syllable of the preview's first sentence rises from its own place on the strip (25ms apart, 450ms each) and lands at the exact position and size the preview sets it at, while the window, the strip and the trail fade. The preview then opens with that sentence already standing there; only its controls and sample rows arrive.
+- **Length:** the film runs at least 13.7s even if the font is ready sooner: 13s on the specimens, then 0.7s of lanes. With the join (0.6s) and the hand-over (about 0.9s) it is about 15s.
+- **Pace follows the work:** the steps on the specimens take the time composition takes. While the font is being composed the film clock slows, to no less than a third of its speed, so that the lanes open when about 88% of the syllables are composed; the lanes themselves then last under a second. On a fast machine the film simply runs at its own speed.
+- **Regeneration:** plays the same film from the first step. Composing takes the same time either way, so there is no short version.
+- **Skip:** jumps the clock to the end of the film; the lanes then simply follow real progress. The control disappears once the film has played.
+- **Progress is real:** each lane's fill is the share of its own range that worker reports; with no child workers there is one lane, filled from the overall progress (3–94% mapped to 0–1). Fills ease toward their target with a 120ms time constant. The percent and message in the rail are the worker's own. Steps 1–10 are a replay, on the specimens, of work the pipeline does in milliseconds; nothing is shown that the pipeline does not do.
+- **Colour in the film** is the system's: ink strokes, rule for empty tracks and boxes, lime for the live part. Step easing is a quartic ease-out.
 - **Failure:** a white panel with a 1px red border replaces the centre of the stage, with a red heading, the message, and a primary retry.
 
-### Typing arrival (signature)
-Arriving from generation, the preview does not appear finished. The lead glyph lands as the first character (760ms, covering the 640ms travel), then the sentence types itself at 85ms per character behind a blinking ink caret (900ms, stepped), holds 500ms, and becomes an editable text area. Only then do the sample rows settle in below (520ms each, 60ms apart). Focusing the text area ends the typing at once. Arriving any other way, the page is simply there.
+### Arrival in the preview
+Arriving from generation, the first sentence is already in place: the film ends with its glyphs standing exactly where the text area shows them, so the stage cross-fade leaves them still. The sample rows settle in below (520ms each, 60ms apart). Arriving any other way, the page is simply there.
 
 Sample rows are full-width lines at 30px in the user's font in ink-2, divided by rule lines; on hover the text turns ink and slides 10px right. A row whose characters were never written falls back to 16px in the interface font and says so.
 
@@ -383,7 +390,7 @@ Sample rows are full-width lines at 30px in the user's font in ink-2, divided by
 - **Do** use lime-ink for secondary text on lime and ink-2 / ink-3 for secondary text on white and ground.
 - **Do** keep every control at a 6px corner (4px when nested), every structural line at 1px ink, every quiet line at 1px rule.
 - **Do** show any wait or computation on the user's own strokes and drive it from real progress.
-- **Do** carry a navigation inside the flow with the `rail`, `stage` and `lead` transitions, and keep every animation on `cubic-bezier(.16, 1, .3, 1)`.
+- **Do** carry a navigation inside the flow with the `rail` and `stage` transitions, and keep every animation on `cubic-bezier(.16, 1, .3, 1)`.
 - **Do** give every animated behaviour a still equivalent under reduced motion that shows the same information.
 - **Do** set changing numbers in tabular figures and keep 12px as the smallest size.
 - **Do** put a destructive choice in a dialog, in the destructive button style.

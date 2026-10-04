@@ -14,6 +14,8 @@ export interface LayoutGeometry {
   anchors: Partial<Record<HangulRole, { x: number; y: number }>>
   scales: Partial<Record<HangulRole, number>>
   groups: Partial<Record<HangulRole, string>>
+  /** The shape the final was drawn from, once narrowed or built from parts. */
+  finalShape?: NormalizedShape
 }
 
 export interface SyllableLayoutInput {
@@ -41,7 +43,7 @@ const asBox = (zone: Zone): Box => ({ x1: zone.x, y1: zone.y, x2: zone.x + zone.
 const contourBoxes = (path: opentype.Path): Box[] => splitContours(path).map((contour) => contour.getBoundingBox())
 
 /** The vowel's main vertical strokes; arms and bars are not among them. */
-function verticalStem(path: opentype.Path): Box | undefined {
+export function verticalStem(path: opentype.Path): Box | undefined {
   const box = bounds(path)!
   const stems = contourBoxes(path).filter((b) => b.y2 - b.y1 > (box.y2 - box.y1) * 0.65 && b.x2 - b.x1 < (b.y2 - b.y1) * 0.35)
   return stems.length ? union(stems) : undefined
@@ -60,7 +62,7 @@ export interface PlacedJamo {
  * right of the vowel's stem. Not the middle: the stem is the edge the eye
  * holds the final against, while the initial's side is open.
  */
-const STEM_SHARE = 0.6
+export const STEM_SHARE = 0.6
 /** Furthest the bulk of a final may reach past either side of the upper body, in upper body widths. */
 const FINAL_OVERHANG = 0.05
 /** Furthest a final's visual centre may sit from the centre of its box, in box widths. */
@@ -447,5 +449,6 @@ export function layoutSyllable(input: SyllableLayoutInput) {
     parts[slot.role] = slot.path; geometry.zones[slot.role] = asBox(slot.zone); geometry.groups[slot.role] = slot.group
     const b = bounds(slot.path); if (b) geometry.anchors[slot.role] = { x: cx(b), y: cy(b) }
   }
+  if (final?.shape && !isPlaceholder('final')) geometry.finalShape = final.shape
   return { parts, geometry }
 }

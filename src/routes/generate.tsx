@@ -4,8 +4,8 @@ import { Check, FastForward, RotateCcw, X } from 'lucide-react'
 import { RailBrand } from '@/components/rail-brand'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
-import { buildFilm, drawFilm, filmLength, filmStep, FILM_NOTES, FILM_STEPS, FINISH_STEP, GRID_STEP, type FilmData } from '@/features/generating/film'
-import { flow, prefersReducedMotion } from '@/lib/flow'
+import { BIND_LENGTH, BIND_STEP, buildFilm, DONE_STEP, drawFilm, filmLength, filmStep, FILM_NOTES, FILM_STEPS, lanesCue, LANES_STEP, liftLength, type FilmData, type LineTarget } from '@/features/generating/film'
+import { flow, LEAD_SENTENCE, LEAD_SIZE, prefersReducedMotion } from '@/lib/flow'
 import { useFontFace } from '@/lib/use-font-face'
 import { useProject } from '@/project/use-project'
 import { projectActions, projectStore } from '@/project/store'
@@ -14,10 +14,12 @@ import { buildGenerationInputs } from '@/generation/inputs'
 
 export const Route = createFileRoute('/generate')({ component: GeneratePage })
 
-/** The first character of the sentence the preview opens on. */
-const LEAD_CHAR = '오'
-/** How long the finished lead glyph is held before the preview takes over. */
-const LEAD_HOLD = 700
+/** How long the sentence may wait for the new font to register before the preview takes over without it. */
+const FONT_WAIT = 4
+/** Share of the syllables composed by the time the film reaches the lanes, when the film can be slowed that far. */
+const LANES_SHARE = 0.88
+/** The most the film is slowed to keep pace with composition. */
+const MAX_STRETCH = 3
 
 function GeneratePage() {
   const navigate = useNavigate()
@@ -28,15 +30,25 @@ function GeneratePage() {
   const workerRef = useRef<Worker | null>(null)
   const started = useRef(false)
   const canvas = useRef<HTMLCanvasElement>(null)
+  const line = useRef<HTMLDivElement>(null)
+  const steps = useRef<HTMLOListElement>(null)
   const film = useRef<FilmData | null>(null)
-  const clock = useRef({ start: 0, shown: 0, drawn: 0, skipped: false })
-  // A font that already exists is being regenerated, which plays the short film.
-  const [kind] = useState<'full' | 'short' | 'none'>(() => prefersReducedMotion() ? 'none' : projectStore.state.generatedFont ? 'short' : 'full')
-  const [filmAt, setStep] = useState(kind === 'full' ? 0 : kind === 'short' ? 5 : GRID_STEP)
+  const clock = useRef({ start: 0, time: 0, pace: 1, drawn: 0, shown: 0, lanes: [] as number[], skipped: false, bind: 0, lift: 0, left: false })
+  // What the worker last reported, for the frame loop to read.
+  const live = useRef({ complete: false, fontReady: false, lanes: undefined as number[] | undefined })
+  const targets = useRef<LineTarget[] | null>(null)
+  // Every generation plays the whole film, a regeneration too: composing takes its time either way.
+  const [kind] = useState<'full' | 'none'>(() => prefersReducedMotion() ? 'none' : 'full')
+  const [step, setStep] = useState(kind === 'full' ? 0 : LANES_STEP)
   const [complete, setComplete] = useState(false)
   const [played, setPlayed] = useState(kind === 'none')
-  const finishing = complete && played
-  const step = finishing ? FINISH_STEP : filmAt
+  const finished = step === DONE_STEP || (complete && kind === 'none')
+
+  const leave = useCallback(() => {
+    if (clock.current.left) return
+    clock.current.left = true
+    void navigate({ to: '/preview', viewTransition: true })
+  }, [navigate])
 
   const run = useCallback(() => {
     const state = projectStore.state
@@ -45,13 +57,18 @@ function GeneratePage() {
     workerRef.current = worker
     projectActions.startGeneration()
     setComplete(false)
+    live.current = { ...live.current, complete: false, lanes: undefined }
 
     worker.onmessage = (event: MessageEvent<GenerationEvent>) => {
       const message = event.data
-      if (message.type === 'progress') projectActions.updateGenerationProgress(message.progress, message.message)
+      if (message.type === 'progress') {
+        if (message.lanes) live.current.lanes = message.lanes
+        projectActions.updateGenerationProgress(message.progress, message.message)
+      }
       if (message.type === 'complete') {
         projectActions.completeGeneration(message.buffer)
         worker.terminate()
+        live.current.complete = true
         setComplete(true)
       }
       if (message.type === 'error') projectActions.failGeneration(message.message)
@@ -88,11 +105,35 @@ function GeneratePage() {
     return () => workerRef.current?.terminate()
   }, [run])
 
+  useEffect(() => { live.current.fontReady = fontReady }, [fontReady])
+
+  // With no film to finish, the preview takes over as soon as the font exists.
+  useEffect(() => {
+    if (complete && (kind === 'none' || !film.current)) leave()
+  }, [complete, kind, leave])
+
   // The film: one canvas, redrawn each frame from the clock and the worker's real progress.
   useEffect(() => {
     const element = canvas.current
     const context = element?.getContext('2d')
     if (!element || !context) return
+    /** Where each character of the preview sentence stands, relative to the canvas. */
+    const measure = (): LineTarget[] | null => {
+      const text = line.current?.firstChild
+      const mark = line.current?.lastElementChild
+      if (!text || !mark) return null
+      const frame = element.getBoundingClientRect()
+      const range = document.createRange()
+      const boxes = [...LEAD_SENTENCE].map((_, index) => {
+        range.setStart(text, index)
+        range.setEnd(text, index + 1)
+        return range.getBoundingClientRect()
+      })
+      // The mark stands on the baseline of the last line; a character on an earlier line is as much higher as its line is.
+      const baseline = mark.getBoundingClientRect().bottom - frame.top
+      const lastTop = boxes[boxes.length - 1].top
+      return boxes.map((box) => ({ x: box.left - frame.left, baseline: baseline - (lastTop - box.top) }))
+    }
     let frame = 0
     const draw = () => {
       frame = requestAnimationFrame(draw)
@@ -105,33 +146,51 @@ function GeneratePage() {
         element.height = Math.round(height * dpr)
       }
       const state = clock.current
-      const length = filmLength(data, kind)
-      const time = state.skipped ? length : (performance.now() - state.start) / 1000
-      const target = Math.max(0, Math.min(1, (projectStore.state.generation.progress - 3) / 91))
-      // Follows the real progress closely, whatever the frame rate.
       const now = performance.now()
-      state.shown += (target - state.shown) * (1 - Math.exp(-(now - (state.drawn || now)) / 120))
+      const length = filmLength(data, kind)
+      const done = live.current.complete
+      const overall = done ? 1 : Math.max(0, Math.min(1, (projectStore.state.generation.progress - 3) / 91))
+      const passed = (now - (state.drawn || now)) / 1000
+      // The steps on the specimens take the time composition takes: the film slows so the lanes open only when most syllables are composed.
+      const lanesAt = lanesCue(data, kind)
+      let pace = 1
+      if (!done && overall > 0.02 && overall < LANES_SHARE && state.time < lanesAt) {
+        const wait = (LANES_SHARE - overall) * (now - state.start) / 1000 / overall
+        pace = Math.max(1 / MAX_STRETCH, Math.min(1, (lanesAt - state.time) / wait))
+      }
+      state.pace += (pace - state.pace) * (1 - Math.exp(-passed / 0.6))
+      state.time = state.skipped ? length : state.time + passed * state.pace
+      const time = state.time
+      // Follows the real progress closely, whatever the frame rate.
+      const follow = 1 - Math.exp(-passed / 0.12)
       state.drawn = now
-      const current = filmStep(data, kind, time)
-      setStep(current)
+      state.shown += (overall - state.shown) * follow
+      state.lanes = (live.current.lanes ?? [overall]).map((share, lane) => {
+        const shown = state.lanes[lane] ?? 0
+        return shown + ((done ? 1 : share) - shown) * follow
+      })
       if (time >= length) setPlayed(true)
-      drawFilm(context, width, height, dpr, data, { time, composed: state.shown, kind, finishing: element.dataset.finishing === 'true' })
+
+      // Finished and played through: the blocks join, then the preview sentence leaves them.
+      if (done && time >= length && kind !== 'none' && !state.bind) state.bind = now
+      const bind = state.bind ? (now - state.bind) / 1000 : -1
+      if (bind >= BIND_LENGTH && !state.lift) {
+        if (!data.line.length || bind > BIND_LENGTH + FONT_WAIT) leave()
+        else if (live.current.fontReady && (targets.current = measure())) state.lift = now
+      }
+      const lift = state.lift ? (now - state.lift) / 1000 : -1
+      if (lift >= liftLength(data)) leave()
+      setStep(lift >= 0 ? DONE_STEP : bind >= 0 ? BIND_STEP : filmStep(data, kind, time))
+      drawFilm(context, width, height, dpr, data, { time, composed: state.shown, lanes: state.lanes, kind, bind, lift, targets: targets.current, em: LEAD_SIZE })
     }
     frame = requestAnimationFrame(draw)
     return () => cancelAnimationFrame(frame)
-  }, [kind])
+  }, [kind, leave])
 
-  // Finished and played through: hold the first glyph of the preview sentence, then hand over.
+  // The live step stays in view in a rail too short for the whole list.
   useEffect(() => {
-    if (!finishing) return
-    const hold = kind === 'none' ? 0 : LEAD_HOLD
-    // The glyph is shown once the new font is registered; a font that never registers does not hold the page.
-    const timer = window.setTimeout(() => {
-      flow.finishGeneration()
-      void navigate({ to: '/preview', viewTransition: true })
-    }, fontReady ? hold : hold + 4000)
-    return () => window.clearTimeout(timer)
-  }, [finishing, fontReady, kind, navigate])
+    steps.current?.querySelector('[aria-current]')?.scrollIntoView({ block: 'nearest' })
+  }, [step])
 
   const cancel = () => workerRef.current?.postMessage({ type: 'cancel' })
   const skip = () => { clock.current.skipped = true; setPlayed(true) }
@@ -141,10 +200,10 @@ function GeneratePage() {
     <div className="flow">
       <aside className="rail">
         <RailBrand />
-        <h1 className="text-[26px] font-extrabold leading-tight tracking-[-0.03em]">{finishing ? '폰트가 완성됐어요' : '폰트를 만들고 있어요'}</h1>
-        <p className="rail-note mt-2 min-h-10" aria-live="polite">{FILM_NOTES[step]}</p>
+        <h1 className="text-[26px] font-extrabold leading-tight tracking-[-0.03em]">{finished ? '폰트가 완성됐어요' : '폰트를 만들고 있어요'}</h1>
+        <p className="rail-note mt-2 min-h-[58px]" aria-live="polite">{FILM_NOTES[step]}</p>
 
-        <ol className="step-list mt-5" aria-label="생성 단계">
+        <ol ref={steps} className="step-list" aria-label="생성 단계">
           {FILM_STEPS.map((name, index) => (
             <li key={name} className={index === step ? 'now' : index < step ? 'done' : undefined} aria-current={index === step ? 'step' : undefined}>
               <span>{index < step ? <Check className="size-3.5" strokeWidth={3} /> : index + 1}</span>
@@ -153,7 +212,7 @@ function GeneratePage() {
           ))}
         </ol>
 
-        <div className="mt-auto pt-6">
+        <div className="pt-4">
           <div className="flex items-end justify-between"><span className="rail-label">진행률</span><span className="rail-figure">{percent}<small>%</small></span></div>
           <Progress className="mt-3" value={generation.progress} />
           <p className="rail-note tnum mt-2 min-h-5">{generation.message || '글자 형태를 정리하는 중…'}</p>
@@ -165,8 +224,14 @@ function GeneratePage() {
       </aside>
 
       <section className="stage">
-        <canvas ref={canvas} className="film" aria-hidden="true" data-finishing={finishing} />
-        {finishing && fontReady && !generation.error && <span className="film-lead" aria-hidden="true" style={{ fontSize: 'min(26vh, 22vw, 230px)' }}>{LEAD_CHAR}</span>}
+        <canvas ref={canvas} className="film" aria-hidden="true" />
+        {/* The preview's own layout, unseen: the sentence is measured here so its glyphs land where the preview shows them. */}
+        <div className="preview-stage film-arrival" aria-hidden="true">
+          <div className="h-6" />
+          <div className="type-stack">
+            <div ref={line} className="font-preview type-overlay" style={{ fontFamily: 'OwnCharPreview', fontSize: LEAD_SIZE, lineHeight: 1.25 }}>{LEAD_SENTENCE}<i className="film-baseline" /></div>
+          </div>
+        </div>
         {generation.error && (
           <div className="film-error" role="alert">
             <p className="text-base font-bold text-danger">생성 중 문제가 발생했습니다</p>
