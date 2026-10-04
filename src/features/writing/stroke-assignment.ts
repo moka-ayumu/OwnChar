@@ -104,7 +104,7 @@ export function previewSvg(paths: StrokePath[]) {
   const minY = Math.min(...paths.map((path) => path.y))
   const maxX = Math.max(...paths.map((path) => path.x + Math.max(path.width, 1)))
   const maxY = Math.max(...paths.map((path) => path.y + Math.max(path.height, 1)))
-  const body = paths.map((path) => `<path d="${path.d}" transform="translate(${path.x} ${path.y})" fill="#17181A" fill-rule="nonzero"/>`).join('')
+  const body = paths.map((path) => `<path d="${path.d}" transform="translate(${path.x} ${path.y})" fill="#101114" fill-rule="nonzero"/>`).join('')
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${minX} ${minY} ${Math.max(1, maxX - minX)} ${Math.max(1, maxY - minY)}">${body}</svg>`
 }
 

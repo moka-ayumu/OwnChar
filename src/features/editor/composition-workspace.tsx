@@ -37,7 +37,7 @@ function drawGlyph(canvas: HTMLCanvasElement, path: opentype.Path) {
   if (!context) return
   context.setTransform(dpr, 0, 0, dpr, 0, 0)
   context.clearRect(0, 0, size, size)
-  context.strokeStyle = '#E5E7EB'
+  context.strokeStyle = '#D9DAD5'
   context.lineWidth = 1
   context.strokeRect(20.5, 20.5, 199, 199)
   context.setLineDash([3, 4])
@@ -50,7 +50,7 @@ function drawGlyph(canvas: HTMLCanvasElement, path: opentype.Path) {
   context.save()
   context.translate(20, 210)
   context.scale(0.2, -0.2)
-  context.fillStyle = '#17181A'
+  context.fillStyle = '#101114'
   context.beginPath()
   for (const command of path.commands) {
     if (command.type === 'M') context.moveTo(command.x, command.y)
@@ -71,9 +71,9 @@ function ExampleCard({ char, ariaLabel, path, caption, note }: { char: string; a
   return (
     <figure className="composition-example-card">
       <canvas ref={canvasRef} className="w-full" style={{ aspectRatio: '1' }} aria-label={ariaLabel} />
-      <figcaption className="flex items-baseline justify-between gap-3 border-t border-[#EEF0F2] px-4 py-3">
-        <div><strong className="text-xl font-semibold">{char}</strong>{note && <p className="mt-1 text-[10px] text-[#B45309]">{note}</p>}</div>
-        <span className="text-right text-[11px] leading-4 text-[#92969D]">{caption}</span>
+      <figcaption className="flex items-baseline justify-between gap-3 border-t border-rule px-4 py-3">
+        <div><strong className="text-xl font-semibold">{char}</strong>{note && <p className="mt-1 text-xs text-ink">{note}</p>}</div>
+        <span className="text-right text-xs leading-4 text-ink-3">{caption}</span>
       </figcaption>
     </figure>
   )
@@ -83,16 +83,16 @@ function RangeField({ label, value, display, min = 0, onChange }: { label: strin
   return (
     <label className="block">
       <span className="flex items-center justify-between text-xs"><span>{label}</span><span className="tabular-nums">{display}</span></span>
-      <input aria-label={label} type="range" min={min} max="1" step="0.01" value={value} className="mt-2 w-full accent-[#2457F5]" onChange={(event) => onChange(Number(event.target.value))} />
+      <input aria-label={label} type="range" min={min} max="1" step="0.01" value={value} className="mt-2 w-full accent-ink" onChange={(event) => onChange(Number(event.target.value))} />
     </label>
   )
 }
 
 function Section({ title, help, children }: { title: string; help?: string; children: React.ReactNode }) {
   return (
-    <div className="mt-6 border-t border-[#EEF0F2] pt-5">
+    <div className="mt-6 border-t border-rule pt-5">
       <h3 className="text-sm font-semibold">{title}</h3>
-      {help && <p className="mt-1 text-[11px] leading-4 text-[#92969D]">{help}</p>}
+      {help && <p className="mt-1 text-xs leading-4 text-ink-3">{help}</p>}
       {children}
     </div>
   )
@@ -115,15 +115,15 @@ function CompositionControls({ settings }: { settings: CompositionSettings }) {
   return (
     <div>
       <h2 className="text-sm font-semibold">한글 조합 설정</h2>
-      <p className="mt-2 text-xs leading-5 text-[#62656B]">왼쪽 예시는 즉시 갱신됩니다. 실제 OTF에는 상단의 변경 적용을 눌러 재합성할 때 반영됩니다.</p>
+      <p className="mt-2 text-xs leading-5 text-ink-2">왼쪽 예시는 즉시 갱신됩니다. 실제 OTF에는 상단의 변경 적용을 눌러 재합성할 때 반영됩니다.</p>
       <div className="mt-5 space-y-5">
         {scaleFields.map((field) => (
           <label key={field.key} className="block">
             <span className="flex items-center justify-between gap-3">
               <span className="input-label">{field.label}</span>
-              <span className="flex items-center gap-1"><input aria-label={field.label} type="number" className="text-input h-8 w-20 py-1 text-right" min={0.5} max={1.2} step={0.05} value={settings[field.key]} onChange={(event) => set({ [field.key]: Number(event.target.value) })} /><span className="w-4 text-xs text-[#92969D]">×</span></span>
+              <span className="flex items-center gap-1"><input aria-label={field.label} type="number" className="text-input h-8 w-20 py-1 text-right" min={0.5} max={1.2} step={0.05} value={settings[field.key]} onChange={(event) => set({ [field.key]: Number(event.target.value) })} /><span className="w-4 text-xs text-ink-3">×</span></span>
             </span>
-            <span className="mt-1 block text-[11px] leading-4 text-[#92969D]">{field.help}</span>
+            <span className="mt-1 block text-xs leading-4 text-ink-3">{field.help}</span>
           </label>
         ))}
       </div>
@@ -143,7 +143,7 @@ function CompositionControls({ settings }: { settings: CompositionSettings }) {
       </Section>
       <Section title="글자 가로폭">
         <div className="mt-3 grid grid-cols-2 gap-2">
-          {(['proportional', 'fixed'] as const).map((mode) => <button key={mode} type="button" aria-pressed={settings.widthMode === mode} className={`rounded-md border px-3 py-2 text-xs ${settings.widthMode === mode ? 'border-[#2457F5] bg-[#EFF4FF] text-[#2457F5]' : 'border-[#E5E7EB]'}`} onClick={() => set({ widthMode: mode })}>{mode === 'proportional' ? '가변 폭' : '고정 폭'}</button>)}
+          {(['proportional', 'fixed'] as const).map((mode) => <button key={mode} type="button" aria-pressed={settings.widthMode === mode} className={`rounded-md border px-3 py-2 text-xs ${settings.widthMode === mode ? 'border-ink bg-ink text-white' : 'border-rule hover:border-ink'}`} onClick={() => set({ widthMode: mode })}>{mode === 'proportional' ? '가변 폭' : '고정 폭'}</button>)}
         </div>
       </Section>
       <Button className="mt-6 w-full" variant="secondary" onClick={() => set(DEFAULT_COMPOSITION_SETTINGS)}><RotateCcw className="size-3.5" /> 조합 기본값 복원</Button>
@@ -181,11 +181,11 @@ export function CompositionWorkspace({ drawings, sessions, settings }: {
       <main className="composition-preview-area">
         <div className="flex items-end justify-between gap-6">
           <div>
-            <p className="text-xs font-medium text-[#2457F5]">실시간 조합 미리보기</p>
-            <h1 className="mt-2 text-2xl font-semibold tracking-[-0.03em]">대표 음절로 조합 균형을 확인하세요.</h1>
-            <p className="mt-2 text-sm text-[#62656B]">전체 폰트를 재생성하지 않고 현재 자모와 설정만 Canvas에 조합합니다.</p>
+            
+            <h1 className="text-[26px] font-extrabold tracking-[-0.03em]">대표 음절로 조합 균형을 확인하세요.</h1>
+            <p className="mt-2 text-sm text-ink-2">전체 폰트를 재생성하지 않고 현재 자모와 설정만 Canvas에 조합합니다.</p>
           </div>
-          <p className="shrink-0 text-xs text-[#92969D]">기본형과 입력된 문맥형을 즉시 반영</p>
+          <p className="shrink-0 text-xs text-ink-3">기본형과 입력된 문맥형을 즉시 반영</p>
         </div>
         <div className="composition-example-grid">
           {standalone.map(({ char, path }) => <ExampleCard key={char} char={char} path={path} ariaLabel={`${char} 단독 자모 미리보기`} caption={`단독 자모 · 가 기준 ${Math.round(settings.standaloneJamoMaxHeight * 100)}%`} />)}

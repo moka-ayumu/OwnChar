@@ -3,19 +3,21 @@ import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from '@/lib/utils'
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-colors duration-150 outline-none focus-visible:ring-2 focus-visible:ring-[#2457F5]/35 disabled:pointer-events-none disabled:opacity-45',
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold transition-[background-color,color,border-color,transform] duration-150 active:scale-[.97] disabled:pointer-events-none disabled:opacity-40',
   {
     variants: {
       variant: {
-        default: 'bg-[#2457F5] text-white hover:bg-[#1948db]',
-        secondary: 'border border-[#E5E7EB] bg-white text-[#17181A] hover:bg-[#F2F4F7]',
-        ghost: 'bg-transparent text-[#62656B] hover:bg-[#EEF0F2] hover:text-[#17181A]',
-        destructive: 'bg-[#B42318] text-white hover:bg-[#912018]',
+        default: 'bg-ink text-white hover:bg-[#2c2e34]',
+        secondary: 'border border-ink bg-transparent text-ink hover:bg-ink/8',
+        ghost: 'bg-transparent text-ink hover:bg-ink/8',
+        lime: 'bg-lime text-ink hover:bg-lime-deep',
+        inverse: 'border border-white/60 bg-transparent text-white hover:bg-white/12',
+        destructive: 'border border-danger bg-transparent text-danger hover:bg-danger hover:text-white',
       },
       size: {
         default: 'h-10 px-4',
-        sm: 'h-8 rounded-md px-3 text-xs',
-        lg: 'h-11 px-5',
+        sm: 'h-8 px-3',
+        lg: 'h-12 px-5 text-base',
         icon: 'size-9 p-0',
       },
     },

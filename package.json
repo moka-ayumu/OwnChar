@@ -28,7 +28,8 @@
     "perfect-freehand": "1.2.0",
     "react": "latest",
     "react-dom": "latest",
-    "tailwind-merge": "latest"
+    "tailwind-merge": "latest",
+    "wanted-sans": "^1.0.3"
   },
   "devDependencies": {
     "@eslint/js": "latest",

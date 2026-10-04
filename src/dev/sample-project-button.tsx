@@ -31,11 +31,11 @@ export function SampleProjectButton() {
   }
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 flex items-center overflow-hidden rounded-full border border-[#E5E7EB] bg-white text-xs shadow-lg">
-      <button className="inline-flex items-center gap-1.5 py-2 pl-3 pr-2 font-medium hover:bg-[#F2F4F7] disabled:opacity-50" disabled={loading} onClick={() => void apply()}>
+    <div className="fixed bottom-4 right-4 z-50 flex items-center overflow-hidden rounded-md border border-ink bg-white text-xs font-semibold">
+      <button className="inline-flex items-center gap-1.5 py-2 pl-3 pr-2 font-medium hover:bg-ground disabled:opacity-50" disabled={loading} onClick={() => void apply()}>
         <FlaskConical className="size-3.5" /> {loading ? '불러오는 중…' : '샘플 데이터 채우기'}
       </button>
-      <button aria-label="닫기" className="py-2 pl-1 pr-2.5 text-[#92969D] hover:text-[#17181A]" onClick={() => setVisible(false)}>
+      <button aria-label="닫기" className="py-2 pl-1 pr-2.5 text-ink-2 hover:text-ink" onClick={() => setVisible(false)}>
         <X className="size-3.5" />
       </button>
     </div>

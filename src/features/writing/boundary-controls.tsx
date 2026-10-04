@@ -24,8 +24,8 @@ export function BoundaryControls({ cell, target, warning, canUndo, canComplete, 
         {warning && <small role="alert">{warning}</small>}
       </div>
       <div>
-        <Button variant="secondary" disabled={!canUndo} onClick={onUndo}>경계 되돌리기</Button>
-        <Button disabled={!canComplete} onClick={(event) => onComplete(event.timeStamp)}>
+        <Button variant={cell ? 'inverse' : 'secondary'} disabled={!canUndo} onClick={onUndo}>경계 되돌리기</Button>
+        <Button variant={cell ? 'lime' : 'default'} disabled={!canComplete} onClick={(event) => onComplete(event.timeStamp)}>
           {target && cell ? `${cell.char} · ${jamo} 완료` : cell ? `${cell.char} 완료됨` : '현재 자모 완료'}
         </Button>
       </div>

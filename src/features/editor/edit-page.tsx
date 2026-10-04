@@ -106,26 +106,26 @@ export function EditPage({ glyph, query }: EditSearch) {
     <section className="editor-layout">
       <div className="editor-topbar">
         <div className="flex gap-1">
-          <Link to="/preview" className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }))}><ArrowLeft className="size-4" /> 미리보기</Link>
+          <Link to="/preview" viewTransition className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }))}><ArrowLeft className="size-4" /> 미리보기</Link>
           <Link to="/write" className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }))}><PenLine className="size-4" /> 글자 다시 쓰기</Link>
         </div>
-        <div className="absolute left-1/2 grid -translate-x-1/2 grid-cols-2 rounded-lg bg-[#F2F4F7] p-1">
+        <div className="segmented">
           {([['glyph', '글리프 편집'], ['composition', '한글 조합 설정']] as const).map(([mode, label]) => (
-            <button key={mode} className={`rounded-md px-4 py-2 text-xs font-medium ${editorMode === mode ? 'bg-white text-[#17181A] shadow-sm' : 'text-[#62656B]'}`} onClick={() => setEditorMode(mode)}>{label}</button>
+            <button key={mode} aria-pressed={editorMode === mode} onClick={() => setEditorMode(mode)}>{label}</button>
           ))}
         </div>
         <div className="flex gap-1">
           <Button size="icon" variant="ghost" aria-label="실행 취소" disabled={!history.past.length} onClick={projectActions.undo}><Undo2 className="size-4" /></Button>
           <Button size="icon" variant="ghost" aria-label="다시 실행" disabled={!history.future.length} onClick={projectActions.redo}><Redo2 className="size-4" /></Button>
-          <Button size="sm" onClick={() => void navigate({ to: '/generate' })}><Save className="size-3.5" /> 변경 적용</Button>
+          <Button size="sm" onClick={() => void navigate({ to: '/generate', viewTransition: true })}><Save className="size-3.5" /> 변경 적용</Button>
         </div>
       </div>
 
       {editorMode === 'glyph' ? <div className="editor-body">
         <div className="glyph-browser">
-          <div className="border-b border-[#E5E7EB] p-4">
+          <div className="border-b border-ink p-4">
             <input className="text-input" value={search} maxLength={1} placeholder="문자 검색" onChange={(event) => setSearch(event.target.value)} />
-            <p className="mt-2 text-xs text-[#92969D]">{selected.length.toLocaleString()}개 선택됨 · Shift/⌘로 다중 선택</p>
+            <p className="mt-2 text-xs text-ink-3">{selected.length.toLocaleString()}개 선택됨 · Shift/⌘로 다중 선택</p>
           </div>
           <div ref={scrollRef} className="min-h-0 flex-1 overflow-auto">
             <div style={{ height: virtualizer.getTotalSize(), position: 'relative' }}>
@@ -143,7 +143,7 @@ export function EditPage({ glyph, query }: EditSearch) {
         </div>
 
         <div className="glyph-preview">
-          <span className="text-xs font-medium text-[#92969D]">선택한 글자</span>
+          <span className="text-xs font-medium text-ink-3">선택한 글자</span>
           <div className="preview-baseline">
             <span style={{
               fontFamily: previewFont,
@@ -153,21 +153,21 @@ export function EditPage({ glyph, query }: EditSearch) {
         </div>
 
         <aside className="editor-settings">
-          <div className="border-b border-[#EEF0F2] pb-5">
+          <div className="border-b border-rule pb-5">
             <h2 className="text-sm font-semibold">원본 필기</h2>
-            {selected.length !== 1 ? <p className="mt-2 text-xs text-[#62656B]">글자 하나를 선택하면 출처를 볼 수 있어요.</p>
-              : selectedSources.length === 0 ? <p className="mt-2 text-xs text-[#62656B]">작성된 원본이 없습니다.</p>
+            {selected.length !== 1 ? <p className="mt-2 text-xs text-ink-2">글자 하나를 선택하면 출처를 볼 수 있어요.</p>
+              : selectedSources.length === 0 ? <p className="mt-2 text-xs text-ink-2">작성된 원본이 없습니다.</p>
                 : <div className="mt-3 space-y-2">{selectedSources.map((source, index) => {
                   const capture = source.capture
                   const label = `${sourceLabel(source)} ${source.char}`
                   return capture && WRITING_EXERCISES.some((item) => item.id === capture.exerciseId)
-                    ? <button key={`${source.originPromptId}-${index}`} className="flex w-full items-center justify-between rounded-lg border border-[#E5E7EB] px-3 py-2 text-left text-xs font-medium hover:border-[#2457F5] hover:text-[#2457F5]" onClick={() => void navigate({ to: '/write', search: { exerciseId: capture.exerciseId, cellIndex: capture.cellIndex, returnGlyph: selected[0], returnQuery: search || undefined } })}>
+                    ? <button key={`${source.originPromptId}-${index}`} className="source-link" onClick={() => void navigate({ to: '/write', search: { exerciseId: capture.exerciseId, cellIndex: capture.cellIndex, returnGlyph: selected[0], returnQuery: search || undefined } })}>
                       <span>{label}</span><ChevronRight className="size-4" aria-hidden="true" />
                     </button>
-                    : <div key={`${source.originPromptId}-${index}`} className="rounded-lg border border-[#E5E7EB] px-3 py-2 text-xs text-[#62656B]">{label} · 원본 없음</div>
+                    : <div key={`${source.originPromptId}-${index}`} className="rounded-md border border-rule px-3 py-2 text-sm text-ink-2">{label} · 원본 없음</div>
                 })}</div>}
           </div>
-          <h2 className="text-sm font-semibold">글리프 설정 {overrideCount ? <span className="font-normal text-[#B45309]">· {overrideCount}개 수정됨</span> : null}</h2>
+          <h2 className="mt-5 text-sm font-bold">글리프 설정 {overrideCount ? <span className="font-normal text-ink">· {overrideCount}개 수정됨</span> : null}</h2>
           <div className="mt-4 grid grid-cols-2 gap-3">
             {overrideFields.map(([key, label]) => (
               <label key={key} className={key === 'rotation' ? 'col-span-2' : ''}>
@@ -177,17 +177,17 @@ export function EditPage({ glyph, query }: EditSearch) {
             ))}
           </div>
 
-          <div className="mt-7 border-t border-[#EEF0F2] pt-6">
+          <div className="mt-7 border-t border-rule pt-6">
             <h3 className="text-sm font-semibold">전체 여백</h3>
             <div className="mt-4 grid grid-cols-3 gap-2">
               {metricFields.map(([key, label]) => <label key={key}><span className="input-label">{label}</span><input type="number" className="text-input mt-1.5" value={globalMetrics[key]} onChange={(event) => projectActions.updateGlobalMetrics({ [key]: Number(event.target.value) })} /></label>)}
             </div>
           </div>
 
-          <div className="mt-7 space-y-2 border-t border-[#EEF0F2] pt-6">
+          <div className="mt-7 space-y-2 border-t border-rule pt-6">
             <Button className="w-full" variant="secondary" onClick={fitHeight}>선택 높이 맞추기</Button>
             <Button className="w-full" variant="ghost" onClick={() => projectActions.resetGlyphTransform(selected)}><RotateCcw className="size-3.5" /> 선택 초기화</Button>
-            <Button className="w-full text-[#B42318]" variant="ghost" onClick={projectActions.resetAllGlyphTransforms}>모든 글리프 초기화</Button>
+            <Button className="w-full text-danger" variant="ghost" onClick={projectActions.resetAllGlyphTransforms}>모든 글리프 초기화</Button>
           </div>
         </aside>
       </div> : <CompositionWorkspace drawings={drawings} sessions={sessions} settings={compositionSettings} />}

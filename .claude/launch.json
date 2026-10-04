@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "ownchar-dev",
+      "runtimeExecutable": "pwsh",
+      "runtimeArgs": ["-NoProfile", "-Command", "fnm env --use-on-cd --shell powershell | Out-String | Invoke-Expression; pnpm dev --port 5183 --strictPort"],
+      "port": 5183
+    }
+  ]
+}

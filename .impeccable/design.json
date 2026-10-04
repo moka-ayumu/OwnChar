@@ -1,0 +1,186 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-04T00:00:00.000Z",
+  "title": "Design System: OwnChar",
+  "extensions": {
+    "colorMeta": {
+      "ink": { "role": "primary", "displayName": "Ink", "canonical": "oklch(17.8% 0.006 271)", "tonalRamp": ["oklch(15% 0.006 271)", "oklch(27% 0.006 271)", "oklch(38% 0.006 271)", "oklch(50% 0.006 271)", "oklch(61% 0.006 271)", "oklch(73% 0.006 271)", "oklch(84% 0.006 271)", "oklch(95% 0.006 271)"] },
+      "ink-hover": { "role": "primary", "displayName": "Ink Hover", "canonical": "oklch(30.2% 0.011 271)", "tonalRamp": ["oklch(15% 0.011 271)", "oklch(27% 0.011 271)", "oklch(38% 0.011 271)", "oklch(50% 0.011 271)", "oklch(61% 0.011 271)", "oklch(73% 0.011 271)", "oklch(84% 0.011 271)", "oklch(95% 0.011 271)"] },
+      "lime": { "role": "secondary", "displayName": "Lime Field", "canonical": "oklch(90.3% 0.208 123)", "tonalRamp": ["oklch(15% 0.208 123)", "oklch(27% 0.208 123)", "oklch(38% 0.208 123)", "oklch(50% 0.208 123)", "oklch(61% 0.208 123)", "oklch(73% 0.208 123)", "oklch(84% 0.208 123)", "oklch(95% 0.208 123)"] },
+      "lime-deep": { "role": "secondary", "displayName": "Lime Deep", "canonical": "oklch(84.4% 0.204 123)", "tonalRamp": ["oklch(15% 0.204 123)", "oklch(27% 0.204 123)", "oklch(38% 0.204 123)", "oklch(50% 0.204 123)", "oklch(61% 0.204 123)", "oklch(73% 0.204 123)", "oklch(84% 0.204 123)", "oklch(95% 0.204 123)"] },
+      "lime-ink": { "role": "secondary", "displayName": "Lime Ink", "canonical": "oklch(38.4% 0.086 122)", "tonalRamp": ["oklch(15% 0.086 122)", "oklch(27% 0.086 122)", "oklch(38% 0.086 122)", "oklch(50% 0.086 122)", "oklch(61% 0.086 122)", "oklch(73% 0.086 122)", "oklch(84% 0.086 122)", "oklch(95% 0.086 122)"] },
+      "danger": { "role": "tertiary", "displayName": "Functional Red", "canonical": "oklch(52.9% 0.193 30)", "tonalRamp": ["oklch(15% 0.193 30)", "oklch(27% 0.193 30)", "oklch(38% 0.193 30)", "oklch(50% 0.193 30)", "oklch(61% 0.193 30)", "oklch(73% 0.193 30)", "oklch(84% 0.193 30)", "oklch(95% 0.193 30)"] },
+      "white": { "role": "neutral", "displayName": "White", "canonical": "oklch(100% 0 0)", "tonalRamp": ["oklch(15% 0 0)", "oklch(27% 0 0)", "oklch(38% 0 0)", "oklch(50% 0 0)", "oklch(61% 0 0)", "oklch(73% 0 0)", "oklch(84% 0 0)", "oklch(100% 0 0)"] },
+      "ground": { "role": "neutral", "displayName": "Ground", "canonical": "oklch(94.4% 0.007 116)", "tonalRamp": ["oklch(15% 0.007 116)", "oklch(27% 0.007 116)", "oklch(38% 0.007 116)", "oklch(50% 0.007 116)", "oklch(61% 0.007 116)", "oklch(73% 0.007 116)", "oklch(84% 0.007 116)", "oklch(95% 0.007 116)"] },
+      "rule": { "role": "neutral", "displayName": "Rule", "canonical": "oklch(88.6% 0.007 116)", "tonalRamp": ["oklch(15% 0.007 116)", "oklch(27% 0.007 116)", "oklch(38% 0.007 116)", "oklch(50% 0.007 116)", "oklch(61% 0.007 116)", "oklch(73% 0.007 116)", "oklch(84% 0.007 116)", "oklch(95% 0.007 116)"] },
+      "ink-2": { "role": "neutral", "displayName": "Ink 2", "canonical": "oklch(41.7% 0.010 271)", "tonalRamp": ["oklch(15% 0.010 271)", "oklch(27% 0.010 271)", "oklch(38% 0.010 271)", "oklch(50% 0.010 271)", "oklch(61% 0.010 271)", "oklch(73% 0.010 271)", "oklch(84% 0.010 271)", "oklch(95% 0.010 271)"] },
+      "ink-3": { "role": "neutral", "displayName": "Ink 3", "canonical": "oklch(52.1% 0.012 267)", "tonalRamp": ["oklch(15% 0.012 267)", "oklch(27% 0.012 267)", "oklch(38% 0.012 267)", "oklch(50% 0.012 267)", "oklch(61% 0.012 267)", "oklch(73% 0.012 267)", "oklch(84% 0.012 267)", "oklch(95% 0.012 267)"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "The home headline; the help page title sits at its 34px floor." },
+      "headline": { "displayName": "Headline", "purpose": "The one heading of a rail or workspace. The sentence being written uses the same size at weight 700." },
+      "figure": { "displayName": "Figure", "purpose": "The single large tabular number in a rail: collected count, percent." },
+      "title": { "displayName": "Title", "purpose": "Dialog titles and help-page section headings." },
+      "body": { "displayName": "Body", "purpose": "Prose on ground or white, in ink-2, max 34em to 68ch." },
+      "ui": { "displayName": "UI", "purpose": "Buttons, rail rows, navigation, inputs." },
+      "label": { "displayName": "Label", "purpose": "Field labels, rail labels and notes, counts, captions. The smallest size." }
+    },
+    "shadows": [
+      { "name": "input-focus-ring", "value": "0 0 0 2px #101114", "purpose": "Zero-blur ink ring on a focused text input. A line, not elevation." },
+      { "name": "empty-tile-outline", "value": "inset 0 0 0 1px #101114", "purpose": "1px inset outline on an empty jamo tile. A line, not elevation." }
+    ],
+    "motion": [
+      { "name": "ease-out-expo", "value": "cubic-bezier(.16, 1, .3, 1)", "purpose": "The one easing curve for entrances, hovers that move, and view-transition groups." },
+      { "name": "control-transition", "value": "150ms", "purpose": "Colour, border and transform on buttons and inputs; press scales to .97." },
+      { "name": "progress-fill", "value": "200ms", "purpose": "Progress indicator transform." },
+      { "name": "vt-rail", "value": "group 420ms on lime; old out 150ms ease-in (opacity 0, translateY -8px); new in 320ms ease-out-expo after 150ms (from opacity 0, translateY 10px)", "purpose": "The lime rail holds still across flow routes while its contents change." },
+      { "name": "vt-stage", "value": "group 420ms ease-out-expo on white", "purpose": "The white stage holds still across flow routes; contents cross-fade." },
+      { "name": "vt-lead", "value": "group 640ms ease-out-expo; old/new height 100%, width auto", "purpose": "The lead glyph travels from the end of generation to the first typed character of the preview." },
+      { "name": "vt-root", "value": "200ms", "purpose": "Cross-fade for everything outside the named parts." },
+      { "name": "lead-in", "value": "420ms ease-out-expo from opacity 0, scale .86", "purpose": "The finished lead glyph appearing in the film's lime box." },
+      { "name": "lead-hold", "value": "700ms", "purpose": "How long the finished lead glyph is held before the preview takes over (0 under reduced motion)." },
+      { "name": "film-full-cues", "value": "0s, 1.5s, 3.0s, 4.2s, 5.4s, 6.4s, 8.4s; may finish at 9.6s", "purpose": "Start of each of the first seven steps in the full generation film." },
+      { "name": "film-short-cues", "value": "opens on step 6; field at 1.5s; may finish at 3s", "purpose": "The short film played on regeneration." },
+      { "name": "film-sibling-interval", "value": "240ms", "purpose": "Interval between sibling syllables in the composition step." },
+      { "name": "film-progress-follow", "value": "exponential approach, 120ms time constant; worker progress 3-94% mapped to 0-1", "purpose": "How the 11,172 field follows real progress at any frame rate." },
+      { "name": "film-step-ease", "value": "1 - (1 - t)^4", "purpose": "Quartic ease-out for pose changes inside the film." },
+      { "name": "type-interval", "value": "760ms first character, 85ms per character, 500ms hold", "purpose": "The typing arrival on the preview page." },
+      { "name": "caret", "value": "900ms steps(1) infinite", "purpose": "Blinking ink caret during the typing arrival." },
+      { "name": "settle", "value": "520ms ease-out-expo from opacity 0, translateY 14px; 60ms stagger", "purpose": "Sample rows arriving after the sentence has typed." },
+      { "name": "tile-in", "value": "360ms ease-out-expo from opacity 0, translateY 8px, scale .94", "purpose": "A newly collected jamo tile." },
+      { "name": "combo", "value": "420ms ease-out-expo; glyph from scale .9, tile from translateY 70%; one change every 1500ms", "purpose": "The home combination demonstration." },
+      { "name": "sample-row-hover", "value": "color 150ms; translateX 10px over 300ms ease-out-expo", "purpose": "Hover on a preview sample row." },
+      { "name": "reduced-motion", "value": "animations and transitions .01ms, one iteration; view transitions none; film kind 'none' (field only, no skip, no hold); no typing arrival; home demo static", "purpose": "prefers-reduced-motion behaviour." }
+    ],
+    "breakpoints": [
+      { "name": "compact", "value": "1100px" },
+      { "name": "phone-notice", "value": "767px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Solid ink; the one primary action of a surface, at the rail's bottom in the flow.",
+      "html": "<button class=\"ds-btn ds-btn-primary\">폰트 만들기</button>",
+      "css": ".ds-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 16px; border: 0; border-radius: 6px; font-family: var(--font-sans); font-size: 14px; font-weight: 600; white-space: nowrap; cursor: pointer; transition: background-color 150ms, color 150ms, border-color 150ms, transform 150ms; } .ds-btn:active { transform: scale(.97); } .ds-btn:focus-visible { outline: 2px solid var(--color-ink); outline-offset: 2px; } .ds-btn:disabled { opacity: .4; pointer-events: none; } .ds-btn-primary { background: var(--color-ink); color: #fff; } .ds-btn-primary:hover { background: #2c2e34; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Transparent with a 1px ink border; the alternative beside a primary, on white or lime.",
+      "html": "<button class=\"ds-btn2 ds-btn-secondary\">이전 문장</button>",
+      "css": ".ds-btn2 { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 16px; border-radius: 6px; font-family: var(--font-sans); font-size: 14px; font-weight: 600; white-space: nowrap; cursor: pointer; transition: background-color 150ms, transform 150ms; } .ds-btn2:active { transform: scale(.97); } .ds-btn2:focus-visible { outline: 2px solid var(--color-ink); outline-offset: 2px; } .ds-btn-secondary { border: 1px solid var(--color-ink); background: transparent; color: var(--color-ink); } .ds-btn-secondary:hover { background: rgb(16 17 20 / 8%); }"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "No border; toolbar tools, cancel and back links. A tool that is on takes the primary style.",
+      "html": "<button class=\"ds-btn-ghost\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M18 6 6 18\"/><path d=\"m6 6 12 12\"/></svg>생성 취소</button>",
+      "css": ".ds-btn-ghost { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 16px; border: 0; border-radius: 6px; background: transparent; color: var(--color-ink); font-family: var(--font-sans); font-size: 14px; font-weight: 600; cursor: pointer; transition: background-color 150ms, transform 150ms; } .ds-btn-ghost:hover { background: rgb(16 17 20 / 8%); } .ds-btn-ghost:active { transform: scale(.97); } .ds-btn-ghost:focus-visible { outline: 2px solid var(--color-ink); outline-offset: 2px; }"
+    },
+    {
+      "name": "Destructive Button",
+      "kind": "button",
+      "refersTo": "button-destructive",
+      "description": "Red outline that fills on hover; only for choices that destroy work, inside a dialog.",
+      "html": "<button class=\"ds-btn-destructive\">기존 보정 삭제 후 재합성</button>",
+      "css": ".ds-btn-destructive { display: inline-flex; align-items: center; justify-content: center; height: 40px; padding: 0 16px; border: 1px solid var(--color-danger); border-radius: 6px; background: transparent; color: var(--color-danger); font-family: var(--font-sans); font-size: 14px; font-weight: 600; cursor: pointer; transition: background-color 150ms, color 150ms, transform 150ms; } .ds-btn-destructive:hover { background: var(--color-danger); color: #fff; } .ds-btn-destructive:active { transform: scale(.97); } .ds-btn-destructive:focus-visible { outline: 2px solid var(--color-ink); outline-offset: 2px; }"
+    },
+    {
+      "name": "Ink Bar",
+      "kind": "custom",
+      "refersTo": "ink-bar",
+      "description": "Solid ink strip for a state that needs an answer now; carries the inverse and lime buttons.",
+      "html": "<div class=\"ds-inkbar\"><div><strong>요의 자모 경계</strong><span>초성 ㅇ 획을 모두 쓴 뒤 완료해 주세요.</span></div><div class=\"ds-inkbar-actions\"><button class=\"ds-inkbar-inverse\">경계 되돌리기</button><button class=\"ds-inkbar-lime\">요 · 초성 ㅇ 완료</button></div></div>",
+      "css": ".ds-inkbar { display: flex; align-items: center; justify-content: space-between; gap: 20px; border: 1px solid var(--color-ink); border-radius: 6px; background: var(--color-ink); color: #fff; padding: 11px 12px 11px 14px; font-family: var(--font-sans); } .ds-inkbar strong { display: block; font-size: 14px; font-weight: 700; } .ds-inkbar span { display: block; margin-top: 2px; color: #c9cbc4; font-size: 12px; } .ds-inkbar-actions { display: flex; flex: none; gap: 8px; } .ds-inkbar button { height: 40px; padding: 0 16px; border-radius: 6px; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; transition: background-color 150ms, transform 150ms; } .ds-inkbar button:active { transform: scale(.97); } .ds-inkbar button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; } .ds-inkbar-inverse { border: 1px solid rgb(255 255 255 / 60%); background: transparent; color: #fff; } .ds-inkbar-inverse:hover { background: rgb(255 255 255 / 12%); } .ds-inkbar-lime { border: 0; background: var(--color-lime); color: var(--color-ink); } .ds-inkbar-lime:hover { background: var(--color-lime-deep); }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "text-input",
+      "description": "38px white field with a label above; rule border at rest, ink border with a 2px ink ring on focus.",
+      "html": "<label class=\"ds-field\"><span class=\"ds-field-label\">폰트 이름</span><input class=\"ds-input\" value=\"OwnChar Font\" placeholder=\"이름을 입력하세요\"></label>",
+      "css": ".ds-field { display: block; font-family: var(--font-sans); } .ds-field-label { display: block; margin-bottom: 6px; font-size: 12px; font-weight: 600; color: var(--color-ink-2); } .ds-input { width: 100%; height: 38px; border: 1px solid var(--color-rule); border-radius: 6px; background: #fff; padding: 0 11px; color: var(--color-ink); font: inherit; font-size: 14px; outline: none; transition: border-color 150ms, box-shadow 150ms; } .ds-input::placeholder { color: var(--color-ink-3); } .ds-input:hover { border-color: var(--color-ink-3); } .ds-input:focus { border-color: var(--color-ink); box-shadow: 0 0 0 2px var(--color-ink); }"
+    },
+    {
+      "name": "Flow Rail",
+      "kind": "nav",
+      "refersTo": "rail",
+      "description": "The lime rail of a flow page: headline and note, numbered rows with the current one in solid ink, figure with progress, primary action at the bottom.",
+      "html": "<aside class=\"ds-rail\"><h1>폰트를 만들고 있어요</h1><p class=\"ds-rail-note\">획을 시작한 칸과 쓴 순서로 초성·중성·종성을 나눕니다.</p><ol class=\"ds-rail-rows\"><li class=\"ds-done\"><span><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M20 6 9 17l-5-5\"/></svg></span><span>윤곽선 만들기</span></li><li class=\"ds-now\"><span>4</span><span>자모 분리</span></li><li><span>5</span><span>크기 정규화</span></li></ol><div class=\"ds-rail-foot\"><div class=\"ds-rail-figure-row\"><span class=\"ds-rail-label\">진행률</span><span class=\"ds-rail-figure\">13<small>%</small></span></div><div class=\"ds-progress\"><i style=\"width:13%\"></i></div><button class=\"ds-rail-action\">건너뛰기</button></div></aside>",
+      "css": ".ds-rail { display: flex; flex-direction: column; width: 280px; min-height: 420px; border-right: 1px solid var(--color-ink); background: var(--color-lime); color: var(--color-ink); padding: 24px 22px 20px; font-family: var(--font-sans); } .ds-rail h1 { margin: 0; font-size: 26px; font-weight: 800; line-height: 1.25; letter-spacing: -.03em; } .ds-rail-note { margin: 8px 0 0; font-size: 12px; line-height: 1.6; color: var(--color-lime-ink); } .ds-rail-rows { margin: 20px 0 0; padding: 0; list-style: none; } .ds-rail-rows li { display: grid; grid-template-columns: 22px 1fr; align-items: center; gap: 8px; margin: 0 -8px; border-radius: 6px; padding: 7px 8px; font-size: 14px; font-weight: 600; color: var(--color-lime-ink); } .ds-rail-rows li span:first-child { font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; } .ds-rail-rows li.ds-done { color: var(--color-ink); } .ds-rail-rows li.ds-now { background: var(--color-ink); color: #fff; } .ds-rail-rows li.ds-now span:first-child { color: var(--color-lime); } .ds-rail-foot { margin-top: auto; padding-top: 24px; } .ds-rail-figure-row { display: flex; align-items: flex-end; justify-content: space-between; } .ds-rail-label { font-size: 12px; font-weight: 600; color: var(--color-lime-ink); } .ds-rail-figure { font-size: 44px; font-weight: 800; line-height: 1; letter-spacing: -.03em; font-variant-numeric: tabular-nums; } .ds-rail-figure small { margin-left: 4px; font-size: 14px; font-weight: 600; letter-spacing: 0; color: var(--color-lime-ink); } .ds-progress { margin-top: 12px; height: 6px; overflow: hidden; border-radius: 9999px; background: rgb(16 17 20 / 15%); } .ds-progress i { display: block; height: 100%; background: var(--color-ink); transition: width 200ms; } .ds-rail-action { margin-top: 12px; width: 100%; height: 40px; border: 1px solid var(--color-ink); border-radius: 6px; background: transparent; color: var(--color-ink); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; transition: background-color 150ms, transform 150ms; } .ds-rail-action:hover { background: rgb(16 17 20 / 8%); } .ds-rail-action:active { transform: scale(.97); } .ds-rail-action:focus-visible { outline: 2px solid var(--color-ink); outline-offset: 2px; }"
+    },
+    {
+      "name": "Segmented Control",
+      "kind": "chip",
+      "refersTo": "segmented-option-pressed",
+      "description": "Mode switch on the lime editor bar; the pressed option is solid ink.",
+      "html": "<div class=\"ds-segmented-bar\"><div class=\"ds-segmented\"><button aria-pressed=\"true\">글리프 편집</button><button aria-pressed=\"false\">한글 조합 설정</button></div></div>",
+      "css": ".ds-segmented-bar { display: flex; justify-content: center; background: var(--color-lime); padding: 8px 16px; font-family: var(--font-sans); } .ds-segmented { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--color-ink); border-radius: 6px; padding: 2px; } .ds-segmented button { border: 0; border-radius: 4px; background: transparent; padding: 7px 16px; color: var(--color-ink); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; } .ds-segmented button[aria-pressed=\"true\"] { background: var(--color-ink); color: #fff; } .ds-segmented button:focus-visible { outline: 2px solid var(--color-ink); outline-offset: 2px; }"
+    },
+    {
+      "name": "Dialog",
+      "kind": "card",
+      "refersTo": "dialog",
+      "description": "White panel with a 1px ink border on a 45% ink scrim; confirms incomplete or destructive choices.",
+      "html": "<div class=\"ds-dialog\"><h2>아직 수집하지 않은 글자가 있어요</h2><p>누락된 기호와 기본 글자는 폰트에 포함하지 않고, 누락된 문맥형은 이미 쓴 다른 문맥의 같은 자모로 대체합니다.</p><div class=\"ds-dialog-inset\">A B C D E F G 0 1 2 3 ? ! @</div><div class=\"ds-dialog-actions\"><button class=\"ds-dialog-secondary\">계속 작성하기</button><button class=\"ds-dialog-primary\">그래도 생성하기</button></div></div>",
+      "css": ".ds-dialog { max-width: 448px; border: 1px solid var(--color-ink); border-radius: 6px; background: #fff; padding: 24px; font-family: var(--font-sans); color: var(--color-ink); } .ds-dialog h2 { margin: 0; padding-right: 32px; font-size: 18px; font-weight: 700; letter-spacing: -.02em; } .ds-dialog p { margin: 8px 0 0; font-size: 14px; line-height: 24px; color: var(--color-ink-2); } .ds-dialog-inset { margin-top: 16px; border-radius: 6px; background: var(--color-ground); padding: 12px; font-size: 14px; line-height: 24px; color: var(--color-ink-2); } .ds-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 24px; } .ds-dialog-actions button { height: 40px; padding: 0 16px; border-radius: 6px; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; transition: background-color 150ms, transform 150ms; } .ds-dialog-actions button:active { transform: scale(.97); } .ds-dialog-actions button:focus-visible { outline: 2px solid var(--color-ink); outline-offset: 2px; } .ds-dialog-secondary { border: 1px solid var(--color-ink); background: transparent; color: var(--color-ink); } .ds-dialog-secondary:hover { background: rgb(16 17 20 / 8%); } .ds-dialog-primary { border: 0; background: var(--color-ink); color: #fff; } .ds-dialog-primary:hover { background: #2c2e34; }"
+    },
+    {
+      "name": "Sample Row",
+      "kind": "custom",
+      "refersTo": "stage",
+      "description": "A full-width preview line in the user's font, divided by rule lines; slides 10px on hover.",
+      "html": "<button class=\"ds-sample-row\"><span>가나다라마바사아자차카타파하</span></button>",
+      "css": ".ds-sample-row { display: block; width: 100%; border: 0; border-top: 1px solid var(--color-rule); background: transparent; padding: 18px 0; color: var(--color-ink-2); font-family: OwnCharPreview, var(--font-sans); font-size: 30px; line-height: 1.5; letter-spacing: -.04em; text-align: left; cursor: pointer; transition: color 150ms; } .ds-sample-row span { display: inline-block; transition: transform 300ms cubic-bezier(.16, 1, .3, 1); } .ds-sample-row:hover { color: var(--color-ink); } .ds-sample-row:hover span { transform: translateX(10px); } .ds-sample-row:focus-visible { outline: 2px solid var(--color-ink); outline-offset: 2px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "연속 동작 (One Stroke, Never Cut)",
+    "overview": "OwnChar draws like a sequential-pose pictogram: one subject, shown again and again in a new pose, never swapped for something else. The subject is the writer's own handwriting. It is written on a white stage, and from that point on it stays on screen: lifted out of its sentence, steadied, outlined, split into jamo, brought to one size, recombined, multiplied to 11,172 syllables, and finally typed back as a sentence. No page in the flow replaces the handwriting with a spinner or an illustration of progress; the handwriting is the progress.\n\nThe palette is three values on a quiet ground: ink, white, and one lime field. Everything is flat. Lime is a surface that frames the work (the flow rail, the editor bar, the home demonstration); white is where the work happens; solid ink marks whatever is selected, live, or primary. Hierarchy comes from weight and from reversing ink and lime, not from more colours or more sizes. Corners are 6px, lines are 1px.\n\nThe system is dense and tool-like in the stage and calm in the rail. It avoids paper or stationery imitation, the white-and-blue SaaS tool shell, and a dark technical look; those were ruled out by the user when this world was chosen.",
+    "keyCharacteristics": [
+      "Ink, white, one lime field, on a warm-neutral ground; one red for destruction and errors only.",
+      "A fixed frame for the main flow: lime rail at the left, white stage for the rest, primary action at the rail's bottom.",
+      "Solid ink is the single mark of \"selected / current / primary\".",
+      "Flat: no elevation shadows, no tonal gradients, 1px hairlines, 6px corners.",
+      "One sans family (Wanted Sans); the user's handwriting font is the only other typeface that ever appears.",
+      "Motion keeps things in place and changes their pose; route changes hold the rail and stage and move one glyph across."
+    ],
+    "rules": [
+      { "name": "The Solid Ink Rule", "body": "Selection, the live step, progress, and the primary action are solid ink with white text. If two things on one surface are solid ink, one of them is wrong, unless one is a toggle that is on.", "section": "colors" },
+      { "name": "The Lime Is A Field Rule", "body": "Lime is a surface or a tint, never a text colour on white or ground (1.3:1). Lime text exists only on solid ink: the number of the current step, the count in the current rail row, the boundary notice on the ink bar, the dot in the logo mark.", "section": "colors" },
+      { "name": "The One Red Rule", "body": "Red means \"this destroys work\" or \"this failed\". It is never decoration, never a badge, never a second accent.", "section": "colors" },
+      { "name": "The Few Sizes Rule", "body": "12, 14, 16, 18, 26, 44 and the display clamp. A new level of hierarchy is a weight change or an ink/lime reversal before it is a new size.", "section": "typography" },
+      { "name": "The Tabular Rule", "body": "Every number that changes (counts, percent, px values, slider readouts) is tabular and non-wrapping.", "section": "typography" },
+      { "name": "The Korean Line Rule", "body": "Text breaks between words, not inside them (`word-break: keep-all`), and headings are balanced.", "section": "typography" },
+      { "name": "The Same Place Rule", "body": "A page in the write → generate → preview flow uses the rail-and-stage frame, puts its primary action at the rail's bottom, and names its rail `rail` and its stage `stage` so the frame holds across the navigation.", "section": "layout" },
+      { "name": "The Never Cut Rule", "body": "Waiting is shown on the user's own strokes, driven by real progress. No spinner, no skeleton, no stand-in illustration.", "section": "layout" },
+      { "name": "The Flat Field Rule", "body": "Depth is a change of field or a hairline. If a surface needs a shadow to read as separate, give it a border in ink or rule instead.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do build a flow page from the frame: lime rail (280px, 1px ink right edge), white stage, primary action in solid ink at the rail's bottom.",
+      "Do mark the selected, current or pressed thing with solid ink and white text, and use lime text only on that ink.",
+      "Do use lime-ink for secondary text on lime and ink-2 / ink-3 for secondary text on white and ground.",
+      "Do keep every control at a 6px corner (4px when nested), every structural line at 1px ink, every quiet line at 1px rule.",
+      "Do show any wait or computation on the user's own strokes and drive it from real progress.",
+      "Do carry a navigation inside the flow with the `rail`, `stage` and `lead` transitions, and keep every animation on `cubic-bezier(.16, 1, .3, 1)`.",
+      "Do give every animated behaviour a still equivalent under reduced motion that shows the same information.",
+      "Do set changing numbers in tabular figures and keep 12px as the smallest size.",
+      "Do put a destructive choice in a dialog, in the destructive button style."
+    ],
+    "donts": [
+      "Don't add a colour. No blue, no second accent, no status greens or ambers; state is ink, lime, or red for failure.",
+      "Don't set lime text on white or ground, or use lime for a button outside a solid ink surface.",
+      "Don't use shadows for lift, blur, glass, or gradients for tone. `box-shadow` is a zero-blur line or nothing.",
+      "Don't replace the handwriting with a spinner, skeleton, or stock progress illustration.",
+      "Don't imitate paper, notebooks or stationery, and don't drift toward a white-and-blue SaaS shell or a dark technical theme.",
+      "Don't introduce a second interface typeface, or set interface text in the user's font.",
+      "Don't move the primary action out of the rail's bottom on a flow page.",
+      "Don't let an animation bounce, loop, or run longer than the thing it explains; the film's length is set by the steps, not by decoration."
+    ]
+  }
+}

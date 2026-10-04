@@ -22,7 +22,7 @@ interface Props {
 interface Sample { point: Point; pressure: number }
 
 const StrokePathView = memo(function StrokePathView({ stroke, cellSize, endpointStabilization }: { stroke: RawStroke; cellSize: number; endpointStabilization: number }) {
-  return <path d={strokeSvgPath(stroke, cellSize, endpointStabilization)} transform={`translate(${stroke.x} ${stroke.y})`} fill="#17181A" fillRule="nonzero" />
+  return <path d={strokeSvgPath(stroke, cellSize, endpointStabilization)} transform={`translate(${stroke.x} ${stroke.y})`} fill="#101114" fillRule="nonzero" />
 })
 
 /** `stroke` extended by the samples that moved the pen; the same stroke when none did. */

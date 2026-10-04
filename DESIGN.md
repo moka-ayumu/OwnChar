@@ -1,767 +1,385 @@
-# Design System
-
-## 1. Product Character
-
-This product turns a user's handwritten characters into a usable font.
-
-The interface should feel like a focused creative tool, not a SaaS dashboard.
-
-Visual direction:
-
-* Bright
-* Minimal
-* Precise
-* Calm
-* Modern
-* Slightly expressive
-* Tool-like rather than decorative
-
-The overall feel should sit between the restraint of Linear and the subtle personality of Raycast.
-
-The interface should remain visually quiet so the user's handwriting becomes the most expressive element on screen.
-
+---
+name: OwnChar
+description: 손글씨가 폰트가 되는 과정을 한 번도 끊지 않고 보여주는, 잉크·흰색·라임 한 면의 연속 동작 시스템
+colors:
+  ink: "#101114"
+  ink-hover: "#2c2e34"
+  ink-2: "#4a4c52"
+  ink-3: "#666970"
+  rule: "#d9dad5"
+  ground: "#ecede8"
+  white: "#ffffff"
+  lime: "#c6f432"
+  lime-deep: "#b2e016"
+  lime-ink: "#3c4a0a"
+  danger: "#c2261a"
+typography:
+  display:
+    fontFamily: "Wanted Sans Variable, Wanted Sans, -apple-system, BlinkMacSystemFont, Apple SD Gothic Neo, Malgun Gothic, Segoe UI, sans-serif"
+    fontSize: "clamp(34px, 4vw, 52px)"
+    fontWeight: 800
+    lineHeight: 1.16
+    letterSpacing: "-0.035em"
+  headline:
+    fontFamily: "Wanted Sans Variable, Wanted Sans, -apple-system, BlinkMacSystemFont, Apple SD Gothic Neo, Malgun Gothic, Segoe UI, sans-serif"
+    fontSize: "26px"
+    fontWeight: 800
+    lineHeight: 1.25
+    letterSpacing: "-0.03em"
+  figure:
+    fontFamily: "Wanted Sans Variable, Wanted Sans, -apple-system, BlinkMacSystemFont, Apple SD Gothic Neo, Malgun Gothic, Segoe UI, sans-serif"
+    fontSize: "44px"
+    fontWeight: 800
+    lineHeight: 1
+    letterSpacing: "-0.03em"
+    fontFeature: "tnum"
+  title:
+    fontFamily: "Wanted Sans Variable, Wanted Sans, -apple-system, BlinkMacSystemFont, Apple SD Gothic Neo, Malgun Gothic, Segoe UI, sans-serif"
+    fontSize: "18px"
+    fontWeight: 700
+    lineHeight: 1.55
+    letterSpacing: "-0.02em"
+  body:
+    fontFamily: "Wanted Sans Variable, Wanted Sans, -apple-system, BlinkMacSystemFont, Apple SD Gothic Neo, Malgun Gothic, Segoe UI, sans-serif"
+    fontSize: "16px"
+    fontWeight: 400
+    lineHeight: 1.75
+    letterSpacing: "normal"
+  ui:
+    fontFamily: "Wanted Sans Variable, Wanted Sans, -apple-system, BlinkMacSystemFont, Apple SD Gothic Neo, Malgun Gothic, Segoe UI, sans-serif"
+    fontSize: "14px"
+    fontWeight: 600
+    lineHeight: 1.43
+    letterSpacing: "normal"
+  label:
+    fontFamily: "Wanted Sans Variable, Wanted Sans, -apple-system, BlinkMacSystemFont, Apple SD Gothic Neo, Malgun Gothic, Segoe UI, sans-serif"
+    fontSize: "12px"
+    fontWeight: 600
+    lineHeight: 1.6
+    letterSpacing: "normal"
+rounded:
+  sm: "4px"
+  md: "6px"
+  full: "9999px"
+spacing:
+  xs: "8px"
+  sm: "12px"
+  md: "16px"
+  lg: "24px"
+  xl: "32px"
+  header: "56px"
+  rail: "280px"
+  rail-compact: "244px"
+components:
+  button-primary:
+    backgroundColor: "{colors.ink}"
+    textColor: "{colors.white}"
+    typography: "{typography.ui}"
+    rounded: "{rounded.md}"
+    padding: "0 16px"
+    height: "40px"
+  button-primary-hover:
+    backgroundColor: "{colors.ink-hover}"
+    textColor: "{colors.white}"
+  button-secondary:
+    backgroundColor: "transparent"
+    textColor: "{colors.ink}"
+    typography: "{typography.ui}"
+    rounded: "{rounded.md}"
+    padding: "0 16px"
+    height: "40px"
+  button-ghost:
+    backgroundColor: "transparent"
+    textColor: "{colors.ink}"
+    typography: "{typography.ui}"
+    rounded: "{rounded.md}"
+    padding: "0 16px"
+    height: "40px"
+  button-lime:
+    backgroundColor: "{colors.lime}"
+    textColor: "{colors.ink}"
+    typography: "{typography.ui}"
+    rounded: "{rounded.md}"
+    padding: "0 16px"
+    height: "40px"
+  button-lime-hover:
+    backgroundColor: "{colors.lime-deep}"
+    textColor: "{colors.ink}"
+  button-inverse:
+    backgroundColor: "transparent"
+    textColor: "{colors.white}"
+    typography: "{typography.ui}"
+    rounded: "{rounded.md}"
+    padding: "0 16px"
+    height: "40px"
+  button-destructive:
+    backgroundColor: "transparent"
+    textColor: "{colors.danger}"
+    typography: "{typography.ui}"
+    rounded: "{rounded.md}"
+    padding: "0 16px"
+    height: "40px"
+  button-destructive-hover:
+    backgroundColor: "{colors.danger}"
+    textColor: "{colors.white}"
+  text-input:
+    backgroundColor: "{colors.white}"
+    textColor: "{colors.ink}"
+    rounded: "{rounded.md}"
+    padding: "0 11px"
+    height: "38px"
+  rail:
+    backgroundColor: "{colors.lime}"
+    textColor: "{colors.ink}"
+    padding: "24px 22px 20px"
+    width: "{spacing.rail}"
+  stage:
+    backgroundColor: "{colors.white}"
+    textColor: "{colors.ink}"
+  rail-row:
+    backgroundColor: "transparent"
+    textColor: "{colors.ink}"
+    typography: "{typography.ui}"
+    rounded: "{rounded.md}"
+    padding: "8px"
+  rail-row-current:
+    backgroundColor: "{colors.ink}"
+    textColor: "{colors.white}"
+    rounded: "{rounded.md}"
+    padding: "8px"
+  segmented-option-pressed:
+    backgroundColor: "{colors.ink}"
+    textColor: "{colors.white}"
+    typography: "{typography.ui}"
+    rounded: "{rounded.sm}"
+    padding: "7px 16px"
+  dialog:
+    backgroundColor: "{colors.white}"
+    textColor: "{colors.ink}"
+    rounded: "{rounded.md}"
+    padding: "24px"
+    width: "448px"
+  ink-bar:
+    backgroundColor: "{colors.ink}"
+    textColor: "{colors.white}"
+    rounded: "{rounded.md}"
+    padding: "11px 12px 11px 14px"
 ---
 
-## 2. Core Product Principle
+# Design System: OwnChar
 
-The product has one primary flow:
+## Overview
 
-**Start → Write → Generate → Preview → Download**
+**Creative North Star: "연속 동작 (One Stroke, Never Cut)"**
 
-There is:
+OwnChar draws like a sequential-pose pictogram: one subject, shown again and again in a new pose, never swapped for something else. The subject is the writer's own handwriting. It is written on a white stage, and from that point on it stays on screen: lifted out of its sentence, steadied, outlined, split into jamo, brought to one size, recombined, multiplied to 11,172 syllables, and finally typed back as a sentence. No page in the flow replaces the handwriting with a spinner or an illustration of progress; the handwriting is the progress.
 
-* no authentication
-* no user profile
-* no dashboard
-* no workspace
-* no saved font library
-* no account navigation
-* no cloud project management
+The palette is three values on a quiet ground: ink, white, and one lime field. Everything is flat. Lime is a surface that frames the work (the flow rail, the editor bar, the home demonstration); white is where the work happens; solid ink marks whatever is selected, live, or primary. Hierarchy comes from weight and from reversing ink and lime, not from more colours or more sizes. Corners are 6px, lines are 1px.
 
-Do not introduce conventional SaaS patterns that are unrelated to this flow.
+The system is dense and tool-like in the stage and calm in the rail. It avoids paper or stationery imitation, the white-and-blue SaaS tool shell, and a dark technical look; those were ruled out by the user when this world was chosen.
 
----
+**Key Characteristics:**
+- Ink, white, one lime field, on a warm-neutral ground; one red for destruction and errors only.
+- A fixed frame for the main flow: lime rail at the left, white stage for the rest, primary action at the rail's bottom.
+- Solid ink is the single mark of "selected / current / primary".
+- Flat: no elevation shadows, no tonal gradients, 1px hairlines, 6px corners.
+- One sans family (Wanted Sans); the user's handwriting font is the only other typeface that ever appears.
+- Motion keeps things in place and changes their pose; route changes hold the rail and stage and move one glyph across.
 
-## 3. Primary Layout
+## Colors
 
-The writing experience uses a two-column workspace.
-
-### Left: Control Panel
-
-The left panel contains:
-
-* current character
-* short instruction
-* progress
-* drawing controls
-* previous / next navigation
-* optional character overview
-
-Recommended desktop width:
-
-`240px – 280px`
-
-The panel should remain visually compact.
-
-It should never compete with the canvas.
-
-### Right: Writing Canvas
-
-The canvas is the dominant area of the interface.
-
-It should occupy most of the available screen.
-
-The user should immediately understand:
-
-> This is where I write.
-
-Avoid placing unrelated information inside or around the canvas.
-
----
-
-## 4. Layout Hierarchy
-
-The writing screen consists of four clearly defined regions.
-
-### 4.1 Top Header
-
-Position:
-
-* spans the full width of the viewport
-* sits above the writing workspace
-* remains visually lightweight
-
-Contains:
-
-* product logo or wordmark aligned left
-* Help action aligned right when needed
-
-The header must not contain:
-
-* account controls
-* navigation menus
-* workspace selectors
-* project names
-* save indicators
-
-Recommended height:
-
-`48px – 56px`
-
-The header should visually recede behind the writing experience.
-
----
-
-### 4.2 Main Workspace
-
-Position:
-
-* directly below the header
-* fills the majority of the remaining viewport height
-* displayed as two adjacent columns
-
-Structure:
-
-* left column: Control Panel
-* right column: Writing Canvas
-
-The workspace should feel continuous.
-
-Do not visually separate the two columns as independent cards.
-
-A subtle vertical border may divide them.
-
----
-
-### 4.3 Left Control Panel
-
-Position:
-
-* fixed to the left side of the main workspace
-* width between `240px` and `280px`
-* full height of the main workspace
-
-Content order from top to bottom:
-
-1. Current character
-2. Short instruction
-3. Progress information
-4. Drawing controls
-5. Previous / Next navigation
-
-Example content hierarchy:
-
-**Current character**
-
-`가`
-
-**Instruction**
-
-`이 글자를 써주세요`
-
-**Progress**
-
-`18 / 48`
-
-Thin progress indicator may appear directly below the number.
-
-**Canvas controls**
-
-* Undo
-* Erase
-* Clear
-* optional stroke width
-
-**Navigation**
-
-* Previous
-* Next
-
-The current character should be the strongest visual element inside the panel.
-
-Controls should remain secondary.
-
-The panel should not resemble application navigation.
-
----
-
-### 4.4 Right Writing Canvas
-
-Position:
-
-* immediately to the right of the Control Panel
-* fills all remaining horizontal space
-* fills the available main workspace height
-
-The canvas should:
-
-* occupy the majority of the visual area
-* provide generous empty space
-* remain centered within its available region
-* have minimal visual framing
-* respond fluidly to viewport size
-
-The canvas must not contain unrelated UI.
-
-Do not place:
-
-* progress information
-* page navigation
-* help text
-* settings
-* toolbars unrelated to handwriting
-
-inside the drawing surface.
-
-The canvas itself is the primary workspace.
-
----
-
-### 4.5 Character Overview
-
-The character overview provides awareness of overall progress without interrupting the current writing task.
-
-Preferred placement:
-
-* below the main workspace
-* full width, or aligned with the Writing Canvas region
-
-Alternative placement:
-
-* lower section of the Control Panel when screen height allows
-
-It should display:
-
-* completed characters
-* current character
-* remaining characters
-
-When practical, completed characters should use miniature previews of the user's actual handwriting.
-
-The overview should remain visually secondary.
-
-It must not become a dashboard, table, or navigation system.
-
----
-
-### 4.6 Visual Priority
-
-The screen should follow this visual priority:
-
-1. Writing Canvas
-2. Current Character
-3. Next Action
-4. Progress
-5. Drawing Controls
-6. Header
-7. Character Overview
-
-If two elements compete for attention, the higher-priority element should dominate.
-
-The Writing Canvas should always remain the strongest region of the interface.
-
----
-
-## 5. Color System
-
-Use an almost monochrome interface with one primary accent color.
+Three working values (ink, white, lime) on a neutral ground, with greys only for secondary text and hairlines, and a single functional red.
 
 ### Primary
+- **Ink** (`ink`, #101114): text, 1px structural lines, and every solid mark of state: primary buttons, the current row in a rail list, the pressed segment, the selected glyph cell, progress and slider fill, the focus outline, the user's strokes. On hover a solid ink button lifts to **Ink Hover** (`ink-hover`, #2c2e34).
 
-Cobalt Blue:
+### Secondary
+- **Lime Field** (`lime`, #c6f432): the colour of the surface that frames the work. Full-bleed on the flow rail, the editor top bar, the home demonstration half, and the phone-size notice. Smaller uses are all "this is live": text selection, the source-cell highlight on the writing grid (40% tint), the dashed placeholder for a jamo not yet written (22% tint), a source link on hover, the film's live jamo zone, raw-trace line, outline fill, worker fronts and finish box, and the action button on an ink bar.
+- **Lime Deep** (`lime-deep`, #b2e016): hover state of a lime button only.
+- **Lime Ink** (`lime-ink`, #3c4a0a): secondary text on lime (labels, notes, counts, steps not yet reached, the rail list's scrollbar). 7.5:1 on lime.
 
-`#2457F5`
+### Tertiary
+- **Functional Red** (`danger`, #c2261a): the destructive button, the error panel's border and heading, and the boundary warning. Nothing else.
 
-Use it intentionally and sparingly.
+### Neutral
+- **White** (`white`, #ffffff): the stage, the writing canvas, inputs, cards, dialogs, the specimen tile on lime. Text on solid ink.
+- **Ground** (`ground`, #ecede8): the page behind everything: header, home copy column, the editor's glyph preview well, an inset list inside a dialog, glyph-cell hover.
+- **Rule** (`rule`, #d9dad5): quiet hairlines inside white: writing-grid cell lines, input and card borders at rest, sample-row dividers, toolbar dividers, the film's specimen box and the unfilled cells of the 11,172 field.
+- **Ink 2** (`ink-2`, #4a4c52): secondary text on white and ground (descriptions, field labels).
+- **Ink 3** (`ink-3`, #666970): tertiary text: placeholders, captions, cell characters in the writing grid. 5.5:1 on white, 4.7:1 on ground.
 
-Good uses:
+Translucent ink is used for three things only: hover wash on transparent controls (8%, 9% on rail rows), unfilled track (15% progress, 18% slider), and the dialog scrim (45%).
 
-* primary action
-* current character indicator
-* active state
-* focus ring
-* progress highlight
-* selected character
+### Named Rules
+**The Solid Ink Rule.** Selection, the live step, progress, and the primary action are solid ink with white text. If two things on one surface are solid ink, one of them is wrong, unless one is a toggle that is on.
 
-Do not use blue for large decorative surfaces.
+**The Lime Is A Field Rule.** Lime is a surface or a tint, never a text colour on white or ground (1.3:1). Lime text exists only on solid ink: the number of the current step, the count in the current rail row, the boundary notice on the ink bar, the dot in the logo mark.
 
-### Background
+**The One Red Rule.** Red means "this destroys work" or "this failed". It is never decoration, never a badge, never a second accent.
 
-Application:
+## Typography
 
-`#F8F9FB`
+**Display Font:** Wanted Sans Variable (with Wanted Sans, -apple-system, Apple SD Gothic Neo, Malgun Gothic, Segoe UI, sans-serif)
+**Body Font:** the same family
+**Specimen Font:** the user's generated font (`OwnCharPreview`), only for their own text: the lead glyph, the preview sentence, sample rows, glyph cells.
 
-Primary surfaces:
+**Character:** One heavy, tight Korean grotesque doing everything by weight. Headings are 800 and tightly tracked; the interface underneath is 14px at 600. The only expressive letterforms on screen are the writer's own.
 
-`#FFFFFF`
+### Hierarchy
+- **Display** (800, clamp(34px, 4vw, 52px), 1.16, -0.035em): the home headline, max 15em wide. The help page title sits at this role's floor (34px, -0.03em).
+- **Headline** (800, 26px, 1.25, -0.03em): the one heading of a rail or a workspace. The sentence being written uses the same size at 700 / 1.3, because it is content to copy, not a title.
+- **Figure** (800, 44px, 1, -0.03em, tabular): the single big number in a rail (collected count, percent), with its unit at 14px / 600 in lime-ink.
+- **Title** (700, 18px, -0.02em): dialog titles and section headings on the help page. Panel headings inside the editor drop to 14px / 600–700.
+- **Body** (400, 16px, 28px line): prose on ground or white, in ink-2, max 34em on home and 68ch on help. Dense descriptions use 14px with a 24px line.
+- **UI** (600, 14px): buttons, rail rows, navigation (500), inputs (400).
+- **Label** (600, 12px, 1.6 for notes): field labels, rail labels and notes, counts, captions. 12px is the floor.
 
-Canvas:
+### Named Rules
+**The Few Sizes Rule.** 12, 14, 16, 18, 26, 44 and the display clamp. A new level of hierarchy is a weight change or an ink/lime reversal before it is a new size.
 
-`#FCFCFD`
+**The Tabular Rule.** Every number that changes (counts, percent, px values, slider readouts) is tabular and non-wrapping.
 
-### Text
+**The Korean Line Rule.** Text breaks between words, not inside them (`word-break: keep-all`), and headings are balanced.
 
-Primary:
+## Layout
 
-`#17181A`
+**Shell.** A 56px header on ground with a 1px ink bottom line: logo at left (26px ink square with a 10px lime dot, wordmark 16px / 800), two quiet links at right. Everything below fills `100svh − 56px` and does not scroll as a page; panels scroll inside themselves with thin scrollbars.
 
-Secondary:
+**The rail-and-stage frame.** Write, Generate and Preview share one grid: a lime rail (280px; 244px at ≤1100px) with a 1px ink right edge, and a white stage taking the rest. The rail is a column with padding 24 / 22 / 20: at the top, what this step is (a headline with a one-line note, or a figure with its label); in the middle, the step's list or fields; at the bottom, pushed down by auto margin, the actions. The primary action is solid ink at the rail's bottom on all three pages, so it never changes position through the flow. The stage holds only the work: the writing canvas under one tool strip, the film, or the typed sentence.
 
-`#62656B`
+**Other pages inherit the same parts in a different arrangement.** Home is two columns (1.05fr / 0.95fr): copy on ground, demonstration on a lime half with an ink left edge. The editor is a 56px lime bar over white panels divided by 1px ink lines (glyph browser / preview well on ground / 280px settings; or examples / 340px controls). Help is a single 68ch column on ground with sections opened by a 1px ink top line.
 
-Muted:
+**Spacing.** An 8px-rooted rhythm: 8 between buttons and rows, 12 between toolbar groups, 16 between cards and fields, 24 inside panels, 28–32 around the stage content, 40–56 around the home columns.
 
-`#92969D`
+**Responsive.** At ≤1100px the rail narrows to 244px, toolbar dividers drop, the editor loses its preview well and the example grid goes from three columns to two. At ≤767px the app is replaced by a lime full-height notice ("더 넓은 화면이 필요해요"); writing needs a tablet or desktop. Minimum width is 320px.
 
-### Borders
+**Route motion.** Navigations inside the flow use view transitions with three named parts:
+- `rail`: the lime field holds still (the group is painted lime for 420ms); the old contents leave upward 8px over 150ms ease-in, then the new rise 10px into place over 320ms.
+- `stage`: the white field holds still for 420ms; its contents cross-fade.
+- `lead`: one glyph travels. Generation ends on the first character of the preview sentence in the user's font, and that same glyph moves and scales into the first typed character of the preview over 640ms.
+- Everything else cross-fades in 200ms.
 
-Default:
+All of it eases with one curve, `cubic-bezier(.16, 1, .3, 1)`. Entrances are short and one-directional (360–520ms, a rise of 8–14px or a scale from .86–.94); nothing bounces or loops except the typing caret.
 
-`#E5E7EB`
+**Reduced motion.** With `prefers-reduced-motion`, all transitions and animations collapse to instant and view transitions are disabled. The generation film is not played: the stage shows only the 11,172 field filling from real progress, with no skip control and no hold. The preview shows the whole sentence at once. The home demonstration stops cycling.
 
-Subtle:
+### Named Rules
+**The Same Place Rule.** A page in the write → generate → preview flow uses the rail-and-stage frame, puts its primary action at the rail's bottom, and names its rail `rail` and its stage `stage` so the frame holds across the navigation.
 
-`#EEF0F2`
+**The Never Cut Rule.** Waiting is shown on the user's own strokes, driven by real progress. No spinner, no skeleton, no stand-in illustration.
 
-Strong:
+## Elevation & Depth
 
-`#D5D8DD`
+Flat. There is no elevation: no drop shadows, no blur, no glass. Layers are told apart by field colour (ground → white → lime → ink) and by 1px lines. A dialog sits on a 45% ink scrim with a 1px ink border; the active boundary bar is a solid ink bar fixed over the stage; neither casts a shadow.
 
----
+`box-shadow` appears only as a zero-blur line: the 2px ink ring on a focused text input, and a 1px inset outline on an empty tile. `linear-gradient` appears only to draw the half-pixel centre guides of a writing cell. Neither is ever used for tone or lift.
 
-## 6. Color Usage
+### Named Rules
+**The Flat Field Rule.** Depth is a change of field or a hairline. If a surface needs a shadow to read as separate, give it a border in ink or rule instead.
 
-The interface should mostly appear neutral.
+## Shapes
 
-Approximate visual balance:
+One corner: 6px on every control and container (buttons, inputs, rows, cards, dialogs, the canvas frame, tiles). Nested controls step down to 4px (the options inside the segmented control). Full rounding is reserved for things that are tracks or points: progress and slider tracks, the slider thumb, the logo dot, the "modified" dot on a glyph cell. Inside the film, boxes are square-cornered and drawn on half-pixels: they are measurements, not controls.
 
-* 85–90% white / neutral
-* 8–12% dark typography and borders
-* 2–5% cobalt blue
+Lines carry meaning by weight and dash:
+- 1px ink: structure (rail and header edges, panel dividers, the canvas frame, dialog border, secondary buttons, inputs on lime).
+- 1px rule: quiet division inside white.
+- 2px ink, 2px offset: keyboard focus, everywhere.
+- 3px ink inset: the one cell a glyph's source link points at.
+- Dashed: provisional or not-yet. The placeholder for an unwritten jamo (4 3), the final-consonant zone in the film (4 3), the band guide (1 4).
 
-Cobalt is an interaction color, not a decorative theme color.
+Icons are 1.5–2px line icons (Lucide) at 14–16px, always beside a text label unless the control is an icon button with an aria-label; completed rows use a 14px check at stroke 3.
 
-Avoid:
+## Components
 
-* blue gradients
-* glowing blue elements
-* large blue cards
-* blue tinted page backgrounds
-* gradient text
-
----
-
-## 7. Typography
-
-Use a clean sans-serif UI font.
-
-Preferred:
-
-* Geist
-* Inter as fallback
-
-Typography should feel compact and precise.
-
-### Suggested hierarchy
-
-Page / major state title:
-
-`24–28px / 600`
-
-Current character:
-
-`56–72px / 500`
-
-Section heading:
-
-`16px / 600`
-
-Body:
-
-`14px / 400`
-
-Secondary text:
-
-`13px / 400`
-
-UI labels:
-
-`12–13px / 500`
-
-Do not use oversized marketing typography inside the writing interface.
-
----
-
-## 8. Spacing
-
-Use a 4px base spacing system.
-
-Common values:
-
-* 4
-* 8
-* 12
-* 16
-* 20
-* 24
-* 32
-* 48
-
-Prefer whitespace over decorative containers.
-
-Do not create a card simply to separate every group of controls.
-
----
-
-## 9. Radius
-
-Use restrained corner rounding.
-
-Default controls:
-
-`8px`
-
-Small controls:
-
-`6px`
-
-Large surfaces:
-
-`10px`
-
-Avoid:
-
-* excessive pill shapes
-* 16px+ rounded cards everywhere
-* fully rounded controls unless structurally appropriate
-
-Buttons should generally not look like capsules.
-
----
-
-## 10. Shadows
-
-Use shadows very sparingly.
-
-Most surfaces should use borders instead.
-
-Default:
-
-No shadow.
-
-Floating overlay:
-
-Very subtle shadow only when depth is necessary.
-
-Do not use shadows to make every container appear elevated.
-
----
-
-## 11. Writing Canvas
-
-The canvas is the visual center of the product.
-
-It should feel digital and precise rather than paper-like.
-
-Do not imitate:
-
-* notebook paper
-* textured paper
-* pencil sketches
-* torn edges
-* physical stationery
-
-The canvas should integrate naturally into the application surface.
-
-A subtle boundary is enough.
-
-Possible treatment:
-
-* `1px` neutral border
-* `8px` radius
-* near-white surface
-
-The canvas should provide generous empty space.
-
----
-
-## 12. Drawing Surface
-
-The writing canvas is the app's own SVG surface (pointer events + perfect-freehand outlines), not an embedded drawing tool.
-
-Expose only the controls the user needs:
-
-* Undo
-* Erase
-* Clear
-* optional stroke width
-
-Application controls should use the product's own UI.
-
----
-
-## 13. Character Workflow
-
-The user focuses on one character at a time.
-
-The active character should be visually obvious.
-
-Display:
-
-* the target character prominently
-* one short instruction beneath it
-
-Example:
-
-Target character: `가`
-
-Instruction: `이 글자를 써주세요`
-
-Avoid long explanations.
-
-The user should be able to:
-
-1. write
-2. undo or clear
-3. accept the character
-4. continue
-
-Navigation should require minimal cognitive effort.
-
----
-
-## 14. Character Progress
-
-The interface should show lightweight awareness of overall progress.
-
-Primary progress format:
-
-`18 / 48`
-
-An optional thin progress indicator may appear beneath it.
-
-Additionally, show completed characters as a compact overview.
-
-Each character has one of three states:
-
-* completed
-* current
-* remaining
-
-When possible, completed characters may display miniature previews of the user's actual handwriting.
-
-This should feel like the font is gradually coming to life.
-
-Do not turn this into a dashboard or analytics component.
-
----
-
-## 15. Controls
-
-Prefer text combined with simple functional icons.
-
-Core actions:
-
-* Undo
-* Erase
-* Clear
-
-Controls should be understated until needed.
-
-Primary actions receive cobalt blue.
-
-Secondary actions stay neutral.
-
-Destructive actions should not become visually dominant unless confirmation is required.
-
----
-
-## 16. Buttons
-
-Primary:
-
-* cobalt blue background
-* white text
-* 8px radius
-* medium font weight
-* restrained height
-
-Secondary:
-
-* white or transparent
-* subtle border
-* dark text
-
-Ghost:
-
-* transparent
-* no border
-* used for low-priority canvas controls
-
-Avoid:
-
-* gradients
-* oversized buttons
-* glossy treatments
-* pill-shaped CTA buttons
-* icons added only for decoration
-
----
-
-## 17. shadcn/ui
-
-Use shadcn/ui as the primary UI component foundation.
-
-Prefer existing shadcn primitives when appropriate.
-
-Good candidates:
-
-* Button
-* Tooltip
-* Dialog
-* Dropdown Menu
-* Progress
-* Separator
-* Toast
-* Slider
-
-Do not preserve default shadcn styling blindly.
-
-All components must follow this document's:
-
-* colors
-* radius
-* typography
-* spacing
-* interaction patterns
-
-Do not add another general-purpose component library without a clear technical reason.
-
----
-
-## 18. Motion
-
-Motion should be fast and functional.
-
-Good uses:
-
-* active character change
-* progress updates
-* subtle button state changes
-* drawing completion
-* preview transition
-
-Typical duration:
-
-`120–220ms`
-
-Avoid:
-
-* bouncing elements
-* dramatic spring animations
-* decorative floating objects
-* unnecessary page transitions
-* animations that delay drawing
-
-The interface should feel responsive rather than animated.
-
----
-
-## 19. Font Generation State
-
-Font generation should feel intentional but not theatrical.
-
-Avoid fake AI-style loading experiences.
-
-Do not use:
-
-* glowing orbs
-* AI sparkles
-* rotating gradient borders
-* fake processing logs
-
-Prefer a simple status such as:
-
-**폰트를 만들고 있어요**
-
-`글자 형태를 정리하는 중…`
-
-with a subtle progress treatment.
-
----
-
-## 20. Final Preview
-
-The generated font itself should be the hero.
-
-The UI should step back.
-
-Show a large sample sentence using the generated font.
-
-Then allow the user to explore it through:
-
-* sample sentence
-* Hangul character set
-* Latin characters if supported
-* numbers if supported
-* editable preview field
-
-Example preview content:
-
-`오늘 하루도 좋은 하루 보내세요.`
-
-`가나다라마바사아자차카타파하`
-
-`ABCDEFGHIJKLMNOPQRSTUVWXYZ`
-
-`0123456789`
-
-The Download button should be visible but should not visually overpower the font preview.
-
----
-
-## 21. Anti-Patterns
-
-Do not use:
-
-* excessive gradients
-* glassmorphism
-* gradient text
-* decorative glow
-* random purple accents
-* oversized hero sections
-* unnecessary badges
-* excessive rounded cards
-* cards inside cards
-* excessive pill-shaped controls
-* large drop shadows
-* floating AI icons
-* sparkles
-* confetti by default
-* generic SaaS dashboards
-* sidebar navigation
-* profile avatars
-* workspace switchers
-* notification centers
-* fake saved states
-* "My Fonts" interfaces
-* decorative icons without purpose
-
----
-
-## 22. AI Implementation Rules
-
-When implementing UI:
-
-1. Read this document before making visual decisions.
-2. Preserve the left-control / right-canvas structure.
-3. Use shadcn/ui for standard UI primitives.
-4. Keep the drawing surface free of tool chrome; controls live in the app UI.
-5. Keep surfaces bright and neutral.
-6. Use Cobalt Blue only for important interactive states.
-7. Do not introduce additional visual styles without a product reason.
-8. Prefer whitespace and typography over containers.
-9. Keep the user's handwriting visually dominant.
-10. When uncertain, choose the simpler solution.
-
-The interface should never look more expressive than the font the user is creating.
+### Buttons
+Compact, square-shouldered, weight 600. Height 40px with 16px side padding (32px / 12px small, 48px / 20px / 16px text large, 36px square for icons); 8px between icon and label.
+- **Primary:** solid ink, white text; hover lifts to ink-hover. One per surface, at the rail's bottom in the flow.
+- **Secondary:** transparent with a 1px ink border; hover is an 8% ink wash. The alternative next to a primary.
+- **Ghost:** no border; same hover wash. Toolbar tools, cancel, back links. A tool that is on switches to the primary style (`aria-pressed`).
+- **Lime:** lime with ink text, hover lime-deep. Only on a solid ink surface (the active boundary bar, the "변경됨" banner), where ink cannot be the mark.
+- **Inverse:** transparent, 1px white border at 60%, white text; the secondary on an ink surface.
+- **Destructive:** 1px red border and red text; fills red with white text on hover.
+- **States:** pressing scales to .97; disabled is 40% opacity with no pointer events; transitions are 150ms on colour, border and transform.
+
+### Inputs / Fields
+- **Text input:** 38px high, white, 1px rule border, 6px corner, 14px text, 11px side padding. Hover darkens the border to ink-3; focus turns it ink with a 2px ink ring. On lime the border is ink at rest.
+- **Label:** 12px / 600 above the field with 6px between, ink-2 on white and lime-ink on lime.
+- **Slider:** 4px track in 18% ink, ink range, 16px round ink thumb that grows to 1.1 on hover; disabled 40%. Always paired with a tabular readout.
+- **Progress:** 6px rounded track in 15% ink with a solid ink fill, 200ms.
+
+### Rail rows (sentence list, step list)
+A numbered row: a 22px column for the number (12px / 700, tabular) or a check when done, then the name at 14px / 600, then an optional count at 12px. 6px corner, 8px padding, bleeding 8px past the rail's text edge so the current row's ink block aligns with the text.
+- **Rest:** ink text (steps not yet reached: lime-ink); the count in lime-ink.
+- **Hover (when clickable):** 9% ink wash.
+- **Current:** solid ink, white text, the number or count in lime; `aria-current="step"`.
+
+### Segmented control
+Two or more options inside a 1px ink border with 2px padding and a 6px corner; each option is 14px / 600 with 7px / 16px padding and a 4px corner. The pressed option is solid ink with white text. Centred in the editor bar.
+
+### Dialogs
+White, 1px ink border, 6px corner, 24px padding, max 448px, centred on a 45% ink scrim; a ghost close button at top right. Title 18px / 700, description 14px with a 24px line in ink-2, an optional inset list on ground. Actions sit at the bottom right (secondary, then primary), or stacked full-width when there are three choices (primary, destructive, ghost cancel). A destructive choice is confirmed in one.
+
+### Ink bar
+A solid ink strip with white text for a state that needs an answer now. Two uses: the jamo boundary bar, which at rest is a rule-bordered row under the canvas and, while a cell is being written, becomes a fixed ink bar across the bottom of the stage (inset 32px, 20px from the bottom) with an inverse and a lime button; and the "변경됨" banner at the top of the preview stage with a small lime "변경 적용" button.
+
+### Writing canvas
+The hero surface. A white frame with a 1px ink border and 6px corner, divided into square cells (112–184px) by rule lines with faint centre guides (6% ink) and the target character at 12px in the cell's bottom-right corner. Strokes are solid ink; an unwritten jamo's slot is a dashed, lime-tinted box; the cursor is a crosshair. One tool strip sits above it: pen / eraser, two sliders with readouts, the guide toggle, then undo, redo and (set 20px apart) clear.
+
+Below it, collected jamo arrive as 80px tiles (a 64px white box with a rule border, the jamo in ink, a 12px name and source beneath), each entering once with a short rise.
+
+### Cards and glyph cells
+- **Example card:** white, 1px rule border, 6px corner; a square canvas over a caption row separated by a rule line. No shadow, no hover lift.
+- **Glyph cell:** 52px high, 22px glyph in the user's font, no border; hover is ground, selected is solid ink with a white glyph, a modified glyph carries a 6px dot at top right (ink, or lime when selected).
+- **Source link:** a full-width row with a rule border and a chevron; on hover the border turns ink and the row fills lime.
+
+### The generation film (signature)
+One canvas filling the stage, redrawn every frame from a clock and from the worker's real progress. The rail carries the headline, one sentence explaining the live step, the eight-step list, the percent figure with progress and the worker's message, then skip (secondary) and cancel (ghost).
+
+The specimen is a syllable the writer wrote whole, from the sentence they just left, in a square box (56% of stage height, max 460px) centred at 46% of the stage height. Its strokes change pose in place:
+
+| # | Step | Starts at | What the strokes do |
+|---|------|-----------|---------------------|
+| 1 | 원본 필기 | 0s | The sentence sits exactly where it was on the writing page; the other cells fade and the view closes on the specimen's cell. |
+| 2 | 손떨림 보정 | 1.5s | Ink fades to 10%; the sampled path shows as a thin ink line with dots, the raw path stays behind as a 5px lime trace while the line settles. |
+| 3 | 윤곽선 만들기 | 3.0s | The line swells to pen width, becomes a lime shape with a 2px ink contour, then fills ink. |
+| 4 | 자모 분리 | 4.2s | Each jamo drifts apart into its own labelled 1px box: initial outlined, medial on a lime fill, final dashed. |
+| 5 | 크기 정규화 | 5.4s | The boxed jamo move into a row of equal tiles. |
+| 6 | 문맥별 조합 | 6.4s | The jamo fly into the zones of a composed syllable, then the same jamo are shown in up to six sibling syllables, one every 0.24s, with a caption. |
+| 7 | 11,172자 조합 | 8.4s | The specimen box shrinks to 62% and a 147-column field of 11,172 cells fills in ink from each worker's start, the leading row of each front in lime; the box shows the syllable being composed and a running count. |
+| 8 | OTF 마무리 | when done, no earlier than 9.6s | The field is full; the box turns lime and holds the first glyph of the preview sentence in the new font for 700ms, then hands over. |
+
+- **Full film:** first generation; it runs at least 9.6s even if the font is ready sooner, and waits on step 7 if it is not.
+- **Short film:** regeneration through 변경 적용; opens on step 6, field at 1.5s, may finish at 3s.
+- **Skip:** jumps the clock to the end of the film; the field then simply follows real progress. The control disappears once the film has played.
+- **Progress is real:** the field's fill is the worker's progress (3–94% mapped to 0–1), eased toward its target with a 120ms time constant so it follows closely at any frame rate. The percent and message in the rail are the worker's own.
+- **Colour in the film** is the system's: ink strokes, rule for empty cells and the box, lime for the live part. Step easing is a quartic ease-out.
+- **Failure:** a white panel with a 1px red border replaces the centre of the stage, with a red heading, the message, and a primary retry.
+
+### Typing arrival (signature)
+Arriving from generation, the preview does not appear finished. The lead glyph lands as the first character (760ms, covering the 640ms travel), then the sentence types itself at 85ms per character behind a blinking ink caret (900ms, stepped), holds 500ms, and becomes an editable text area. Only then do the sample rows settle in below (520ms each, 60ms apart). Focusing the text area ends the typing at once. Arriving any other way, the page is simply there.
+
+Sample rows are full-width lines at 30px in the user's font in ink-2, divided by rule lines; on hover the text turns ink and slides 10px right. A row whose characters were never written falls back to 16px in the interface font and says so.
+
+## Do's and Don'ts
+
+### Do:
+- **Do** build a flow page from the frame: lime rail (280px, 1px ink right edge), white stage, primary action in solid ink at the rail's bottom.
+- **Do** mark the selected, current or pressed thing with solid ink and white text, and use lime text only on that ink.
+- **Do** use lime-ink for secondary text on lime and ink-2 / ink-3 for secondary text on white and ground.
+- **Do** keep every control at a 6px corner (4px when nested), every structural line at 1px ink, every quiet line at 1px rule.
+- **Do** show any wait or computation on the user's own strokes and drive it from real progress.
+- **Do** carry a navigation inside the flow with the `rail`, `stage` and `lead` transitions, and keep every animation on `cubic-bezier(.16, 1, .3, 1)`.
+- **Do** give every animated behaviour a still equivalent under reduced motion that shows the same information.
+- **Do** set changing numbers in tabular figures and keep 12px as the smallest size.
+- **Do** put a destructive choice in a dialog, in the destructive button style.
+
+### Don't:
+- **Don't** add a colour. No blue, no second accent, no status greens or ambers; state is ink, lime, or red for failure.
+- **Don't** set lime text on white or ground, or use lime for a button outside a solid ink surface.
+- **Don't** use shadows for lift, blur, glass, or gradients for tone. `box-shadow` is a zero-blur line or nothing.
+- **Don't** replace the handwriting with a spinner, skeleton, or stock progress illustration.
+- **Don't** imitate paper, notebooks or stationery, and don't drift toward a white-and-blue SaaS shell or a dark technical theme.
+- **Don't** introduce a second interface typeface, or set interface text in the user's font.
+- **Don't** move the primary action out of the rail's bottom on a flow page.
+- **Don't** let an animation bounce, loop, or run longer than the thing it explains; the film's length is set by the steps, not by decoration.
