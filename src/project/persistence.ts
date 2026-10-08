@@ -1,9 +1,15 @@
+import { Store } from '@tanstack/react-store'
 import { projectActions, projectStore } from './store'
 import type { ProjectState } from './types'
 
 const DATABASE = 'ownchar'
 const STORE = 'project'
 const KEY = 'current'
+
+/** Whether the project in memory is on the device: `failed` when the browser blocks IndexedDB. */
+export type SaveStatus = 'saved' | 'saving' | 'failed'
+
+export const saveStatusStore = new Store<SaveStatus>('saved')
 let saveTimer: number | undefined
 let initialized = false
 
@@ -48,6 +54,14 @@ export async function clearPersistedProject() {
   })
 }
 
+/** Deletes the saved project from the device and empties the project in memory. */
+export async function deletePersistedProject() {
+  window.clearTimeout(saveTimer)
+  projectActions.restoreProject(null)
+  await clearPersistedProject()
+  saveStatusStore.setState(() => 'saved')
+}
+
 export async function initializePersistence() {
   if (initialized) return
   initialized = true
@@ -55,11 +69,16 @@ export async function initializePersistence() {
     const state = projectStore.state
     if (!state.hydrated) return
     window.clearTimeout(saveTimer)
+    // An empty project holds nothing to keep, so it is never written back after a deletion.
+    if (state.status === 'empty') return
+    saveStatusStore.setState(() => 'saving')
     saveTimer = window.setTimeout(async () => {
       try {
         await writeProject(projectStore.state)
+        saveStatusStore.setState(() => 'saved')
       } catch {
         // The app remains usable in-memory when private browsing blocks IndexedDB.
+        saveStatusStore.setState(() => 'failed')
       }
     }, 450)
   })

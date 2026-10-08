@@ -53,8 +53,31 @@ h1, h2, h3 { text-wrap: balance; }
 .app-logo-mark { display: grid; width: 26px; height: 26px; place-items: center; border-radius: 6px; background: var(--color-ink); }
 .app-logo-mark i { display: block; width: 10px; height: 10px; border-radius: 99px; background: var(--color-lime); }
 .app-nav { display: flex; align-items: center; gap: 2px; font-size: 14px; font-weight: 500; }
-.app-nav a { display: inline-flex; align-items: center; gap: 6px; border-radius: 6px; padding: 7px 10px; }
-.app-nav a:hover { background: rgb(16 17 20 / 8%); }
+.app-nav a, .app-nav button { display: inline-flex; align-items: center; gap: 6px; border-radius: 6px; padding: 7px 10px; }
+.app-nav a:hover, .app-nav button:hover { background: rgb(16 17 20 / 8%); }
+.app-nav button:disabled { opacity: .4; pointer-events: none; }
+.save-indicator { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; padding-inline: 8px; font-size: 13px; font-weight: 600; color: var(--color-ink-2); }
+.save-indicator i { width: 7px; height: 7px; flex: none; border-radius: 99px; background: var(--color-ink); transition: background-color 200ms; }
+.save-indicator[data-status="saving"] i { background: var(--color-ink-3); animation: save-pulse 900ms ease-in-out infinite alternate; }
+.save-indicator[data-status="failed"] { color: var(--color-danger); }
+.save-indicator[data-status="failed"] i { background: var(--color-danger); }
+@keyframes save-pulse { to { opacity: .25; } }
+@media (prefers-reduced-motion: reduce) { .save-indicator[data-status="saving"] i { animation: none; } }
+/* The file actions fold into one menu that opens from the save status. */
+.save-trigger { display: inline-flex; align-items: center; gap: 2px; border: 0; border-radius: 6px; background: transparent; padding: 5px 6px 5px 0; color: var(--color-ink); }
+.save-trigger:hover, .save-trigger[data-state="open"] { background: rgb(16 17 20 / 8%); }
+.save-trigger > svg:first-child { margin-left: 8px; }
+.save-trigger svg:last-child { transition: rotate 200ms var(--ease-out-expo); }
+.save-trigger[data-state="open"] svg:last-child { rotate: 180deg; }
+.menu { z-index: 60; min-width: 232px; max-width: 280px; border: 1px solid var(--color-ink); border-radius: 6px; background: #fff; padding: 4px; font-size: 14px; font-weight: 500; box-shadow: 0 8px 24px -8px rgb(16 17 20 / 28%); animation: popover-in 160ms var(--ease-out-expo) backwards; }
+.menu-label { display: grid; gap: 2px; padding: 8px 10px; font-size: 12px; font-weight: 500; line-height: 1.6; color: var(--color-ink-2); }
+.menu-label b { font-size: 13px; font-weight: 700; color: var(--color-ink); }
+.menu-label[data-status="failed"] b { color: var(--color-danger); }
+.menu-separator { height: 1px; margin: 4px -4px; background: var(--color-rule); }
+.menu-item { display: flex; min-height: 36px; align-items: center; gap: 8px; border-radius: 4px; padding: 0 10px; outline: none; cursor: pointer; user-select: none; }
+.menu-item[data-highlighted] { background: rgb(16 17 20 / 8%); }
+.menu-item[data-disabled] { opacity: .4; cursor: default; pointer-events: none; }
+.menu-item.danger { color: var(--color-danger); }
 
 /* Flow pages carry the logo in their rail and run without the header. */
 @media (min-width: 768px) {
@@ -62,8 +85,11 @@ h1, h2, h3 { text-wrap: balance; }
   .app-shell[data-flow] .app-header { display: none; }
 }
 .rail-brand { display: flex; min-height: 28px; flex: none; align-items: center; justify-content: space-between; gap: 10px; margin: -4px -8px 24px 0; }
-.rail-brand .app-nav a { padding-inline: 7px; }
-.rail-brand .app-nav svg { display: none; }
+.rail-brand .app-nav a, .rail-brand .app-nav button { padding-inline: 7px; }
+.rail-brand .app-nav .nav-label { display: none; }
+.rail-brand .app-logo { flex: none; white-space: nowrap; }
+.rail-brand .save-indicator { padding-inline: 4px 0; }
+.rail-brand .app-nav a[target] { display: none; }
 .rail-brand .hint-anchor { display: flex; }
 .write-rail .rail-brand { justify-content: flex-start; margin: 0 0 21px -1.5px; min-height: 26px; }
 button.app-logo-mark { flex: none; border: 0; padding: 0; transition: background-color 150ms, transform 150ms; }
@@ -312,11 +338,11 @@ button.app-logo-mark:active { transform: scale(.94); }
 ::view-transition-old(root), ::view-transition-new(root) { animation-duration: 200ms; }
 
 @media (max-width: 1100px) {
+  .rail-brand .save-indicator span { display: none; }
   :root { --rail: 244px; }
   .rail { padding-inline: 18px; }
   .sentence-prompt { padding-left: 20px; }
   .write-flow { --rail: 216px; }
-  .rail-brand .app-nav a[target] { display: none; }
   .editor-body { grid-template-columns: minmax(400px, 1fr) 280px; }
   .composition-workspace { grid-template-columns: minmax(0, 1fr) 300px; }
   .composition-example-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }

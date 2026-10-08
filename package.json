@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@radix-ui/react-dialog": "latest",
+    "@radix-ui/react-dropdown-menu": "^2.1.25",
     "@radix-ui/react-progress": "latest",
     "@radix-ui/react-slider": "latest",
     "@tanstack/react-router": "latest",
@@ -23,6 +24,7 @@
     "class-variance-authority": "latest",
     "clipper2-ts": "2.0.1-18",
     "clsx": "latest",
+    "fflate": "^0.8.3",
     "lucide-react": "latest",
     "opentype.js": "latest",
     "perfect-freehand": "1.2.0",
