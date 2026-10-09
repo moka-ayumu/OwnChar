@@ -12,17 +12,19 @@ export function sourceKey(role: HangulRole, variant: number, char: string) {
 
 // Initial layouts, in order of how well each one stands in for another.
 // 0 vertical, 1 ㅗ/ㅛ/ㅡ, 2 ㅜ/ㅠ, 3 ㅘ/ㅙ/ㅚ/ㅢ, 4 ㅝ/ㅞ/ㅟ; 5–7 the same
-// families with a final. ㅜ shares the ㅗ zone, and the compound-vowel
-// layouts sit in a compact top-left zone closest to the vertical initial.
+// families with a final. ㅜ shares the ㅗ zone. The compound-vowel layouts sit
+// in a compact top-left zone closest to the vertical initial, but their
+// initial rests on a horizontal bar, so they take the ㅗ layouts before the
+// vertical ones, whose tall initial would reach down into that bar.
 const INITIAL_DONORS: Record<number, number[]> = {
   0: [5, 3, 4, 7, 1, 2, 6],
   1: [2, 6, 0, 5, 3, 4, 7],
   2: [1, 6, 0, 5, 3, 4, 7],
-  3: [4, 7, 5, 0, 1, 2, 6],
-  4: [3, 7, 5, 0, 1, 2, 6],
+  3: [4, 7, 1, 2, 6, 5, 0],
+  4: [3, 7, 1, 2, 6, 5, 0],
   5: [0, 7, 3, 4, 6, 1, 2],
   6: [1, 2, 5, 0, 7, 3, 4],
-  7: [3, 4, 6, 5, 0, 1, 2],
+  7: [3, 4, 6, 1, 2, 5, 0],
 }
 
 function donors(role: HangulRole, variant: number) {
