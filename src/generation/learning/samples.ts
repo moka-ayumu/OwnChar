@@ -52,3 +52,17 @@ export function collect<T>(map: Map<string, T[]>, key: string, value: T) {
   if (list) list.push(value)
   else map.set(key, [value])
 }
+
+/** What was measured for each cell, kept while the strokes of the cell and its grid stay the same. */
+export function cellMemo<T>() {
+  const kept = new Map<string, { signature: string; value: T }>()
+  return ({ session, cellIndex, assigned }: CompletedHangulCell, setting: number, measure: () => T): T => {
+    const key = `${session.exerciseId}|${cellIndex}`
+    const signature = `${session.cellSize}|${session.columns}|${setting}|${assigned.map((group) => group.map((stroke) => `${stroke.id}:${stroke.version}`).join(',')).join(';')}`
+    const entry = kept.get(key)
+    if (entry?.signature === signature) return entry.value
+    const value = measure()
+    kept.set(key, { signature, value })
+    return value
+  }
+}
