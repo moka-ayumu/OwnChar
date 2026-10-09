@@ -34,6 +34,7 @@ export function composeHangulPath(codePoint: number, shapes: Map<string, Normali
 export function composeHangulParts(codePoint: number, shapes: Map<string, NormalizedShape>, settings: CompositionSettings, options: HangulComposeOptions = {}): HangulParts {
   const build = (penScale: number) => {
     const result = layoutSyllable({ codePoint, shapes, penScale, gaps: options.gaps, proportions: options.proportions,
+      targetAspect: options.targetHeight && options.targetSize ? (options.targetSize / options.targetHeight) ** 2 : undefined,
       placeholder: new Set(options.placeholderRoles),
       scales: { initial: settings.singleInitialScale, medial: settings.vowelScale, final: settings.finalScale },
     })

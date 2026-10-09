@@ -28,6 +28,8 @@ export interface SyllableLayoutInput {
   scales?: Partial<Record<HangulRole, number>>
   gaps?: GapProfile
   proportions?: ProportionProfile
+  /** Width / height of the average syllable the writer wrote. */
+  targetAspect?: number
 }
 
 interface Slot {
@@ -56,6 +58,13 @@ export function verticalStem(path: opentype.Path): Box | undefined {
 
 /** Widest an initial may be for its height, in aspect ratios of the typical jamo of its layout. */
 const INITIAL_ASPECT_REACH = 1.25
+
+/** Share of the height of upper body, gap and final that the upper body holds under a vertical vowel. */
+const UPPER_SHARE = 0.55
+/** Width the bulk of a final under a vertical vowel widens to at most, in upper body widths. */
+const FINAL_BODY_SHARE = 0.29
+/** Furthest an initial or a final under a vertical vowel widens, in times its width. */
+const STRETCH_REACH = 1.5
 
 interface TypicalJamo {
   frames: Map<string, { width: number; height: number } | undefined>
@@ -368,6 +377,26 @@ export function layoutSyllable(input: SyllableLayoutInput) {
   const upperGap = upperPlacement?.advanceGap ?? gaps.medialContexts[medialGapContext(chars.medial, hasFinal)] ?? gaps.contexts[gapContext(kind, hasFinal)] ?? gaps[kind]
   const finalPlacement = gaps.medialFinalSyllables[char] ?? gaps.medialFinalPairs[finalGapPair(chars.medial, chars.final)]
   const finalGap = finalPlacement?.advanceGap ?? gaps.finalContexts[finalGapContext(kind, chars.final)] ?? gaps.final
+  /** The room a final under a vertical vowel has beside an upper body, with the gap above it. */
+  const stackGap = (vowelHeight: number) => Math.min(Math.max(minimumGap, finalGap), vowelHeight * 0.1)
+  const finalRoom = (upperHeight: number, vowelHeight: number) => upperHeight * (1 - UPPER_SHARE) / UPPER_SHARE - stackGap(vowelHeight)
+  // A closed syllable fitted by height alone is narrower than the writer's
+  // average. Its initial widens, keeping its height, until the syllable reaches that aspect.
+  if (input.targetAspect && kind === 'vertical' && initial?.shape && medial && final?.shape && groups.get(initial.group)!.length === 1 && !isPlaceholder('initial')) {
+    const m = bounds(medial.path); const f = bounds(final.path)
+    if (m && f && bounds(initial.path)) {
+      // The pen does not widen with the jamo, so one correction falls short.
+      let widened = 1
+      for (let pass = 0; pass < 3; pass += 1) {
+        const i = bounds(initial.path)!
+        const vowelHeight = m.y2 - m.y1; const upperHeight = Math.max(vowelHeight, i.y2 - i.y1)
+        const height = upperHeight + stackGap(vowelHeight) + Math.min(f.y2 - f.y1, finalRoom(upperHeight, vowelHeight))
+        const width = input.targetAspect * height - (m.x2 - m.x1) - Math.max(minimumGap, upperGap)
+        const factor = Math.min(STRETCH_REACH / widened, initial.zone.width / (i.x2 - i.x1), width / (i.x2 - i.x1))
+        if (factor > 1.01) { initial.shape = stretchShapeWidth(initial.shape, factor); resize(initial, 1); widened *= factor }
+      }
+    }
+  }
   if (initial && medial && initial.group !== medial.group) {
     const i = bounds(initial.path); const m = bounds(medial.path)
     if (i && m) {
@@ -421,6 +450,22 @@ export function layoutSyllable(input: SyllableLayoutInput) {
       separate([initial], medial, kind === 'vertical' ? 'x' : 'y', kind === 'vertical' ? 1 : -1, Math.max(0, minimumGap - upperGap) + notch, minimumGap)
     }
   }
+  // A final under a vertical vowel is flattened, not shrunk, until the upper
+  // body holds `UPPER_SHARE` of the height of the upper body, the gap and the final.
+  if (kind === 'vertical' && final?.shape && groups.get(final.group)!.length === 1 && !isPlaceholder('final')) {
+    const upper = upperSlots()
+    if (upper.length && bounds(final.path)) {
+      const body = union(upper.map((slot) => bounds(slot.path)!))
+      const m = medial && bounds(medial.path)
+      const room = finalRoom(body.y2 - body.y1, m ? m.y2 - m.y1 : body.y2 - body.y1)
+      // The pen does not shrink with the jamo, so one correction falls short.
+      for (let pass = 0; pass < 3; pass += 1) {
+        const fitted = bounds(final.path)!
+        const factor = Math.min(1, room / (fitted.y2 - fitted.y1))
+        if (factor < 1) { final.shape = stretchShapeWidth(final.shape, 1 / factor); resize(final, factor) }
+      }
+    }
+  }
   // A final built from parts has no written width: it stays within 90% of the
   // settled upper body, narrowing its wider part before shrinking as a whole.
   if (final?.shape?.synthesized && COMPOUND_FINALS[chars.final]) {
@@ -441,16 +486,21 @@ export function layoutSyllable(input: SyllableLayoutInput) {
     }
   }
   // A written final wider than 90% of the settled upper body is narrowed, not
-  // shrunk: it keeps its height, so it does not read as a smaller jamo.
+  // shrunk: it keeps its height, so it does not read as a smaller jamo. With a
+  // target aspect, a narrower final under a vertical vowel widens to it, as far as `STRETCH_REACH`.
   if (final?.shape && !final.shape.synthesized && groups.get(final.group)!.length === 1 && !isPlaceholder('final')) {
     const upper = upperSlots()
     if (upper.length && bounds(final.path)) {
       const body = union(upper.map((slot) => bounds(slot.path)!))
       // The pen does not narrow with the jamo, so one correction falls short.
+      let widened = 1
       for (let pass = 0; pass < 3; pass += 1) {
         const fitted = bounds(final.path)!
-        const factor = Math.min(1, (body.x2 - body.x1) * 0.9 / (fitted.x2 - fitted.x1))
-        if (factor < 1) { final.shape = stretchShapeWidth(final.shape, factor); resize(final, 1) }
+        const fit = (body.x2 - body.x1) * 0.9 / (fitted.x2 - fitted.x1)
+        // A tick running past the body is not counted: only the bulk of the ink is measured.
+        const bulkFit = (body.x2 - body.x1) * FINAL_BODY_SHARE / Math.max(1, finalBulk({ path: final.path, shape: final.shape, scale: geometry.scales.final }))
+        const factor = kind === 'vertical' && input.targetAspect ? Math.min(STRETCH_REACH / widened, fit, Math.max(1, bulkFit)) : Math.min(1, fit)
+        if (factor < 1 || factor > 1.01) { final.shape = stretchShapeWidth(final.shape, factor); resize(final, 1); widened *= factor }
       }
     }
   }
