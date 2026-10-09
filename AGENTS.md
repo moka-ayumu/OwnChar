@@ -1,6 +1,6 @@
 # AGENTS.md
 
-OwnChar is a browser tool that turns handwriting into an OTF font. All processing runs in the browser. There is no server, no upload, and no account. Read `PRODUCT.md` for product purpose and screen rules, and `DESIGN.md` for visual rules.
+OwnChar is a browser tool that turns handwriting into an OTF font. All processing runs in the browser. There is no server, no upload, and no account. Read `PRODUCT.md` for product purpose and screen rules, and `DESIGN.md` for visual rules. Read `docs/performance.md` before you change code on the write page, the project save path, or the learning code.
 
 ## Working Rules
 
@@ -55,6 +55,21 @@ Dependency direction: `font` ← `collection` ← `generation` ← `project` ←
 | Writing screen and stroke input | `src/features/writing/` |
 | Edit screen | `src/features/editor/` |
 | Saving and autosave | `src/project/` |
+| Switching sentence, drawing latency, save stalls | `docs/performance.md` first, then `src/features/writing/`, `src/generation/use-composition-context.ts`, `src/project/persistence.ts` |
+
+## Performance
+
+`docs/performance.md` records the causes, the rules, and the measuring method. Follow it when you change code or add a feature.
+
+- Targets: a sentence switch in 16 ms or less, a pointer move in 5 ms or less, no stall over 20 ms after a stroke or an autosave.
+- Do not change state objects in place. Caches key on object identity. A saved record that did not change must stay the same object (`keepIfSame`).
+- Do not put work on the path that runs on every pointer move (`onChange` of `WritingSurface`, `save` in `use-writing-session.ts`) or on the save path (`saveSentenceCapture`) without measuring it.
+- Pass `memo` components strings, flags, and stable callbacks (`useStableCallback`). Do not pass values that change on every move.
+- Do not share a cached shape between prompts. Copy its centerlines (`normalizedSource`).
+- Run slow work in steps with `src/lib/idle.ts`. A task that runs in steps must keep its progress.
+- The project is saved as records. When you add state, check that the save diff still writes only what changed.
+- Measure before and after with the same method (see the measuring section of the document). Keep a change only if the number improves. If the font output can change, compare the hash of `tools/verify/golden.mjs`.
+- After a change in this area, update `docs/performance.md`: the table of causes, the rules, the measured values, and the list of rejected tries.
 
 ## Files Not in Git
 
