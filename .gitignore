@@ -10,14 +10,13 @@ test-results/
 playwright-report/
 gitignore/
 
-tests/fixtures/
-
-tools
+tools/out/
 
 *.local
+*.otf
 .pnpm-store/
 
-# dev-only sample project (copy of tests/fixtures/project.json)
+# local sample project: dev sample button and tools/*.mjs read it
 src/dev/sample-project.json
 
 # impeccable-ignore-start

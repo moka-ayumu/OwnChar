@@ -20,7 +20,7 @@
 
 ## 근거: Noto Sans KR 실측
 
-글자를 픽셀로 칠해 받침 중심의 위치를 잼 (`tools/final-stem-fit.mjs`, `tools/final-rule-fit.mjs`). 기둥 있는 모음(세로·복합) 500여 자 기준.
+글자를 픽셀로 칠해 받침 중심의 위치를 잼 (`tools/archive/final-stem-fit.mjs`, `tools/archive/final-rule-fit.mjs`, 로컬 전용). 기둥 있는 모음(세로·복합) 500여 자 기준.
 
 | 기준 | 받침 중심의 위치 |
 |---|---|
