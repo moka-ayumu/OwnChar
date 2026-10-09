@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { memo, useEffect, useRef, useState } from 'react'
 import { Eraser, PenLine, Redo2, SlidersHorizontal, SquareDashed, Trash2, Undo2 } from 'lucide-react'
 import { Hint } from '@/components/hint'
 import { Button } from '@/components/ui/button'
@@ -7,7 +7,7 @@ import { Slider } from '@/components/ui/slider'
 export type CanvasTool = 'pen' | 'eraser'
 
 /** The writing tools, as icons in a column that stays beside the canvas while it scrolls. */
-export function ToolRail({ tool, strokeWidth, endpointStabilization, showHints, cellSize, cellSizeLocked, onTool, onStrokeWidth, onEndpointStabilization, onToggleHints, onCellSize, onUndo, onRedo, onClear }: {
+export const ToolRail = memo(function ToolRail({ tool, strokeWidth, endpointStabilization, showHints, cellSize, cellSizeLocked, onTool, onStrokeWidth, onEndpointStabilization, onToggleHints, onCellSize, onUndo, onRedo, onClear }: {
   tool: CanvasTool
   strokeWidth: number
   endpointStabilization: number
@@ -79,4 +79,4 @@ export function ToolRail({ tool, strokeWidth, endpointStabilization, showHints, 
       </div>
     </div>
   )
-}
+})

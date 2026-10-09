@@ -1,15 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { ArrowLeft, ArrowRight, Type } from 'lucide-react'
 import { exerciseCompletion, WRITING_EXERCISES } from '@/collection/exercises'
-import { completedPromptCount, missingPrompts, PROMPT_COUNT } from '@/collection/prompts'
+import { missingPrompts } from '@/collection/prompts'
 import { AppNav } from '@/components/app-nav'
 import { Hint } from '@/components/hint'
 import { ProgressRing } from '@/components/progress-ring'
-import { RailBrand } from '@/components/rail-brand'
-import { Button } from '@/components/ui/button'
-import { Progress } from '@/components/ui/progress'
 import { flow } from '@/lib/flow'
+import { useStableCallback } from '@/lib/use-stable-callback'
 import { projectActions } from '@/project/store'
 import { useProject } from '@/project/use-project'
 import { CellPopover } from './cell-popover'
@@ -17,6 +14,8 @@ import { FixedCaptureLayer } from './fixed-capture-layer'
 import { GenerationDialogs, type GenerationDialog } from './generation-dialogs'
 import { ToolRail, type CanvasTool } from './tool-rail'
 import { useWritingSession } from './use-writing-session'
+import { WriteRail } from './write-rail'
+import { WritingGrid } from './writing-grid'
 import { WritingSurface, type WritingSurfaceHandle } from './writing-surface'
 
 export interface WriteSearch {
@@ -26,6 +25,13 @@ export interface WriteSearch {
   /** The glyph (and search text) to return to in the editor. */
   returnGlyph?: number
   returnQuery?: string
+}
+
+/** One 0 or 1 per cell: 1 for the cells in `indices`. */
+function cellFlags(count: number, indices: number[]) {
+  const flags = Array<string>(count).fill('0')
+  for (const index of indices) flags[index] = '1'
+  return flags.join('')
 }
 
 const PLACEHOLDER_HINT_KEY = 'ownchar:placeholder-hint'
@@ -95,7 +101,9 @@ function WriteSentence({ currentIndex, exerciseId: sourceExerciseId, cellIndex: 
   const { active } = session
   // A finished cell closes its popover, so the next cell is free to write in.
   const popoverOpen = active.cellIndex !== null && (active.current !== null || active.reopened)
-  const writtenCells = new Set(session.capture.groups.filter((group) => group.strokes.length).map((group) => group.cellIndex))
+  const writtenKey = cellFlags(exercise.cells.length, session.capture.groups.filter((group) => group.strokes.length).map((group) => group.cellIndex))
+  const finishedKey = session.finished.map((done) => done ? '1' : '0').join('')
+  const writtenRoles = session.capture.groups.filter((group) => group.strokes.length && group.slot.role).map((group) => `${group.cellIndex}:${group.slot.role}`).join(',')
   const canvasWidth = grid.columns * grid.cellSize
   const canvasHeight = session.rowCount * grid.cellSize
   const showsSourceCell = sourceExerciseId === exercise.id && sourceCellIndex !== undefined && sourceCellIndex >= 0 && sourceCellIndex < exercise.cells.length
@@ -111,31 +119,33 @@ function WriteSentence({ currentIndex, exerciseId: sourceExerciseId, cellIndex: 
     region.current.scrollTop = Math.max(0, row * grid.cellSize - region.current.clientHeight / 3)
   }, [showsSourceCell, sourceCellIndex, grid])
 
-  const togglePlaceholderHint = () => {
+  const togglePlaceholderHint = useStableCallback(() => {
     setShowPlaceholderHint(!showPlaceholderHint)
     writePlaceholderHint(!showPlaceholderHint)
-  }
+  })
 
-  const toggleRail = () => {
+  const toggleRail = useStableCallback(() => {
     setRailCollapsed(!railCollapsed)
     writeRailCollapsed(!railCollapsed)
-  }
+  })
 
-  const clear = () => {
+  const clear = useStableCallback(() => {
     surface.current?.clear()
     session.clear()
-  }
+  })
+  const undo = useStableCallback(() => surface.current?.undo())
+  const redo = useStableCallback(() => surface.current?.redo())
+  const reopenCell = useStableCallback((index: number) => session.reopenCell(index))
+  const setEndpointStabilization = useStableCallback((value: number) => projectActions.updateCompositionSettings({ endpointStabilization: value }))
 
-  const go = (index: number) => {
+  const go = useStableCallback((index: number) => {
     const next = Math.max(0, Math.min(WRITING_EXERCISES.length - 1, index))
     projectActions.showExercise(next)
     if (sourceExerciseId) void navigate({ to: '/write', search: { returnGlyph, returnQuery } })
-  }
+  })
 
-  const completed = completedPromptCount(drawings)
   const remaining = missingPrompts(drawings)
   const exerciseProgress = exerciseCompletion(exercise, drawings)
-  const isLast = currentIndex === WRITING_EXERCISES.length - 1
 
   const generate = () => {
     // Generation opens on the sentence exactly where it sits now.
@@ -155,56 +165,23 @@ function WriteSentence({ currentIndex, exerciseId: sourceExerciseId, cellIndex: 
     if (sourceDirty && modifiedGlyphCount > 0) setGenerationDialog('conflict')
     else generate()
   }
-  const requestGeneration = () => remaining.length > 0 ? setGenerationDialog('missing') : proceedToGeneration()
+  const requestGeneration = useStableCallback(() => remaining.length > 0 ? setGenerationDialog('missing') : proceedToGeneration())
+  const openExistingFont = useStableCallback(() => void (returnGlyph === undefined ? navigate({ to: '/preview', viewTransition: true }) : navigate({ to: '/edit', search: { glyph: returnGlyph, query: returnQuery } })))
 
   return (
     <div className="flow write-flow" data-collapsed={railCollapsed ? 'true' : undefined}>
-      {/* Closing the rail only narrows it: every row keeps its place and its leading icon, and the text beside it is cut off. */}
-      <aside className="rail write-rail">
-        <RailBrand collapsed={railCollapsed} onToggle={toggleRail} />
-        <div className="write-sidebar-overview">
-          <Hint className="relative block" label={railCollapsed && `전체 수집률 ${completed} / ${PROMPT_COUNT}`}>
-            <span className="rail-label rail-text">전체 수집률</span>
-            <div className="rail-figure rail-text mt-1">{completed}<small>/ {PROMPT_COUNT}</small></div>
-            <Progress className="rail-text mt-3" value={completed / PROMPT_COUNT * 100} />
-            {/* Closed, the same progress stands upright in the space the figure leaves. */}
-            <span className="rail-total-upright" aria-hidden="true"><i style={{ height: `${completed / PROMPT_COUNT * 100}%` }} /></span>
-          </Hint>
-          <div className="write-character-section">
-            <div className="rail-text mb-2 flex items-center justify-between"><span className="rail-label">연습 문장</span><span className="tnum text-xs font-semibold">{currentIndex + 1} / {WRITING_EXERCISES.length}</span></div>
-            <div className="exercise-list" aria-label="문장 진행 상황">
-              {WRITING_EXERCISES.map((item, index) => {
-                const progress = exerciseCompletion(item, drawings)
-                const count = `${progress.completed} / ${progress.total} 자모`
-                return (
-                  <Hint key={item.id} className="block" label={railCollapsed ? `${item.title} · ${count}` : count}>
-                    <button onClick={() => go(index)} aria-label={`${item.title}, ${count}`} aria-current={index === currentIndex ? 'step' : undefined} className={`exercise-chip ${index === currentIndex ? 'current' : ''}`}>
-                      <span className="exercise-chip-state"><ProgressRing value={progress.completed} total={progress.total} /></span>
-                      <strong>{item.title}</strong>
-                    </button>
-                  </Hint>
-                )
-              })}
-            </div>
-          </div>
-        </div>
-        <div className="write-actions">
-          <Button size="icon" variant="secondary" aria-label="이전 문장" title="이전 문장" disabled={currentIndex === 0} onClick={() => go(currentIndex - 1)}><ArrowLeft className="size-4" /></Button>
-          {isLast
-            ? <Button aria-label="폰트 만들기" title={railCollapsed ? '폰트 만들기' : undefined} onClick={requestGeneration}>{railCollapsed ? <Type className="size-4" /> : '폰트 만들기'}</Button>
-            : <Button aria-label="다음 문장" title={railCollapsed ? '다음 문장' : undefined} onClick={() => go(currentIndex + 1)}>{!railCollapsed && '다음 문장'}<ArrowRight className="size-4" /></Button>}
-        </div>
-        {!railCollapsed && !isLast && <Button className="mt-2 w-full" variant="ghost" onClick={requestGeneration}>지금 폰트 만들기</Button>}
-        {!railCollapsed && generatedFont && <Button className="mt-2 w-full px-2" variant="secondary" onClick={() => void (returnGlyph === undefined ? navigate({ to: '/preview', viewTransition: true }) : navigate({ to: '/edit', search: { glyph: returnGlyph, query: returnQuery } }))}>기존 폰트 미리보기 · 편집</Button>}
-      </aside>
+      <WriteRail
+        drawings={drawings} currentIndex={currentIndex} collapsed={railCollapsed} hasGeneratedFont={Boolean(generatedFont)}
+        onToggle={toggleRail} onGo={go} onRequestGeneration={requestGeneration} onOpenExistingFont={openExistingFont}
+      />
 
       <section className="stage write-stage" ref={stage}>
         <ToolRail
           tool={tool} strokeWidth={strokeWidth} endpointStabilization={endpointStabilization} showHints={showPlaceholderHint}
           onTool={setTool} onStrokeWidth={setStrokeWidth} onToggleHints={togglePlaceholderHint}
-          onEndpointStabilization={(value) => projectActions.updateCompositionSettings({ endpointStabilization: value })}
+          onEndpointStabilization={setEndpointStabilization}
           cellSize={grid.cellSize} cellSizeLocked={strokes.length > 0} onCellSize={session.setCellSize}
-          onUndo={() => surface.current?.undo()} onRedo={() => surface.current?.redo()} onClear={clear}
+          onUndo={undo} onRedo={redo} onClear={clear}
         />
         <div className="write-main">
           <div className="sentence-prompt">
@@ -219,21 +196,11 @@ function WriteSentence({ currentIndex, exerciseId: sourceExerciseId, cellIndex: 
           <div className="sentence-canvas-region" ref={region}>
             <div className="sentence-canvas-scroll" ref={viewport}>
               <div className="sentence-canvas-frame" ref={frame} data-testid="writing-canvas" data-cell-size={grid.cellSize} data-columns={grid.columns} data-rows={session.rowCount} data-assignment-prompts={session.capture.assignments.map((item) => item.promptId).join(',')} style={{ width: canvasWidth, height: canvasHeight }}>
-                <FixedCaptureLayer exercise={exercise} drawings={drawings} sessions={sessions} cellGuides={session.cellGuides} groups={session.capture.groups} showHints={showPlaceholderHint} grid={grid} width={canvasWidth} height={canvasHeight} />
-                <div className="writing-grid">
-                  {exercise.cells.map((cell, index) => {
-                    const isSource = showsSourceCell && sourceCellIndex === index
-                    const isActive = active.cellIndex === index
-                    const state = [isSource && 'source-cell-highlight', session.finished[index] && 'is-complete', isActive && popoverOpen && 'is-active'].filter(Boolean).join(' ')
-                    return (
-                      <div key={index} data-source-cell={isSource ? 'true' : undefined} data-complete={session.finished[index] ? 'true' : undefined} className={state || undefined} style={{ width: grid.cellSize }}>
-                        {writtenCells.has(index) && !(isActive && popoverOpen)
-                          ? <button type="button" aria-label={`${cell.char} 칸의 자모 나누기 고치기`} title="자모 나누기 고치기" onClick={() => session.reopenCell(index)}>{cell.char}</button>
-                          : <span aria-hidden="true">{cell.char}</span>}
-                      </div>
-                    )
-                  })}
-                </div>
+                <FixedCaptureLayer exercise={exercise} drawings={drawings} sessions={sessions} cellGuides={session.cellGuides} writtenRoles={writtenRoles} showHints={showPlaceholderHint} grid={grid} width={canvasWidth} height={canvasHeight} />
+                <WritingGrid
+                  exercise={exercise} cellSize={grid.cellSize} finished={finishedKey} written={writtenKey}
+                  activeCell={popoverOpen ? active.cellIndex : null} sourceCell={showsSourceCell ? sourceCellIndex ?? null : null} onReopen={reopenCell}
+                />
                 <WritingSurface key={`${exercise.id}:${grid.columns}`} ref={surface} initialStrokes={strokes} cellSize={grid.cellSize} width={canvasWidth} height={canvasHeight} strokeWidth={strokeWidth} endpointStabilization={endpointStabilization} tool={tool} onChange={(next) => session.save(next)} />
                 {active.cellIndex !== null && popoverOpen && (
                   <CellPopover

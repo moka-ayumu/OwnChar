@@ -1,10 +1,10 @@
-import { useMemo } from 'react'
+import { memo, useMemo } from 'react'
 import type { WritingExercise } from '@/collection/exercises'
 import { cellOrigin, type DrawingRecord, type WritingSessionRecord } from '@/collection/records'
 import { svgPathData } from '@/font/geometry/svg'
 import type { GuideBox, StoredCellGuide } from '@/font/guides'
 import { isHangulSyllable, type HangulRole } from '@/font/hangul'
-import { fixedSlots, type CanvasGrid, type CaptureGroup } from './stroke-assignment'
+import { fixedSlots, type CanvasGrid } from './stroke-assignment'
 
 interface GuidePath { key: string; cellIndex: number; promptId: string; d: string; transform: string }
 interface GuideHint { key: string; cellIndex: number; role: HangulRole; band?: boolean; x: number; y: number; width: number; height: number }
@@ -13,12 +13,13 @@ interface GuideHint { key: string; cellIndex: number; role: HangulRole; band?: b
  * Already collected jamo, drawn where the cell's guide puts them (see
  * `composeCellGuide`), and the places of the jamo still to be written.
  */
-export function FixedCaptureLayer({ exercise, drawings, sessions, cellGuides, groups, showHints, grid, width, height }: {
+export const FixedCaptureLayer = memo(function FixedCaptureLayer({ exercise, drawings, sessions, cellGuides, writtenRoles, showHints, grid, width, height }: {
   exercise: WritingExercise
   drawings: Record<string, DrawingRecord>
   sessions: Record<string, WritingSessionRecord>
   cellGuides: Map<number, StoredCellGuide>
-  groups: CaptureGroup[]
+  /** The roles that have strokes, as `cellIndex:role` joined by commas. */
+  writtenRoles: string
   showHints: boolean
   grid: CanvasGrid
   width: number
@@ -60,11 +61,7 @@ export function FixedCaptureLayer({ exercise, drawings, sessions, cellGuides, gr
 
   const hints = useMemo((): GuideHint[] => {
     if (!showHints) return []
-    const writtenRoles = new Map<number, Set<HangulRole>>()
-    for (const group of groups) {
-      if (!group.strokes.length || !group.slot.role) continue
-      writtenRoles.set(group.cellIndex, new Set([...(writtenRoles.get(group.cellIndex) ?? []), group.slot.role]))
-    }
+    const written = new Set(writtenRoles.split(','))
     const scale = cellSize / 1000
     return [...cellGuides].flatMap(([cellIndex, guide]) => {
       const origin = cellOrigin(cellIndex, columns, cellSize)
@@ -73,17 +70,17 @@ export function FixedCaptureLayer({ exercise, drawings, sessions, cellGuides, gr
         width: (box.x2 - box.x1) * scale, height: (box.y2 - box.y1) * scale,
       })
       return (Object.entries(guide.placeholders) as Array<[HangulRole, GuideBox]>)
-        .filter(([role]) => !writtenRoles.get(cellIndex)?.has(role))
+        .filter(([role]) => !written.has(`${cellIndex}:${role}`))
         .flatMap(([role, box]) => [
           { key: `${cellIndex}-${role}-band`, cellIndex, role, band: true, ...rect(guide.bands[role]!) },
           { key: `${cellIndex}-${role}`, cellIndex, role, ...rect(box) },
         ])
     })
-  }, [showHints, groups, cellGuides, cellSize, columns])
+  }, [showHints, writtenRoles, cellGuides, cellSize, columns])
 
   if (!paths.length && !hints.length) return null
   return <svg className="fixed-capture-layer" viewBox={`0 0 ${width} ${height}`} aria-label="이미 수집되어 고정된 자모">
     {hints.map((hint) => <rect key={hint.key} className={hint.band ? 'placeholder-band' : 'placeholder-hint'} data-cell-index={hint.cellIndex} data-placeholder-role={hint.role} x={hint.x} y={hint.y} width={hint.width} height={hint.height} rx={4} />)}
     {paths.map((path) => <path key={path.key} data-cell-index={path.cellIndex} data-prompt-id={path.promptId} d={path.d} transform={path.transform} fillRule="nonzero" />)}
   </svg>
-}
+})
