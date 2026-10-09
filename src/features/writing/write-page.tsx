@@ -6,6 +6,7 @@ import { AppNav } from '@/components/app-nav'
 import { Hint } from '@/components/hint'
 import { ProgressRing } from '@/components/progress-ring'
 import { flow } from '@/lib/flow'
+import { cancelIdle, stopWhenBusy, whenIdle, type IdleHandle, type IdleTime } from '@/lib/idle'
 import { useStableCallback } from '@/lib/use-stable-callback'
 import { projectActions } from '@/project/store'
 import { useProject } from '@/project/use-project'
@@ -13,7 +14,7 @@ import { CellPopover } from './cell-popover'
 import { FixedCaptureLayer } from './fixed-capture-layer'
 import { GenerationDialogs, type GenerationDialog } from './generation-dialogs'
 import { ToolRail, type CanvasTool } from './tool-rail'
-import { useWritingSession } from './use-writing-session'
+import { useWritingSession, warmSentence } from './use-writing-session'
 import { WriteRail } from './write-rail'
 import { WritingGrid } from './writing-grid'
 import { WritingSurface, type WritingSurfaceHandle } from './writing-surface'
@@ -118,6 +119,22 @@ function WriteSentence({ currentIndex, exerciseId: sourceExerciseId, cellIndex: 
     const row = Math.floor(sourceCellIndex / grid.columns)
     region.current.scrollTop = Math.max(0, row * grid.cellSize - region.current.clientHeight / 3)
   }, [showsSourceCell, sourceCellIndex, grid])
+
+  const compositionSettings = useProject((state) => state.compositionSettings)
+  // Once the writer pauses, the other sentences get ready one idle task at a time, the nearest first.
+  useEffect(() => {
+    const others = WRITING_EXERCISES.map((_, index) => index).filter((index) => index !== currentIndex)
+    const queue = others.sort((left, right) => Math.abs(left - currentIndex) - Math.abs(right - currentIndex) || right - left)
+    let handle: IdleHandle = { id: 0 }
+    const warm = (time: IdleTime) => {
+      const index = queue[0]
+      if (index === undefined) return
+      if (warmSentence(WRITING_EXERCISES[index], drawings, sessions, compositionSettings, stopWhenBusy(time))) queue.shift()
+      handle = whenIdle(warm)
+    }
+    const start = window.setTimeout(() => { handle = whenIdle(warm) }, 400)
+    return () => { window.clearTimeout(start); cancelIdle(handle) }
+  }, [currentIndex, drawings, sessions, compositionSettings])
 
   const togglePlaceholderHint = useStableCallback(() => {
     setShowPlaceholderHint(!showPlaceholderHint)

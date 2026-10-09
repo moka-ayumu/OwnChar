@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import type { WritingExercise } from '@/collection/exercises'
-import { cellId, guideSourceTag, type JamoBoundary, type WritingSessionRecord } from '@/collection/records'
+import type { NormalizedShape } from '@/font/geometry/shape'
+import type { CompositionSettings } from '@/font/settings'
+import { cellId, guideSourceTag, type DrawingRecord, type JamoBoundary, type WritingSessionRecord } from '@/collection/records'
 import { composeCellGuide, type StoredCellGuide } from '@/font/guides'
 import { isHangulSyllable, type HangulRole } from '@/font/hangul'
-import { REFERENCE_CELL_SIZE, type RawStroke } from '@/font/stroke/outline'
-import { hangulComposeOptions } from '@/generation/font-builder'
-import { useCompositionBase } from '@/generation/use-composition-context'
+import { REFERENCE_CELL_SIZE, strokeSvgPath, type RawStroke } from '@/font/stroke/outline'
+import { hangulComposeOptions, type HangulCompositionInputs } from '@/generation/font-builder'
+import { cancelIdle, stopWhenBusy, whenIdle } from '@/lib/idle'
+import { useCompositionBase, warmCompositionBase } from '@/generation/use-composition-context'
 import { projectActions } from '@/project/store'
 import { useProject } from '@/project/use-project'
 import { assignStrokes, boundariesThrough, captureRecords, cellIndexOf, cellProgress, completedCells, fixedSlots, holdBoundaries, reflowStrokes, visibleStrokes, type CanvasGrid } from './stroke-assignment'
@@ -30,7 +33,127 @@ function sameGuides(left: Guides, right: Guides) {
   })
 }
 
+const NO_GUIDES: Guides = {}
+
+interface GuideJob {
+  inputs: readonly unknown[]
+  options: ReturnType<typeof hangulComposeOptions>
+  guides: Map<number, StoredCellGuide>
+  /** The next cell to compose. */
+  next: number
+  /** Cells composed ahead of `next`. */
+  settled: Set<number>
+  /** The last finished job of the sentence: its guides are shown while this job is not finished. */
+  previous?: GuideJob
+  /** What is shown while this job is not finished: the guides of `previous`, with the cells that cannot wait made new. */
+  display?: Map<number, StoredCellGuide>
+}
+
+const guideJobDone = (exercise: WritingExercise, job: GuideJob) => job.next >= exercise.cells.length
+
+const guideJobs = new WeakMap<WritingExercise, GuideJob>()
+
+/** The job that composes the guides of a sentence for these inputs; the same inputs give back the same job, finished or not. */
+function guideJob(exercise: WritingExercise, drawings: Record<string, DrawingRecord>, storedGuides: Guides, shapes: Map<string, NormalizedShape>, settings: CompositionSettings, composition: HangulCompositionInputs) {
+  const inputs = [drawings, storedGuides, shapes, settings, composition]
+  const kept = guideJobs.get(exercise)
+  if (kept && kept.inputs.every((input, index) => Object.is(input, inputs[index]))) return kept
+  const base = kept && (guideJobDone(exercise, kept) ? kept : kept.previous)
+  if (base) base.previous = undefined
+  const job: GuideJob = { inputs, options: hangulComposeOptions(composition), guides: new Map(), next: 0, settled: new Set(), previous: base }
+  guideJobs.set(exercise, job)
+  return job
+}
+
+function composeJobCell(exercise: WritingExercise, job: GuideJob, cellIndex: number) {
+  const [drawings, storedGuides, shapes, settings] = job.inputs as [Record<string, DrawingRecord>, Guides, Map<string, NormalizedShape>, CompositionSettings]
+  const cell = exercise.cells[cellIndex]
+  const codePoint = cell.char.codePointAt(0)!
+  const fixed = fixedSlots(cell, cellIndex, exercise, drawings)
+  job.settled.add(cellIndex)
+  if (!isHangulSyllable(codePoint) || !fixed.length) return
+  const guideRoles = Object.fromEntries(fixed.map(({ slot }) => [slot.role!, guideSourceTag(drawings[slot.promptId])]))
+  const writtenRoles = cell.slots.filter((slot) => {
+    const written = drawings[slot.promptId]?.capture
+    return written?.exerciseId === exercise.id && written.cellIndex === cellIndex
+  }).map((slot) => slot.role!)
+  job.guides.set(cellIndex, composeCellGuide({
+    codePoint, cellId: cellId(exercise.id, cellIndex), guideRoles, writtenRoles,
+    stored: storedGuides[cellIndex], shapes, settings, options: job.options,
+  }))
+}
+
+/** Composes the cells of a job one at a time until all are done or `shouldStop` says so. Returns whether all are done. */
+function advanceGuideJob(exercise: WritingExercise, job: GuideJob, shouldStop?: () => boolean) {
+  while (job.next < exercise.cells.length) {
+    if (!job.settled.has(job.next)) {
+      if (shouldStop?.()) return false
+      composeJobCell(exercise, job, job.next)
+    }
+    job.next += 1
+  }
+  return true
+}
+
+/**
+ * The job for the guides of a sentence. With nothing to show yet, it is
+ * finished here. Otherwise the guides shown before stay until it is finished
+ * in idle time, so a save never stops the writer for them. Only a cell whose
+ * fixed jamo changed, or whose stored guide appeared or went, is made new at
+ * once: its old guide would show the wrong jamo to write.
+ */
+function sentenceGuideJob(exercise: WritingExercise, drawings: Record<string, DrawingRecord>, storedGuides: Guides, shapes: Map<string, NormalizedShape>, settings: CompositionSettings, composition: HangulCompositionInputs) {
+  const job = guideJob(exercise, drawings, storedGuides, shapes, settings, composition)
+  if (!job.previous) {
+    advanceGuideJob(exercise, job)
+    return job
+  }
+  if (!job.display) {
+    const previous = job.previous
+    const previousStored = previous.inputs[1] as Guides
+    const display = new Map(previous.guides)
+    exercise.cells.forEach((cell, cellIndex) => {
+      const roles = fixedSlots(cell, cellIndex, exercise, drawings).map(({ slot }) => slot.role!).sort().join()
+      const shown = Object.keys(previous.guides.get(cellIndex)?.roles ?? {}).sort().join()
+      if (roles === shown && Boolean(previousStored[cellIndex]) === Boolean(storedGuides[cellIndex])) return
+      composeJobCell(exercise, job, cellIndex)
+      const fresh = job.guides.get(cellIndex)
+      if (fresh) display.set(cellIndex, fresh)
+      else display.delete(cellIndex)
+    })
+    job.display = display
+  }
+  return job
+}
+
 const countBoundaries = (boundaries: Boundaries) => Object.values(boundaries).reduce((sum, items) => sum + items.length, 0)
+
+/** How many strokes of a sentence have their outline made, for the stroke conditioning in use. */
+const outlineProgress = new WeakMap<readonly RawStroke[], { endpointStabilization: number; next: number }>()
+
+/**
+ * Prepares a sentence the writer is likely to open next: its guides and the
+ * outlines of its strokes. Stops when `shouldStop` says so and returns
+ * whether it is done; calling again carries on where it stopped.
+ */
+export function warmSentence(exercise: WritingExercise, drawings: Record<string, DrawingRecord>, sessions: Record<string, WritingSessionRecord>, settings: CompositionSettings, shouldStop: () => boolean) {
+  const { shapes, composition } = warmCompositionBase(drawings, sessions, settings)
+  const saved = sessions[exercise.id] as WritingSessionRecord | undefined
+  if (!advanceGuideJob(exercise, guideJob(exercise, drawings, saved?.guides ?? NO_GUIDES, shapes, settings, composition), shouldStop)) return false
+  const elements = saved?.elements ?? []
+  const progress = outlineProgress.get(elements)
+  let index = progress?.endpointStabilization === settings.endpointStabilization ? progress.next : 0
+  for (; index < elements.length; index += 1) {
+    if (shouldStop()) {
+      outlineProgress.set(elements, { endpointStabilization: settings.endpointStabilization, next: index })
+      return false
+    }
+    const stroke = elements[index]
+    if (!stroke.isDeleted && stroke.points.length) strokeSvgPath(stroke, saved!.cellSize, settings.endpointStabilization)
+  }
+  outlineProgress.set(elements, { endpointStabilization: settings.endpointStabilization, next: index })
+  return true
+}
 
 /**
  * The strokes, jamo boundaries and guides of the sentence being written, saved
@@ -45,7 +168,7 @@ export function useWritingSession(exercise: WritingExercise, viewport: RefObject
   const [requestedColumns, setColumns] = useState(saved?.columns ?? Math.min(6, exercise.cells.length))
   const [strokes, setStrokes] = useState<readonly RawStroke[]>(saved?.elements ?? [])
   const [boundaries, setBoundaries] = useState<Boundaries>(saved?.boundaries ?? {})
-  const [storedGuides, setStoredGuides] = useState<Guides>(saved?.guides ?? {})
+  const [storedGuides, setStoredGuides] = useState<Guides>(saved?.guides ?? NO_GUIDES)
   const [boundaryWarning, setBoundaryWarning] = useState('')
   const [holds, setHolds] = useState<Holds>({})
   const [focus, setFocus] = useState<number | null>(null)
@@ -82,25 +205,17 @@ export function useWritingSession(exercise: WritingExercise, viewport: RefObject
   // Learned spacing and calibration stay as they were when the sentence was
   // opened, so completing other syllables never moves a guide on screen.
   const { shapes, composition } = useCompositionBase(drawings, sessions, settings, `${exercise.id}|${JSON.stringify(settings)}`)
-  const cellGuides = useMemo(() => {
-    const options = hangulComposeOptions(composition)
-    const guides = new Map<number, StoredCellGuide>()
-    exercise.cells.forEach((cell, cellIndex) => {
-      const codePoint = cell.char.codePointAt(0)!
-      const fixed = fixedSlots(cell, cellIndex, exercise, drawings)
-      if (!isHangulSyllable(codePoint) || !fixed.length) return
-      const guideRoles = Object.fromEntries(fixed.map(({ slot }) => [slot.role!, guideSourceTag(drawings[slot.promptId])]))
-      const writtenRoles = cell.slots.filter((slot) => {
-        const written = drawings[slot.promptId]?.capture
-        return written?.exerciseId === exercise.id && written.cellIndex === cellIndex
-      }).map((slot) => slot.role!)
-      guides.set(cellIndex, composeCellGuide({
-        codePoint, cellId: cellId(exercise.id, cellIndex), guideRoles, writtenRoles,
-        stored: storedGuides[cellIndex], shapes, settings, options,
-      }))
+  const guideJobNow = sentenceGuideJob(exercise, drawings, storedGuides, shapes, settings, composition)
+  const [, setFinishedCount] = useState(0)
+  useEffect(() => {
+    if (guideJobDone(exercise, guideJobNow)) return
+    let handle = whenIdle(function step(time) {
+      if (advanceGuideJob(exercise, guideJobNow, stopWhenBusy(time))) setFinishedCount((count) => count + 1)
+      else handle = whenIdle(step)
     })
-    return guides
-  }, [exercise, drawings, storedGuides, shapes, settings, composition])
+    return () => cancelIdle(handle)
+  }, [exercise, guideJobNow])
+  const cellGuides = guideJobDone(exercise, guideJobNow) ? guideJobNow.guides : guideJobNow.display!
 
   // A cell keeps the guide it showed when its first stroke began: the stored
   // outlines are what the canvas and the font use from then on.
