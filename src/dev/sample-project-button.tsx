@@ -2,11 +2,12 @@ import { useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { FlaskConical, X } from 'lucide-react'
 import { clearPersistedProject } from '@/project/persistence'
+import { joinProject, type SavedProject } from '@/project/saved-format'
 import { projectActions } from '@/project/store'
-import { SCHEMA_VERSION, type ProjectState } from '@/project/types'
+import { SCHEMA_VERSION } from '@/project/types'
 
 // Optional: the file is gitignored, so a fresh clone simply has no sample to load.
-const samples = import.meta.glob<ProjectState>('./sample-project.json', { import: 'default' })
+const samples = import.meta.glob<SavedProject>('./sample-project.json', { import: 'default' })
 
 /** Dev-only floating button that fills the project with the sample data. Dismiss it with the X until the next reload. */
 export function SampleProjectButton() {
@@ -23,7 +24,7 @@ export function SampleProjectButton() {
       const sample = await load()
       await clearPersistedProject()
       // The sample has no binary font, so it resumes from the writing step and regenerates.
-      projectActions.restoreProject({ ...sample, schemaVersion: SCHEMA_VERSION, status: 'writing', generatedFont: null, fontDirty: true, sourceDirty: true })
+      projectActions.restoreProject({ ...joinProject(sample, null), schemaVersion: SCHEMA_VERSION, status: 'writing', fontDirty: true, sourceDirty: true })
       void navigate({ to: '/write' })
     } finally {
       setLoading(false)

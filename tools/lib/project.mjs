@@ -8,5 +8,6 @@ export function loadProject() {
     console.error('src/dev/sample-project.json is missing. Run tools/project/export-project.js in the browser console and save the file there.')
     process.exit(1)
   }
-  return JSON.parse(readFileSync(sampleProject, 'utf8'))
+  const { meta, sessions, drawings } = JSON.parse(readFileSync(sampleProject, 'utf8'))
+  return { ...meta, writingSessions: sessions, drawings }
 }

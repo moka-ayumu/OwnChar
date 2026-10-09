@@ -1,4 +1,5 @@
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
+import { joinProject, splitProject, type SavedProject } from './saved-format'
 import { projectActions } from './store'
 import { SCHEMA_VERSION, type ProjectState } from './types'
 
@@ -7,15 +8,13 @@ export const ARCHIVE_EXTENSION = '.ownchar'
 const PROJECT_ENTRY = 'project.json'
 const FONT_ENTRY = 'font.otf'
 
-type SavedProject = Omit<ProjectState, 'hydrated' | 'generation' | 'generatedFont'>
-
 /** Packs the project into a zip: the project as JSON and the generated font as a binary entry. */
 export function createProjectArchive(project: ProjectState): Uint8Array {
-  const saved: Partial<ProjectState> = { ...project }
-  delete saved.hydrated
-  delete saved.generation
-  delete saved.generatedFont
-  const entries: Record<string, Uint8Array> = { [PROJECT_ENTRY]: strToU8(JSON.stringify(saved)) }
+  const saved = splitProject(project)
+  const { hydrated, generation, ...meta } = saved.meta
+  void hydrated
+  void generation
+  const entries: Record<string, Uint8Array> = { [PROJECT_ENTRY]: strToU8(JSON.stringify({ ...saved, meta })) }
   if (project.generatedFont) entries[FONT_ENTRY] = new Uint8Array(project.generatedFont)
   return zipSync(entries)
 }
@@ -29,16 +28,19 @@ export function readProjectArchive(bytes: Uint8Array): ProjectState {
     throw new Error('OwnChar 프로젝트 파일이 아닙니다.')
   }
   if (!entries[PROJECT_ENTRY]) throw new Error('OwnChar 프로젝트 파일이 아닙니다.')
-  const saved = JSON.parse(strFromU8(entries[PROJECT_ENTRY])) as SavedProject
-  if (saved.schemaVersion !== SCHEMA_VERSION) throw new Error('지원하지 않는 프로젝트 파일 형식입니다.')
+  const saved = JSON.parse(strFromU8(entries[PROJECT_ENTRY])) as { meta: Omit<SavedProject['meta'], 'hydrated' | 'generation'>; sessions: SavedProject['sessions']; drawings: SavedProject['drawings'] }
+  if (saved.meta?.schemaVersion !== SCHEMA_VERSION) throw new Error('지원하지 않는 프로젝트 파일 형식입니다.')
   const font = entries[FONT_ENTRY]
-  return {
+  const { status } = saved.meta
+  return joinProject({
     ...saved,
-    hydrated: true,
-    generation: { progress: 0, message: '', error: null },
-    generatedFont: font ? font.slice().buffer : null,
-    status: saved.status === 'generating' || saved.status === 'error' ? (font ? 'ready' : 'writing') : saved.status,
-  }
+    meta: {
+      ...saved.meta,
+      hydrated: true,
+      generation: { progress: 0, message: '', error: null },
+      status: status === 'generating' || status === 'error' ? (font ? 'ready' : 'writing') : status,
+    },
+  }, font ? font.slice().buffer : null)
 }
 
 export function downloadProjectArchive(project: ProjectState) {

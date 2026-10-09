@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import type { FileChooser, Page } from '@playwright/test'
-import { savedProject, startProject, writingCanvas } from './helpers'
+import { savedProject, startProject, storedProject, writingCanvas } from './helpers'
 
 const PROMPT_ID = `initial-0-${'ㄹ'.codePointAt(0)}`
 
@@ -68,18 +68,7 @@ test('shows that the project is autosaved and deletes the saved project on reque
   await openMenu(page)
   await page.getByRole('menuitem', { name: '이 기기의 저장 내용 삭제' }).click()
   await expect(page).toHaveURL(/\/$/)
-  await expect.poll(() => page.evaluate(async () => {
-    const database = await new Promise<IDBDatabase>((resolve, reject) => {
-      const request = indexedDB.open('ownchar', 1)
-      request.onsuccess = () => resolve(request.result)
-      request.onerror = () => reject(request.error)
-    })
-    return await new Promise((resolve, reject) => {
-      const request = database.transaction('project', 'readonly').objectStore('project').get('current')
-      request.onsuccess = () => resolve(request.result ?? null)
-      request.onerror = () => reject(request.error)
-    })
-  })).toBeNull()
+  await expect.poll(() => storedProject(page)).toBeNull()
   await openMenu(page)
   await expect(page.getByRole('menuitem', { name: '이 기기의 저장 내용 삭제' })).toHaveAttribute('aria-disabled', 'true')
   await page.keyboard.press('Escape')

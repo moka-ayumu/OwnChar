@@ -118,7 +118,7 @@ node tools/project/profile.mjs 600
 node tools/project/prof-top.mjs <cpuprofile 폴더>
 ```
 
-- `export-project.js`는 브라우저 콘솔에서 실행합니다. IndexedDB의 현재 프로젝트를 `sample-project.json`으로 내려받습니다.
+- `export-project.js`는 브라우저 콘솔에서 실행합니다. IndexedDB의 프로젝트 기록을 모아 `sample-project.json`으로 내려받습니다. 파일은 `{ meta, sessions, drawings }` 형식입니다.
 - `profile.mjs`는 음절 합성 시간과 학습 프로필의 크기를 측정합니다. 첫 번째 인자는 샘플 간격입니다. `sheet.svg`도 만듭니다.
 - `prof-top.mjs`는 `.cpuprofile` 파일에서 self time이 큰 함수 25개를 출력합니다.
 
@@ -127,7 +127,7 @@ node tools/project/prof-top.mjs <cpuprofile 폴더>
 | 파일 | 내용 |
 |---|---|
 | `vite.mjs` | `startVite()`는 Vite 서버를 시작합니다. `revision`을 지정하면 `src/`를 해당 Git revision에서 읽습니다. |
-| `project.mjs` | `loadProject()`는 샘플 프로젝트를 읽습니다. 파일이 없으면 메시지를 출력하고 종료합니다. |
+| `project.mjs` | `loadProject()`는 샘플 프로젝트를 읽어 `drawings`와 `writingSessions`가 있는 프로젝트 객체로 돌려줍니다. 파일이 없으면 메시지를 출력하고 종료합니다. |
 | `out.mjs` | `tools/out/`의 파일을 읽고 씁니다. |
 | `glyphs.mjs` | 지정 글자 목록, 84자 조합, NaN 검사입니다. |
 | `noto.mjs` | Noto Sans KR를 읽고 윤곽을 1000 단위로 변환합니다. |
