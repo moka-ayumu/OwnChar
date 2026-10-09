@@ -73,7 +73,7 @@ function useProjectFile() {
 }
 
 /** The quiet links every page carries, with the save status and the project file actions folded into one menu. */
-export function AppNav() {
+export function AppNav({ showLinks = true }: { showLinks?: boolean }) {
   const file = useProjectFile()
   const status = useSaveStatus()
 
@@ -102,8 +102,12 @@ export function AppNav() {
         </DropdownMenuContent>
       </DropdownMenu>
       {file.fileInput}
-      <Link to="/license" aria-label="도움말"><CircleHelp className="size-4" /><span className="nav-label">도움말</span></Link>
-      <a href="https://github.com/moka-ayumu/OwnChar" target="_blank" rel="noreferrer">GitHub</a>
+      {showLinks && (
+        <>
+          <Link to="/license" aria-label="도움말"><CircleHelp className="size-4" /><span className="nav-label">도움말</span></Link>
+          <a href="https://github.com/moka-ayumu/OwnChar" target="_blank" rel="noreferrer">GitHub</a>
+        </>
+      )}
     </nav>
   )
 }

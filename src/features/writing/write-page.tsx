@@ -207,7 +207,7 @@ function WriteSentence({ currentIndex, exerciseId: sourceExerciseId, cellIndex: 
               <Hint side="bottom" label={`${exerciseProgress.completed} / ${exerciseProgress.total} 자모`}>
                 <button type="button" className="sentence-ring" aria-label={`이 문장에서 자모 ${exerciseProgress.completed} / ${exerciseProgress.total} 수집`}><ProgressRing value={exerciseProgress.completed} total={exerciseProgress.total} size={22} /></button>
               </Hint>
-              <AppNav />
+              <AppNav showLinks={false} />
             </div>
           </div>
           <div className="sentence-canvas-region" ref={region}>
