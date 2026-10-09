@@ -5,7 +5,7 @@ import { composeCellGuide, type StoredCellGuide } from '@/font/guides'
 import { isHangulSyllable, type HangulRole } from '@/font/hangul'
 import { REFERENCE_CELL_SIZE, type RawStroke } from '@/font/stroke/outline'
 import { hangulComposeOptions } from '@/generation/font-builder'
-import { useCompositionContext } from '@/generation/use-composition-context'
+import { useCompositionBase } from '@/generation/use-composition-context'
 import { projectActions } from '@/project/store'
 import { useProject } from '@/project/use-project'
 import { assignStrokes, boundariesThrough, captureRecords, cellIndexOf, cellProgress, completedCells, fixedSlots, holdBoundaries, reflowStrokes, visibleStrokes, type CanvasGrid } from './stroke-assignment'
@@ -81,7 +81,7 @@ export function useWritingSession(exercise: WritingExercise, viewport: RefObject
 
   // Learned spacing and calibration stay as they were when the sentence was
   // opened, so completing other syllables never moves a guide on screen.
-  const { shapes, composition } = useCompositionContext(drawings, sessions, settings, `${exercise.id}|${JSON.stringify(settings)}`)
+  const { shapes, composition } = useCompositionBase(drawings, sessions, settings, `${exercise.id}|${JSON.stringify(settings)}`)
   const cellGuides = useMemo(() => {
     const options = hangulComposeOptions(composition)
     const guides = new Map<number, StoredCellGuide>()

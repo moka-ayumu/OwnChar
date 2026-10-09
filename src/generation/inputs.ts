@@ -12,19 +12,38 @@ import type { CompositionProfile, RequestDrawing } from './request'
 /** Widest a standalone compound final built from parts may be, as width / height. */
 const STANDALONE_COMPOUND_ASPECT = 1.5
 
+type SourceDrawing = Extract<RequestDrawing, { elements: unknown }>
+
+const sourceDrawingCache = new WeakMap<DrawingRecord, { columns: number; cellSize: number; value: SourceDrawing }>()
+const shapeCache = new WeakMap<SourceDrawing['elements'], Map<string, NormalizedShape | undefined>>()
+
 /** Drawings in the worker format: strokes moved into their own cell's coordinates. */
 export function toRequestDrawings(drawings: Record<string, DrawingRecord>, sessions: Record<string, WritingSessionRecord>): Record<string, RequestDrawing> {
   return Object.fromEntries(Object.entries(drawings).map(([promptId, drawing]): [string, RequestDrawing] => {
     if (drawing.derivedFromPromptId && drawings[drawing.derivedFromPromptId]) return [promptId, { sourcePromptId: drawing.derivedFromPromptId }]
     const { exerciseId, cellIndex } = drawing.capture
     const session = sessions[exerciseId]
+    const cached = sourceDrawingCache.get(drawing)
+    if (cached && cached.columns === session.columns && cached.cellSize === session.cellSize) return [promptId, cached.value]
     const origin = cellOrigin(cellIndex, session.columns, session.cellSize)
-    return [promptId, {
+    const value: SourceDrawing = {
       elements: drawing.elements.map((element) => ({ ...element, x: element.x - origin.x, y: element.y - origin.y })),
       cellSize: session.cellSize,
       sourceCellId: cellId(exerciseId, cellIndex),
-    }]
+    }
+    sourceDrawingCache.set(drawing, { columns: session.columns, cellSize: session.cellSize, value })
+    return [promptId, value]
   }))
+}
+
+/** A copy of the shape of one source drawing, kept while the drawing and the stroke conditioning stay the same. Each copy has its own centerlines, because the pen outlines are cached by centerline. */
+function normalizedSource(source: SourceDrawing, endpointStabilization: number) {
+  let byKey = shapeCache.get(source.elements)
+  if (!byKey) shapeCache.set(source.elements, byKey = new Map())
+  const key = `${source.cellSize}|${endpointStabilization}`
+  if (!byKey.has(key)) byKey.set(key, normalizeRawStrokes(source.elements, source.cellSize, endpointStabilization))
+  const shape = byKey.get(key)
+  return shape && { ...shape, frame: { ...shape.frame }, strokes: shape.strokes.map((stroke) => ({ ...stroke, centerline: { ...stroke.centerline } })) }
 }
 
 /** Every captured jamo and character as a placeable shape, keyed by character or by contextual source key. */
@@ -35,7 +54,7 @@ export function shapesFromRequestDrawings(drawings: Record<string, RequestDrawin
     if (!drawing) continue
     const source = 'sourcePromptId' in drawing ? drawings[drawing.sourcePromptId] : drawing
     if (!source || !('elements' in source)) continue
-    const shape = normalizeRawStrokes(source.elements, source.cellSize, settings.endpointStabilization)
+    const shape = normalizedSource(source, settings.endpointStabilization)
     if (!shape) continue
     shape.sourceCellId = source.sourceCellId
     if ('sourcePromptId' in drawing) shape.sourceRole = promptRole(drawing.sourcePromptId)

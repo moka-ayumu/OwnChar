@@ -197,12 +197,20 @@ function polygonSvgPath(points: readonly Point[]): string {
   return commands.join(' ')
 }
 
-/** SVG path data of a stroke, relative to its own (x, y). */
+const svgPathCache = new WeakMap<RawStroke['points'], Map<string, string>>()
+
+/** SVG path data of a stroke, relative to its own (x, y). Kept while the stroke's points stay the same array. */
 export function strokeSvgPath(stroke: RawStroke, cellSize: number, strength = 1): string {
   const complete = stroke.lastCommittedPoint !== null
+  const key = `${cellSize}|${stroke.strokeWidth}|${strength}|${complete}`
+  let byKey = svgPathCache.get(stroke.points)
+  if (!byKey) svgPathCache.set(stroke.points, byKey = new Map())
+  const cached = byKey.get(key)
+  if (cached !== undefined) return cached
   const outline = outlineStroke(stroke.points, stroke.pressures, penDiameter(stroke.strokeWidth, cellSize), complete, strength)
-  if (outline.smooth) return polygonSvgPath(outline.contours[0])
-  return outline.contours
-    .map((contour) => `M ${contour.map(([x, y]) => `${x.toFixed(2)} ${y.toFixed(2)}`).join(' L ')} Z`)
-    .join(' ')
+  const path = outline.smooth
+    ? polygonSvgPath(outline.contours[0])
+    : outline.contours.map((contour) => `M ${contour.map(([x, y]) => `${x.toFixed(2)} ${y.toFixed(2)}`).join(' L ')} Z`).join(' ')
+  byKey.set(key, path)
+  return path
 }
