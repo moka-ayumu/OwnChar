@@ -14,6 +14,16 @@ const defaultMetadata: FontMetadata = {
   version: '1.0',
 }
 
+/** The stored drawing when `next` repeats it, so what did not change keeps its identity. */
+function keepIfSame(previous: DrawingRecord | undefined, next: DrawingRecord) {
+  if (!previous || previous.previewSvg !== next.previewSvg || previous.codePoint !== next.codePoint || previous.derivedFromPromptId !== next.derivedFromPromptId) return next
+  const { exerciseId, cellIndex, slotIndex } = next.capture
+  if (previous.capture.exerciseId !== exerciseId || previous.capture.cellIndex !== cellIndex || previous.capture.slotIndex !== slotIndex) return next
+  if (previous.elements.length !== next.elements.length) return next
+  const same = previous.elements.every((stroke, index) => stroke.id === next.elements[index].id && stroke.version === next.elements[index].version && Boolean(stroke.isDeleted) === Boolean(next.elements[index].isDeleted))
+  return same ? previous : next
+}
+
 const idleGeneration: GenerationState = { progress: 0, message: '', error: null }
 
 const initialProjectState: ProjectState = {
@@ -113,7 +123,7 @@ export const projectActions = {
         if (existingIsActive && sourcePriority(existingSource) > sourcePriority(record.promptId)) return []
         return [{ ...record, promptId, derivedFromPromptId: record.promptId }]
       })
-      const allRecords = [...records, ...derivedRecords]
+      const allRecords = [...records, ...derivedRecords].map((record) => keepIfSame(drawings[record.promptId], record))
       const activePromptIds = new Set(allRecords.map((record) => record.promptId))
       for (const [promptId, record] of Object.entries(drawings)) {
         if (record.capture.exerciseId === session.exerciseId && !activePromptIds.has(promptId)) delete drawings[promptId]
