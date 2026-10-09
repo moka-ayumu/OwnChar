@@ -201,17 +201,6 @@ export function useWritingSession(exercise: WritingExercise, viewport: RefObject
       reset({})
       save([], {})
     },
-    /** Switches to another sentence, as it was last saved. */
-    open(next: WritingExercise) {
-      const session = sessions[next.id] as WritingSessionRecord | undefined
-      lastRevision.current = ''
-      setStrokes(session?.elements ?? [])
-      reset(session?.boundaries ?? {})
-      guidesRef.current = session?.guides ?? {}
-      setStoredGuides(guidesRef.current)
-      setCellSize(session?.cellSize ?? REFERENCE_CELL_SIZE)
-      setColumns(session?.columns ?? Math.min(6, next.cells.length))
-    },
     active: {
       /** The cell whose jamo are being collected, when it collects any. */
       cellIndex: slots.length ? activeCellIndex : null,

@@ -164,9 +164,10 @@ export function completedCells(strokes: readonly RawStroke[], grid: CanvasGrid, 
   const lastWritten = Math.max(-1, ...visibleStrokes(strokes).map((stroke) => cellIndexOf(stroke, grid, exercise.cells.length)))
   const progress = exercise.cells.map((_, cellIndex) => cellProgress(cellIndex, groups, boundaries, holds[cellIndex]))
   const lastCollecting = progress.reduce((last, slots, cellIndex) => slots.length ? cellIndex : last, -1)
-  const allCollected = progress.every((slots) => slots.every((slot) => slot.done))
+  const collected = progress.map((slots, cellIndex) => slots.every((slot) => slot.done) || (cellIndex < lastWritten && holds[cellIndex] === undefined && slots.every((slot) => slot.count > 0)))
+  const allCollected = collected.every(Boolean)
   return progress.map((slots, cellIndex) => {
-    if (slots.length) return slots.every((slot) => slot.done)
+    if (slots.length) return collected[cellIndex]
     return cellIndex < lastWritten || (cellIndex > lastCollecting && allCollected)
   })
 }

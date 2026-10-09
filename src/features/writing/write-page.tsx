@@ -63,9 +63,15 @@ function writeRailCollapsed(collapsed: boolean) {
   }
 }
 
-export function WritePage({ exerciseId: sourceExerciseId, cellIndex: sourceCellIndex, returnGlyph, returnQuery }: WriteSearch) {
-  const navigate = useNavigate()
+export function WritePage(search: WriteSearch) {
   const storedIndex = useProject((state) => state.currentExercise)
+  const sourceIndex = search.exerciseId ? WRITING_EXERCISES.findIndex((item) => item.id === search.exerciseId) : -1
+  const currentIndex = sourceIndex >= 0 ? sourceIndex : Math.min(storedIndex, WRITING_EXERCISES.length - 1)
+  return <WriteSentence key={WRITING_EXERCISES[currentIndex].id} currentIndex={currentIndex} {...search} />
+}
+
+function WriteSentence({ currentIndex, exerciseId: sourceExerciseId, cellIndex: sourceCellIndex, returnGlyph, returnQuery }: WriteSearch & { currentIndex: number }) {
+  const navigate = useNavigate()
   const drawings = useProject((state) => state.drawings)
   const sessions = useProject((state) => state.writingSessions)
   const status = useProject((state) => state.status)
@@ -73,8 +79,6 @@ export function WritePage({ exerciseId: sourceExerciseId, cellIndex: sourceCellI
   const generatedFont = useProject((state) => state.generatedFont)
   const endpointStabilization = useProject((state) => state.compositionSettings.endpointStabilization)
   const modifiedGlyphCount = useProject((state) => Object.keys(state.glyphOverrides).length)
-  const sourceIndex = sourceExerciseId ? WRITING_EXERCISES.findIndex((item) => item.id === sourceExerciseId) : -1
-  const currentIndex = sourceIndex >= 0 ? sourceIndex : Math.min(storedIndex, WRITING_EXERCISES.length - 1)
   const exercise = WRITING_EXERCISES[currentIndex]
   const viewport = useRef<HTMLDivElement>(null)
   const session = useWritingSession(exercise, viewport)
@@ -124,7 +128,6 @@ export function WritePage({ exerciseId: sourceExerciseId, cellIndex: sourceCellI
 
   const go = (index: number) => {
     const next = Math.max(0, Math.min(WRITING_EXERCISES.length - 1, index))
-    session.open(WRITING_EXERCISES[next])
     projectActions.showExercise(next)
     if (sourceExerciseId) void navigate({ to: '/write', search: { returnGlyph, returnQuery } })
   }
