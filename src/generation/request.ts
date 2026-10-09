@@ -31,6 +31,8 @@ export interface CompositionProfile {
   gaps: GapProfile
   proportions: ProportionProfile
   hangulTargetHeight: number
+  /** Square root of the ink area of a syllable at the target height. */
+  hangulTargetSize: number
   hangulTargetCenter: number
 }
 

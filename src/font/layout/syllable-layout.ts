@@ -4,7 +4,8 @@ import { clearanceProbe, hasInkClearance, maximizeSafeIntrusion } from '@/font/g
 import { inkBalance } from '@/font/geometry/optical'
 import { centerX as cx, centerY as cy, clamp, pathBounds as bounds, pathOf, pointsBox, splitContours, translatePath, unionBox as union, type Box } from '@/font/geometry/path-ops'
 import { appendShape, CELL_UNITS, combineShapesSideBySide, stretchShapeWidth, type NormalizedShape, type Zone } from '@/font/geometry/shape'
-import { DEFAULT_GAPS, finalGapContext, finalGapPair, gapContext, gapPair, minimumGap, type GapProfile } from './gap-profile'
+import { medianHeight } from '@/font/metrics'
+import { DEFAULT_GAPS, finalGapContext, finalGapPair, gapContext, gapPair, medialGapContext, minimumGap, type GapProfile } from './gap-profile'
 import { allowsOverlap, finalBoxGap } from './overlap-policy'
 import { EMPTY_PROPORTIONS, jamoSize, learnedRatios, proportionContext, proportionPair, type ProportionProfile } from './proportion-profile'
 import { selectJamoSource, sourceKey } from './source-selection'
@@ -34,6 +35,10 @@ interface Slot {
   shape?: NormalizedShape
   zone: Zone
   scale: number
+  /** Largest size, as the square root of its ink area, the jamo may be fitted at. */
+  sizeLimit: number
+  /** Widest the jamo may be for its height. */
+  maxAspect: number
   /** Slots written together in one source cell share a group and move as one. */
   group: string
   path: opentype.Path
@@ -47,6 +52,43 @@ export function verticalStem(path: opentype.Path): Box | undefined {
   const box = bounds(path)!
   const stems = contourBoxes(path).filter((b) => b.y2 - b.y1 > (box.y2 - box.y1) * 0.65 && b.x2 - b.x1 < (b.y2 - b.y1) * 0.35)
   return stems.length ? union(stems) : undefined
+}
+
+/** Widest an initial may be for its height, in aspect ratios of the typical jamo of its layout. */
+const INITIAL_ASPECT_REACH = 1.25
+
+interface TypicalJamo {
+  frames: Map<string, { width: number; height: number } | undefined>
+  narrowed: Map<NormalizedShape, NormalizedShape>
+}
+const typicalJamo = new WeakMap<Map<string, NormalizedShape>, TypicalJamo>()
+
+function typicalOf(shapes: Map<string, NormalizedShape>) {
+  let typical = typicalJamo.get(shapes)
+  if (!typical) typicalJamo.set(shapes, typical = { frames: new Map(), narrowed: new Map() })
+  return typical
+}
+
+/** Median width and height, in cell fractions, of the jamo written for the layout of source `key`. */
+function typicalFrame(shapes: Map<string, NormalizedShape>, key: string) {
+  const layout = key.slice(0, key.lastIndexOf(':') + 1)
+  if (!layout) return undefined
+  const { frames } = typicalOf(shapes)
+  if (!frames.has(layout)) {
+    const written = [...shapes].filter(([source, shape]) => source.startsWith(layout) && !shape.synthesized).map(([, shape]) => shape.frame)
+    const width = medianHeight(written.map((f) => f.width), 0); const height = medianHeight(written.map((f) => f.height), 0)
+    frames.set(layout, width > 0 && height > 0 ? { width, height } : undefined)
+  }
+  return frames.get(layout)
+}
+
+/** `shape` narrowed to `maxAspect` (width / height), its height kept. */
+function narrowedTo(shapes: Map<string, NormalizedShape>, shape: NormalizedShape, maxAspect: number) {
+  if (shape.aspectRatio <= maxAspect) return shape
+  const { narrowed } = typicalOf(shapes)
+  let result = narrowed.get(shape)
+  if (!result) narrowed.set(shape, result = stretchShapeWidth(shape, maxAspect / shape.aspectRatio))
+  return result
 }
 
 /** A jamo where it was drawn: its outline, and the shape and cell scale the outline was made from. */
@@ -192,7 +234,13 @@ export function layoutSyllable(input: SyllableLayoutInput) {
     const selected = isPlaceholder(role) ? undefined : selectJamoSource(input.shapes, role, variants[role], chars[role])
     const shape = selected?.source
     const group = selected?.match === 'exact' && shape && !shape.synthesized && shape.sourceCellId ? shape.sourceCellId : role
-    return { role, shape, zone: zones[role], scale: input.scales?.[role] ?? 1, group, path: new opentype.Path() }
+    // The initial is the size reference of the other jamo: it is held to the
+    // size the typical initial of its layout has when that one fills the zone,
+    // so one written flat or narrow is not enlarged past the others.
+    const typical = role === 'initial' && selected ? typicalFrame(input.shapes, selected.key) : undefined
+    const sizeLimit = typical ? Math.min(zones[role].width / typical.width, zones[role].height / typical.height) * Math.sqrt(typical.width * typical.height) : Infinity
+    const maxAspect = typical ? typical.width / typical.height * INITIAL_ASPECT_REACH : Infinity
+    return { role, shape, zone: zones[role], scale: input.scales?.[role] ?? 1, sizeLimit, maxAspect, group, path: new opentype.Path() }
   })
   const byRole = Object.fromEntries(slots.map((slot) => [slot.role, slot])) as Partial<Record<HangulRole, Slot>>
   // Only the upper pair is recombined as written. A final captured with the
@@ -203,6 +251,11 @@ export function layoutSyllable(input: SyllableLayoutInput) {
   const groups = new Map<string, Slot[]>()
   for (const slot of slots) groups.set(slot.group, [...(groups.get(slot.group) ?? []), slot])
   const geometry: LayoutGeometry = { zones: {}, anchors: {}, scales: {}, groups: {} }
+  // A free-standing jamo far wider for its height than the others of its
+  // layout is narrowed, not shrunk, so its syllable stays as tall as theirs.
+  for (const slot of slots) {
+    if (slot.shape && groups.get(slot.group)!.length === 1) slot.shape = narrowedTo(input.shapes, slot.shape, slot.maxAspect)
+  }
 
   // Jamo written together keep their arrangement under one scale; every other
   // jamo is fitted into its own space.
@@ -220,7 +273,8 @@ export function layoutSyllable(input: SyllableLayoutInput) {
         appendShape(slot.path, shape!, { x: cx(target) - cx(native) * scale, y: cy(target) - cy(native) * scale, width: CELL_UNITS * scale, height: CELL_UNITS * scale }, true, input.penScale)
         geometry.scales[slot.role] = scale
       } else if (shape) {
-        const fit = Math.min(slot.zone.width / Math.max(1, shape.frame.width * CELL_UNITS), slot.zone.height / Math.max(1, shape.frame.height * CELL_UNITS))
+        const width = Math.max(1, shape.frame.width * CELL_UNITS); const height = Math.max(1, shape.frame.height * CELL_UNITS)
+        const fit = Math.min(slot.zone.width / width, slot.zone.height / height, slot.sizeLimit / Math.sqrt(width * height))
         const scale = fit * slot.scale
         appendCentered(slot.path, shape, slot.zone.x + slot.zone.width / 2, slot.zone.y + slot.zone.height / 2, scale, input.penScale)
         geometry.scales[slot.role] = scale
@@ -311,7 +365,7 @@ export function layoutSyllable(input: SyllableLayoutInput) {
   }
 
   const upperPlacement = gaps.initialMedialSyllables[char] ?? gaps.initialMedialPairs[gapPair(chars.initial, chars.medial, hasFinal)]
-  const upperGap = upperPlacement?.advanceGap ?? gaps.contexts[gapContext(kind, hasFinal)] ?? gaps[kind]
+  const upperGap = upperPlacement?.advanceGap ?? gaps.medialContexts[medialGapContext(chars.medial, hasFinal)] ?? gaps.contexts[gapContext(kind, hasFinal)] ?? gaps[kind]
   const finalPlacement = gaps.medialFinalSyllables[char] ?? gaps.medialFinalPairs[finalGapPair(chars.medial, chars.final)]
   const finalGap = finalPlacement?.advanceGap ?? gaps.finalContexts[finalGapContext(kind, chars.final)] ?? gaps.final
   if (initial && medial && initial.group !== medial.group) {

@@ -60,6 +60,7 @@ export const unlearned: HangulCompositionInputs = {
   gaps: DEFAULT_GAPS,
   proportions: EMPTY_PROPORTIONS,
   hangulTargetHeight: 760,
+  hangulTargetSize: 760,
   hangulTargetCenter: 500,
 }
 

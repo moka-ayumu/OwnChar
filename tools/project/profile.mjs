@@ -41,6 +41,7 @@ try {
     learnedGapSyllables: Object.keys(generation.gaps.initialMedialSyllables).length,
     learnedProportionSyllables: Object.keys(generation.proportions.syllables ?? {}).length,
     hangulTargetHeight: generation.hangulTargetHeight,
+    hangulTargetSize: generation.hangulTargetSize,
     hangulTargetCenter: generation.hangulTargetCenter,
     visualScale: prepared.visualScale,
     msInputs: Math.round(msInputs), msContext: Math.round(msContext),

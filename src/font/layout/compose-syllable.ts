@@ -13,6 +13,7 @@ export interface HangulComposeOptions {
   gaps?: GapProfile
   proportions?: ProportionProfile
   targetHeight?: number
+  targetSize?: number
   targetCenter?: number
   penScale?: number
 }
@@ -41,7 +42,14 @@ export function composeHangulParts(codePoint: number, shapes: Map<string, Normal
   const factorFor = (path: opentype.Path) => {
     if (!path.commands.length) return 1
     const box = path.getBoundingBox()
-    return Math.min(normalizationFactor(box.y2 - box.y1, options.targetHeight ?? DEFAULT_HANGUL_HEIGHT, settings.hangulNormalization), 950 / Math.max(1, box.x2 - box.x1, box.y2 - box.y1))
+    const width = box.x2 - box.x1; const height = box.y2 - box.y1
+    const targetHeight = options.targetHeight ?? DEFAULT_HANGUL_HEIGHT
+    // A flat syllable evened to the target height alone grows wide: its ink area holds it back.
+    return Math.min(
+      normalizationFactor(height, targetHeight, settings.hangulNormalization),
+      normalizationFactor(Math.sqrt(width * height), options.targetSize ?? targetHeight, settings.hangulNormalization),
+      950 / Math.max(1, width, height),
+    )
   }
   const basePen = options.penScale ?? 1
   let built = build(basePen)

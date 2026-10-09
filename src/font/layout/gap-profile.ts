@@ -13,7 +13,8 @@ export interface LearnedPlacement {
 
 /**
  * Learned spacing, from the most general to the most specific sample: a gap
- * per vowel kind, per context, and a placement per jamo pair and per syllable.
+ * per vowel kind, per context, per vowel, and a placement per jamo pair and
+ * per syllable.
  */
 export interface GapProfile {
   vertical: number
@@ -22,6 +23,8 @@ export interface GapProfile {
   mixed: number
   final: number
   contexts: Record<string, number>
+  /** Vowels of one kind differ in shape: a bare bar is kept further from the initial than a bar with a stem. */
+  medialContexts: Record<string, number>
   finalContexts: Record<string, number>
   initialMedialPairs: Record<string, LearnedPlacement>
   medialFinalPairs: Record<string, LearnedPlacement>
@@ -38,6 +41,7 @@ export const DEFAULT_GAPS: GapProfile = {
   mixed: minimumGap,
   final: minimumGap,
   contexts: {},
+  medialContexts: {},
   finalContexts: {},
   initialMedialPairs: {},
   medialFinalPairs: {},
@@ -47,6 +51,10 @@ export const DEFAULT_GAPS: GapProfile = {
 
 export function gapContext(kind: VowelKind, hasFinal: boolean) {
   return `${kind}:${hasFinal ? 'final' : 'open'}`
+}
+
+export function medialGapContext(medial: string, hasFinal: boolean) {
+  return `${medial}:${hasFinal ? 'final' : 'open'}`
 }
 
 export function gapPair(initial: string, medial: string, hasFinal: boolean) {

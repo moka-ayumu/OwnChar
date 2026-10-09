@@ -105,8 +105,8 @@ export function encodeGlyph(out: GlyphEncoder, codePoint: number, path: opentype
   out.add(codePoint, path, advanceWidth)
 }
 
-export function hangulComposeOptions(request: CompositionProfile): Required<Pick<HangulComposeOptions, 'gaps' | 'proportions' | 'targetHeight' | 'targetCenter'>> {
-  return { gaps: request.gaps, proportions: request.proportions, targetHeight: request.hangulTargetHeight, targetCenter: request.hangulTargetCenter }
+export function hangulComposeOptions(request: CompositionProfile): Required<Pick<HangulComposeOptions, 'gaps' | 'proportions' | 'targetHeight' | 'targetSize' | 'targetCenter'>> {
+  return { gaps: request.gaps, proportions: request.proportions, targetHeight: request.hangulTargetHeight, targetSize: request.hangulTargetSize, targetCenter: request.hangulTargetCenter }
 }
 
 export function prepareCompositionContext(request: GenerationRequest): PreparedCompositionContext {

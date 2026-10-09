@@ -2,7 +2,7 @@ import opentype from 'opentype.js'
 import type { WritingSessionRecord } from '@/collection/records'
 import { decomposeHangul, type VowelKind } from '@/font/hangul'
 import { appendShape, CELL_UNITS, normalizeRawStrokes } from '@/font/geometry/shape'
-import { finalGapContext, finalGapPair, gapContext, gapPair, minimumGap, type GapProfile, type LearnedPlacement } from '@/font/layout/gap-profile'
+import { finalGapContext, finalGapPair, gapContext, gapPair, medialGapContext, minimumGap, type GapProfile, type LearnedPlacement } from '@/font/layout/gap-profile'
 import { finalAnchorX, finalTargetX, medialSpace, type PlacedJamo } from '@/font/layout/syllable-layout'
 import { penDiameter, strokePolygon, type RawStroke } from '@/font/stroke/outline'
 import { collect, completedHangulCells, trimmedMean } from './samples'
@@ -40,6 +40,7 @@ const placements = (groups: Map<string, Placement[]>): Record<string, LearnedPla
 export function learnGaps(sessions: Record<string, WritingSessionRecord>, endpointStabilization = 1): GapProfile {
   const kinds: Record<VowelKind | 'final', number[]> = { vertical: [], horizontalUp: [], horizontalDown: [], mixed: [], final: [] }
   const contexts = new Map<string, number[]>()
+  const medialContexts = new Map<string, number[]>()
   const finalContexts = new Map<string, number[]>()
   const initialMedialPairs = new Map<string, Placement[]>()
   const medialFinalPairs = new Map<string, Placement[]>()
@@ -75,6 +76,7 @@ export function learnGaps(sessions: Record<string, WritingSessionRecord>, endpoi
     }
     kinds[kind].push(upperGap)
     collect(contexts, gapContext(kind, Boolean(final)), upperGap)
+    collect(medialContexts, medialGapContext(chars.medial, Boolean(final)), upperGap)
     collect(initialMedialPairs, gapPair(chars.initial, chars.medial, Boolean(final)), upper)
     collect(initialMedialSyllables, cell.char, upper)
     if (!final) continue
@@ -99,6 +101,7 @@ export function learnGaps(sessions: Record<string, WritingSessionRecord>, endpoi
     mixed: mean(kinds.mixed, minimumGap),
     final: mean(kinds.final, minimumGap),
     contexts: means(contexts),
+    medialContexts: means(medialContexts),
     finalContexts: means(finalContexts),
     initialMedialPairs: placements(initialMedialPairs),
     medialFinalPairs: placements(medialFinalPairs),
