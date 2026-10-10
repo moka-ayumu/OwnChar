@@ -15,9 +15,15 @@ const STRAIGHT_TURN = 6 * Math.PI / 180
 /** Reference support bending more than this is a genuine curve: leave the end alone. */
 const CURVED_TURN = 15 * Math.PI / 180
 /** Upper bound of the hand-jitter smoothing kernel in canvas pixels. */
-const MAX_SIGMA = 4
+const MAX_SIGMA = 8
 /** The kernel may also grow with the pen, up to this many pen diameters. */
 const SIGMA_PER_DIAMETER = 0.7
+/** Pointer positions are whole pixels, so the kernel never gets narrower than this: it hides the stair steps of a thin pen. */
+const MIN_SIGMA = 5
+/** The kernel also covers this share of the gap between samples, so a slow sample rate still smooths. */
+const SIGMA_PER_GAP = 0.8
+/** Samples are spaced this far apart before smoothing, so the kernel always sees many of them. */
+const RESAMPLE_STEP = 1
 /** A run deviating from its chord by less than this share is straight; by more than the max it is a curve. */
 const STRAIGHT_RUN_MIN = 0.02
 const STRAIGHT_RUN_MAX = 0.06
@@ -33,8 +39,14 @@ function arcLengths(points: readonly Point[]) {
 /** The sample interval containing `distance` along the stroke, or null past its end. */
 function locate(lengths: readonly number[], distance: number) {
   const target = Math.max(0, Math.min(lengths.at(-1) ?? 0, distance))
-  let right = 1
-  while (right < lengths.length && lengths[right] < target) right += 1
+  let low = 1
+  let high = lengths.length
+  while (low < high) {
+    const middle = (low + high) >> 1
+    if (lengths[middle] < target) low = middle + 1
+    else high = middle
+  }
+  const right = low
   if (right >= lengths.length) return null
   const left = right - 1
   const span = lengths[right] - lengths[left]
@@ -247,6 +259,20 @@ function straightenEnd(points: Point[], pressures: number[], diameter: number, a
   }
 }
 
+/** The stroke sampled every `step` along its length; corners stay sharp because the pieces between samples are straight. */
+function resample(points: readonly Point[], pressures: readonly number[], lengths: readonly number[], step: number) {
+  const total = lengths.at(-1) ?? 0
+  const count = Math.max(2, Math.ceil(total / step) + 1)
+  const dense: Point[] = []
+  const densePressures: number[] = []
+  for (let index = 0; index < count; index += 1) {
+    const distance = total * index / (count - 1)
+    dense.push(pointAtDistance(points, lengths, distance))
+    densePressures.push(valueAtDistance(pressures, lengths, distance))
+  }
+  return { points: dense, pressures: densePressures }
+}
+
 /**
  * Hand-jitter stabilizer applied at render time; captured samples are never
  * mutated. `live` leaves the moving tail alone so ink stays under the pen.
@@ -266,16 +292,28 @@ export function stabilizeStroke(
   const total = lengths.at(-1) ?? 0
   const closed = Math.hypot(points[0][0] - points.at(-1)![0], points[0][1] - points.at(-1)![1]) <= diameter * 2
   const amount = Math.max(0, Math.min(1, Number.isFinite(strength) ? strength : 1))
-  if (!amount || points.length < 3 || total < diameter * 2) return { points: copy, pressures: resultPressures, closed }
+  if (!amount || points.length < 3 || !Number.isFinite(total) || total < diameter * 2) return { points: copy, pressures: resultPressures, closed }
 
-  const corners = detectCorners(points, lengths, diameter)
-  const result = smoothRuns(points, lengths, corners, Math.min(Math.max(MAX_SIGMA, diameter * SIGMA_PER_DIAMETER), diameter * 0.35 * amount))
+  const gap = total / (points.length - 1)
+  const dense = resample(points, resultPressures, lengths, RESAMPLE_STEP)
+  const denseLengths = arcLengths(dense.points)
+  const corners = detectCorners(dense.points, denseLengths, diameter)
+  const kernel = Math.max(diameter * 0.35, MIN_SIGMA, gap * SIGMA_PER_GAP)
+  const result = smoothRuns(dense.points, denseLengths, corners, Math.min(Math.max(MAX_SIGMA, diameter * SIGMA_PER_DIAMETER), kernel * amount))
   if (!closed) {
-    straightenEnd(result, resultPressures, diameter, amount, true)
+    straightenEnd(result, dense.pressures, diameter, amount, true)
     if (mode === 'complete') {
-      straightenEnd(result, resultPressures, diameter, amount, false)
-      straightenRuns(result, lengths, corners, amount, diameter)
+      straightenEnd(result, dense.pressures, diameter, amount, false)
+      straightenRuns(result, denseLengths, corners, amount, diameter)
     }
   }
-  return { points: result, pressures: resultPressures, closed }
+  // Hand back the samples that were captured, now sitting on the smoothed path.
+  const resultLengths = result.map((_, index) => total * index / (result.length - 1))
+  return {
+    points: lengths.map((length) => pointAtDistance(result, resultLengths, length)),
+    pressures: resultPressures.some((value) => value < 0.1)
+      ? lengths.map((length) => valueAtDistance(dense.pressures, resultLengths, length))
+      : resultPressures,
+    closed,
+  }
 }
