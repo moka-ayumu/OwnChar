@@ -29,7 +29,7 @@ src/
     font-builder.ts, *.worker.ts   Font composition and workers
     otf-writer.ts   OTF file output
   project/      Project state and IndexedDB storage
-  features/     Screen components (writing, editor, generating)
+  features/     Screen components (writing, editor, generating, preview)
   routes/       Routes: write, generate, preview, edit, license
   components/   Shared UI
   dev/          Dev-only sample button. Not a product screen
@@ -51,6 +51,8 @@ Dependency direction: `font` ← `collection` ← `generation` ← `project` ←
 | Size ratio between jamo | `src/font/layout/proportion-profile.ts` |
 | Visual centring and optical correction | `src/font/geometry/optical.ts`, `src/font/geometry/shape.ts` |
 | Collisions and overlaps | `src/font/geometry/collision.ts`, `src/font/layout/overlap-policy.ts` |
+| Size dials (jamo size and syllable width toward the mean of the layout) | `docs/decision/0002-size-dials-on-the-preview.md` first, then the end of `layoutSyllable` in `src/font/layout/syllable-layout.ts`, `learnSizeTargets` in `src/font/layout/compose-syllable.ts` |
+| Preview screen, live font of the typed text | `src/routes/preview.tsx`, `src/features/preview/`, `src/generation/use-live-font.ts`, `src/generation/live-font.worker.ts` |
 | Learning values from handwriting | `src/generation/learning/` |
 | Writing screen and stroke input | `src/features/writing/` |
 | Edit screen | `src/features/editor/` |

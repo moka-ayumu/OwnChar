@@ -194,7 +194,7 @@ Three working values (ink, white, lime) on a neutral ground, with greys only for
 - **Ink** (`ink`, #101114): text, 1px structural lines, and every solid mark of state: primary buttons, the current row in a rail list, the pressed segment, the selected glyph cell, progress and slider fill, the focus outline, the user's strokes. On hover a solid ink button lifts to **Ink Hover** (`ink-hover`, #2c2e34).
 
 ### Secondary
-- **Lime Field** (`lime`, #c6f432): the colour of the surface that frames the work. Full-bleed on the flow rail, the editor top bar, the home demonstration half, and the phone-size notice. Smaller uses are all "this is live": text selection, the source-cell highlight on the writing grid (40% tint), the wash of a finished cell (24% tint) and a done jamo in the cell popover (40% tint), the dashed placeholder for a jamo not yet written (22% tint), a source link on hover, the film's live jamo zone, raw-trace line, outline fill, worker fronts and finish box, and the action button on an ink bar.
+- **Lime Field** (`lime`, #c6f432): the colour of the surface that frames the work. Full-bleed on the flow rail, the editor top bar, the home demonstration half, and the phone-size notice. Smaller uses are all "this is live": text selection, the characters picked in the preview text, the source-cell highlight on the writing grid (40% tint), the wash of a finished cell (24% tint) and a done jamo in the cell popover (40% tint), the dashed placeholder for a jamo not yet written (22% tint), a source link on hover, the film's live jamo zone, raw-trace line, outline fill, worker fronts and finish box, and the action button on an ink bar.
 - **Lime Deep** (`lime-deep`, #b2e016): hover state of a lime button only.
 - **Lime Ink** (`lime-ink`, #3c4a0a): secondary text on lime (labels, notes, counts, steps not yet reached, the rail list's scrollbar). 7.5:1 on lime.
 
@@ -204,7 +204,7 @@ Three working values (ink, white, lime) on a neutral ground, with greys only for
 ### Neutral
 - **White** (`white`, #ffffff): the stage, the writing canvas, inputs, cards, dialogs, the specimen tile on lime. Text on solid ink.
 - **Ground** (`ground`, #ecede8): the page behind everything: header, home copy column, the editor's glyph preview well, an inset list inside a dialog, glyph-cell hover.
-- **Rule** (`rule`, #d9dad5): quiet hairlines inside white: writing-grid cell lines, input and card borders at rest, sample-row dividers, toolbar dividers, the film's specimen boxes, trail tiles and unfilled lanes.
+- **Rule** (`rule`, #d9dad5): quiet hairlines inside white: writing-grid cell lines, input and card borders at rest, the line over the size dials, toolbar dividers, the film's specimen boxes, trail tiles and unfilled lanes.
 - **Ink 2** (`ink-2`, #4a4c52): secondary text on white and ground (descriptions, field labels).
 - **Ink 3** (`ink-3`, #666970): tertiary text: placeholders, captions, cell characters in the writing grid. 5.5:1 on white, 4.7:1 on ground.
 
@@ -221,7 +221,7 @@ Translucent ink is used for three things only: hover wash on transparent control
 
 **Display Font:** Wanted Sans Variable (with Wanted Sans, -apple-system, Apple SD Gothic Neo, Malgun Gothic, Segoe UI, sans-serif)
 **Body Font:** the same family
-**Specimen Font:** the user's generated font (`OwnCharPreview`), only for their own text: the preview sentence, sample rows, glyph cells.
+**Specimen Font:** the user's generated font (`OwnCharPreview`), only for their own text: the preview sentence, the characters in the source popover, glyph cells.
 
 **Character:** One heavy, tight Korean grotesque doing everything by weight. Headings are 800 and tightly tracked; the interface underneath is 14px at 600. The only expressive letterforms on screen are the writer's own.
 
@@ -321,7 +321,7 @@ Two or more options inside a 1px ink border with 2px padding and a 6px corner; e
 White, 1px ink border, 6px corner, 24px padding, max 448px, centred on a 45% ink scrim; a ghost close button at top right. Title 18px / 700, description 14px with a 24px line in ink-2, an optional inset list on ground. Actions sit at the bottom right (secondary, then primary), or stacked full-width when there are three choices (primary, destructive, ghost cancel). A destructive choice is confirmed in one.
 
 ### Ink bar
-A solid ink strip with white text for a state that needs an answer now: the "변경됨" banner at the top of the preview stage, with a small lime "변경 적용" button.
+A solid ink strip with white text for a state that needs an answer now: the "변경됨" banner under the size dials of the preview stage, with a small lime "변경 적용" button.
 
 ### Writing canvas
 The hero surface, and everything to the right of the tool rail. Under the sentence row (the sentence alone at 26px / 700; at its right end a 22px progress ring for this sentence and the help and GitHub links; closed by a 1px ink line) the grid runs edge to edge: square cells (112–184px) divided by rule lines with faint centre guides (6% ink) and the target character at 12px in the cell's bottom-right corner. As many columns as fit; the grid is centred and only it scrolls. Strokes are solid ink; an unwritten jamo's slot is a dashed, lime-tinted box; the cursor is a crosshair.
@@ -368,7 +368,7 @@ The specimens are up to three syllables the writer wrote whole, of different lay
 | 12 | OTF 묶기 | when done, no earlier than 13.7s | Over 0.6s the lanes slide into one strip in code order, 가 at its left and 힣 at its right. |
 
 - **Result trail:** a row of ten small tiles at the bottom of the stage, one per specimen step. Steps not reached are dashed rule outlines, the live one is a 1px ink outline. When a step ends its result leaves the first specimen's box and docks in its tile over 0.4s, so what is done stays on screen and the next step starts from it.
-- **Hand-over:** after the strip, each syllable of the preview's first sentence rises from its own place on the strip (25ms apart, 450ms each) and lands at the exact position and size the preview sets it at, while the window, the strip and the trail fade. The preview then opens with that sentence already standing there; only its controls and sample rows arrive.
+- **Hand-over:** after the strip, each syllable of the preview's first sentence rises from its own place on the strip (25ms apart, 450ms each) and lands at the exact position and size the preview sets it at, while the window, the strip and the trail fade. The preview then opens with that sentence already standing there; only its controls arrive.
 - **Length:** the film runs at least 13.7s even if the font is ready sooner: 13s on the specimens, then 0.7s of lanes. With the join (0.6s) and the hand-over (about 0.9s) it is about 15s.
 - **Pace follows the work:** the steps on the specimens take the time composition takes. While the font is being composed the film clock slows, to no less than a third of its speed, so that the lanes open when about 88% of the syllables are composed; the lanes themselves then last under a second. On a fast machine the film simply runs at its own speed.
 - **Regeneration:** plays the same film from the first step. Composing takes the same time either way, so there is no short version.
@@ -378,9 +378,19 @@ The specimens are up to three syllables the writer wrote whole, of different lay
 - **Failure:** a white panel with a 1px red border replaces the centre of the stage, with a red heading, the message, and a primary retry.
 
 ### Arrival in the preview
-Arriving from generation, the first sentence is already in place: the film ends with its glyphs standing exactly where the text area shows them, so the stage cross-fade leaves them still. The sample rows settle in below (520ms each, 60ms apart). Arriving any other way, the page is simply there.
+Arriving from generation, the first sentence is already in place: the film ends with its glyphs standing exactly where the text area shows them, so the stage cross-fade leaves them still. The rows of the dial panel settle in below (520ms each, 60ms apart). Arriving any other way, the page is simply there.
 
-Sample rows are full-width lines at 30px in the user's font in ink-2, divided by rule lines; on hover the text turns ink and slides 10px right. A row whose characters were never written falls back to 16px in the interface font and says so.
+### Size dials (preview)
+Under the typed text, opened by a rule line, at most 760px wide. The first row is the one control that matters: the name "글자 고르게" at 14px / 600, then a slider between its two ends named in words ("쓴 그대로", "고르게", 12px / 600 in ink-2), then a tabular percent. The second row holds one line of explanation in ink-2 and two small ghost buttons: "세부 조정", whose chevron turns over when it is open, and "기본값으로", disabled while every dial is at its default. The sliders run from 0% to 200% and start at 100%. Open, a third row shows the four dials in four columns (two at ≤1100px), each a 12px label with its percent over a slider. Whether it is open is kept on the device.
+
+- **The text is the feedback.** Moving a dial composes the typed characters again with the new value and swaps the font under them; the text area keeps its caret, selection and line breaks. There is no chart and no before-and-after pair.
+- **Motion is the value changing.** A drag is continuous by itself. "기본값으로" runs every dial to its default over 240ms on the exponential ease-out, so the characters are seen to move back; with reduced motion it sets the default at once.
+- **Nothing above the dials moves.** The ink bar that asks for "변경 적용" appears under the panel, not over the text.
+
+### Source popover (preview)
+Selecting characters in the typed text shows where their ink was written. The picked characters stand on a lime block; under the first line of the selection, 8px away, a white panel with a 1px ink border and a 6px corner (at most 540px wide, no shadow) lists up to four of them. Its heading line is "원본 필기" at 12px / 600 with the instruction after it in ink-3, and a 24px ghost close button. Each character is a row: the character at 34px in the user's font, then one chip for each jamo. A chip is a 38px square drawing of the cell the jamo was written in (the jamo in ink, the rest of that cell at 22%), the role and jamo at 12px / 600, and the sentence's name in ink-3, with a rule border; on hover the border turns ink and the chip fills lime, as a source link does. Pressing it opens that cell on the writing page. A jamo that was never written has a dashed, lime-tinted square and says so; it is not a button.
+
+On arrival the first two syllables are already picked, so the writer finds the popover without being told. They are marked by the lime block only: the text area is not focused, so a tablet does not open its keyboard. Escape, the close button, typing, or a click that selects nothing closes it.
 
 ## Do's and Don'ts
 
