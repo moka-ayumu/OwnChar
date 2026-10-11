@@ -16,6 +16,10 @@ export interface HangulComposeOptions {
   targetSize?: number
   targetCenter?: number
   penScale?: number
+  /** Smallest factor the syllable may be scaled by toward the target size. */
+  normalizeMinimum?: number
+  /** Extra factor on the normalized syllable. The pen is rebuilt for it, so strokes keep their width. */
+  scale?: number
 }
 
 export interface HangulParts {
@@ -47,8 +51,10 @@ export function composeHangulParts(codePoint: number, shapes: Map<string, Normal
     const targetHeight = options.targetHeight ?? DEFAULT_HANGUL_HEIGHT
     // A flat syllable evened to the target height alone grows wide: its ink area holds it back.
     return Math.min(
-      normalizationFactor(height, targetHeight, settings.hangulNormalization),
-      normalizationFactor(Math.sqrt(width * height), options.targetSize ?? targetHeight, settings.hangulNormalization),
+      Math.min(
+        normalizationFactor(height, targetHeight, settings.hangulNormalization, options.normalizeMinimum),
+        normalizationFactor(Math.sqrt(width * height), options.targetSize ?? targetHeight, settings.hangulNormalization, options.normalizeMinimum),
+      ) * (options.scale ?? 1),
       950 / Math.max(1, width, height),
     )
   }

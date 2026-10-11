@@ -47,6 +47,8 @@ export function learnHangulMetrics(sessions: Record<string, WritingSessionRecord
   return {
     hangulTargetHeight,
     hangulTargetSize: hangulTargetHeight * medianHeight(sizes, height) / height,
+    hangulWrittenHeight: height,
+    hangulWrittenSize: medianHeight(sizes, height),
     hangulTargetCenter: clamp(medianHeight(centers, 500), 350, 650),
   }
 }

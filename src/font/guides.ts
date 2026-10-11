@@ -1,8 +1,9 @@
 import opentype from 'opentype.js'
 import { decomposeHangul, syllableRoles, type HangulRole } from './hangul'
 import type { Box } from './geometry/path-ops'
-import { appendShape, type NormalizedShape } from './geometry/shape'
+import { appendShape, CELL_UNITS, type NormalizedShape } from './geometry/shape'
 import { composeHangulParts, type HangulComposeOptions, type HangulParts } from './layout/compose-syllable'
+import { writtenFrame } from './layout/syllable-layout'
 import { selectJamoSource, sourceKey } from './layout/source-selection'
 import type { CompositionSettings } from './settings'
 
@@ -72,7 +73,37 @@ export function composeGuideParts(codePoint: number, shapes: Map<string, Normali
   })
   const placeholderRoles = syllableRoles(codePoint).filter((role) => !guideRoles.includes(role) && !written.some((entry) => entry.role === role))
   const sources = written.length ? new Map([...outside, ...written.map(({ key, shape }) => [key, shape] as const)]) : outside
-  return composeHangulParts(codePoint, sources, settings, { ...options, placeholderRoles })
+  // A guide is the size the writer writes a syllable at, not a step toward it.
+  return composeHangulParts(codePoint, sources, { ...settings, hangulNormalization: 1 }, { ...options, placeholderRoles, normalizeMinimum: 0.3 })
+}
+
+/** How much larger than the writer's own jamo a guide is shown, so the writer does not have to shrink to it. */
+const GUIDE_SIZE = 1.1
+
+/**
+ * The factor that brings a composed guide, as a whole, to the size the writer
+ * writes its jamo at: each guide jamo by its own drawing, each empty place by
+ * the typical jamo of its role. One factor keeps the proportions the layout
+ * gave the cell.
+ */
+function writtenFactor(live: HangulParts, codePoint: number, shapes: Map<string, NormalizedShape>, cellId: string, guideRoles: readonly HangulRole[]) {
+  const { chars, variants } = decomposeHangul(codePoint)
+  const outside = shapesWithoutCell(shapes, cellId)
+  const boxes: Box[] = []
+  const needed: number[] = []
+  for (const role of syllableRoles(codePoint)) {
+    const part = live.parts[role]
+    const box = part.commands.length ? part.getBoundingBox() : live.placeholders[role]
+    if (!box) continue
+    boxes.push(box)
+    const written = guideRoles.includes(role) ? guideRoleShape(codePoint, role, shapes, cellId)?.frame : writtenFrame(outside, role, variants[role], chars[role])
+    const area = (box.x2 - box.x1) * (box.y2 - box.y1)
+    if (written && area > 0) needed.push(Math.log(Math.sqrt(written.width * written.height * CELL_UNITS * CELL_UNITS / area)))
+  }
+  if (!needed.length) return 1
+  const span = Math.max(1, Math.max(...boxes.map((b) => b.x2)) - Math.min(...boxes.map((b) => b.x1)), Math.max(...boxes.map((b) => b.y2)) - Math.min(...boxes.map((b) => b.y1)))
+  // The guide stays inside the cell, whatever the writer's jamo fill.
+  return Math.min(GUIDE_SIZE * Math.exp(needed.reduce((sum, value) => sum + value, 0) / needed.length), 900 / span)
 }
 
 /** A changed guide source drawn into the place its previous outline had. */
@@ -85,20 +116,19 @@ function guideInBox(shape: NormalizedShape, box: GuideBox) {
 const round = (value: number) => Math.round(value * 100) / 100
 const roundBox = (box: Box): GuideBox => ({ x1: round(box.x1), y1: round(box.y1), x2: round(box.x2), y2: round(box.y2) })
 
-/** A freshly composed guide shown at 80% of the cell, so the writer has room around it. Aspect ratios are kept. */
-function insetGuide(guide: GuideLayout): GuideLayout {
+/** A freshly composed guide kept inside the cell margin, at the size the writer's syllables have. */
+function keepGuideInCell(guide: GuideLayout): GuideLayout {
   const boxes = [...Object.values(guide.roles).map((role) => role.box), ...Object.values(guide.placeholders)]
-  const factor = 0.8
-  const scaled = (value: number) => 500 + (value - 500) * factor
-  // Correct an off-centre composition by moving it, never by shrinking again.
+  // Correct an off-centre composition by moving it, never by shrinking it.
   const offset = (axis: 'x' | 'y') => {
     if (!boxes.length) return 0
-    const low = Math.min(...boxes.map((b) => scaled(b[axis === 'x' ? 'x1' : 'y1'])))
-    const high = Math.max(...boxes.map((b) => scaled(b[axis === 'x' ? 'x2' : 'y2'])))
+    const low = Math.min(...boxes.map((b) => b[axis === 'x' ? 'x1' : 'y1']))
+    const high = Math.max(...boxes.map((b) => b[axis === 'x' ? 'x2' : 'y2']))
+    if (high - low > 800) return 500 - (low + high) / 2
     return low < 100 ? 100 - low : high > 900 ? 900 - high : 0
   }
   const dx = offset('x'); const dy = offset('y')
-  const coordinate = (value: number, axis: 'x' | 'y') => round(scaled(value) + (axis === 'x' ? dx : dy))
+  const coordinate = (value: number, axis: 'x' | 'y') => round(value + (axis === 'x' ? dx : dy))
   const transformBox = (b: GuideBox): GuideBox => ({ x1: coordinate(b.x1, 'x'), y1: coordinate(b.y1, 'y'), x2: coordinate(b.x2, 'x'), y2: coordinate(b.y2, 'y') })
   return {
     roles: Object.fromEntries(Object.entries(guide.roles).map(([role, entry]) => [role, {
@@ -200,15 +230,20 @@ export function composeCellGuide({ codePoint, cellId, guideRoles, writtenRoles, 
       missing.push(role)
     }
   }
-  const live = missing.length || !stored
+  let live = missing.length || !stored
     ? composeGuideParts(codePoint, shapes, settings, options, cellId, roles, writtenRoles)
     : undefined
+  if (live) {
+    // Composed again at that factor, not scaled, so the pen keeps the width the writer wrote with.
+    const scale = writtenFactor(live, codePoint, shapes, cellId, roles)
+    if (Math.abs(scale - 1) > 0.01) live = composeGuideParts(codePoint, shapes, settings, { ...options, scale }, cellId, roles, writtenRoles)
+  }
   const fresh: GuideLayout = { roles: {}, placeholders: live?.placeholders ?? {} }
   for (const role of missing) {
     const part = live!.parts[role]
     if (part.commands.length) fresh.roles[role] = { source: guideRoles[role]!, box: roundBox(part.getBoundingBox()), commands: toGuideCommands(part) }
   }
-  const sized = insetGuide(fresh)
+  const sized = keepGuideInCell(fresh)
   Object.assign(result.roles, sized.roles)
   const placeholders = stored?.placeholders ?? sized.placeholders
   for (const [role, bounds] of Object.entries(placeholders) as Array<[HangulRole, GuideBox]>) {

@@ -27,7 +27,7 @@ const INITIAL_DONORS: Record<number, number[]> = {
   7: [3, 4, 6, 1, 2, 5, 0],
 }
 
-function donors(role: HangulRole, variant: number) {
+export function donors(role: HangulRole, variant: number) {
   if (role === 'initial') return INITIAL_DONORS[variant] ?? []
   if (role === 'medial') return [1 - variant]
   return []

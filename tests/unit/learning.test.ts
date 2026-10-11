@@ -34,7 +34,7 @@ describe('learning from written sentences', () => {
     const nothing = learnGaps({ [session.exerciseId]: incomplete })
     expect(nothing.initialMedialSyllables['좋']).toBeUndefined()
     expect(nothing.medialFinalSyllables['좋']).toBeUndefined()
-    expect(learnHangulMetrics({ [session.exerciseId]: incomplete })).toEqual({ hangulTargetHeight: 760, hangulTargetSize: 760, hangulTargetCenter: 500 })
+    expect(learnHangulMetrics({ [session.exerciseId]: incomplete })).toEqual({ hangulTargetHeight: 760, hangulTargetSize: 760, hangulWrittenHeight: 760, hangulWrittenSize: 760, hangulTargetCenter: 500 })
   })
 
   test('learns how large the medial and final are written relative to the initial', () => {

@@ -34,6 +34,9 @@ export interface CompositionProfile {
   /** Square root of the ink area of a syllable at the target height. */
   hangulTargetSize: number
   hangulTargetCenter: number
+  /** Median height and size of the syllables as written, without the limits of the target. */
+  hangulWrittenHeight?: number
+  hangulWrittenSize?: number
 }
 
 export interface GenerationRequest extends CompositionProfile {

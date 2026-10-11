@@ -6,9 +6,10 @@ import { cellId, guideSourceTag, type DrawingRecord, type JamoBoundary, type Wri
 import { composeCellGuide, type StoredCellGuide } from '@/font/guides'
 import { isHangulSyllable, type HangulRole } from '@/font/hangul'
 import { REFERENCE_CELL_SIZE, strokeSvgPath, type RawStroke } from '@/font/stroke/outline'
-import { hangulComposeOptions, type HangulCompositionInputs } from '@/generation/font-builder'
+import { guideComposeOptions, type HangulCompositionInputs } from '@/generation/font-builder'
 import { cancelIdle, stopWhenBusy, whenIdle } from '@/lib/idle'
 import { useCompositionBase, warmCompositionBase } from '@/generation/use-composition-context'
+import { completedHangulCells } from '@/generation/learning/samples'
 import { projectActions } from '@/project/store'
 import { useProject } from '@/project/use-project'
 import { assignStrokes, boundariesThrough, captureRecords, cellIndexOf, cellProgress, completedCells, fixedSlots, holdBoundaries, reflowStrokes, visibleStrokes, type CanvasGrid } from './stroke-assignment'
@@ -35,9 +36,12 @@ function sameGuides(left: Guides, right: Guides) {
 
 const NO_GUIDES: Guides = {}
 
+/** Completed syllables after which the learned size is the writer's own, not the default. */
+const SIZE_KNOWN_AFTER = 3
+
 interface GuideJob {
   inputs: readonly unknown[]
-  options: ReturnType<typeof hangulComposeOptions>
+  options: ReturnType<typeof guideComposeOptions>
   guides: Map<number, StoredCellGuide>
   /** The next cell to compose. */
   next: number
@@ -60,7 +64,7 @@ function guideJob(exercise: WritingExercise, drawings: Record<string, DrawingRec
   if (kept && kept.inputs.every((input, index) => Object.is(input, inputs[index]))) return kept
   const base = kept && (guideJobDone(exercise, kept) ? kept : kept.previous)
   if (base) base.previous = undefined
-  const job: GuideJob = { inputs, options: hangulComposeOptions(composition), guides: new Map(), next: 0, settled: new Set(), previous: base }
+  const job: GuideJob = { inputs, options: guideComposeOptions(composition), guides: new Map(), next: 0, settled: new Set(), previous: base }
   guideJobs.set(exercise, job)
   return job
 }
@@ -203,8 +207,13 @@ export function useWritingSession(exercise: WritingExercise, viewport: RefObject
   const capture = useMemo(() => assignStrokes(strokes, grid, exercise, drawings, boundaries), [strokes, grid, exercise, drawings, boundaries])
 
   // Learned spacing and calibration stay as they were when the sentence was
-  // opened, so completing other syllables never moves a guide on screen.
-  const { shapes, composition } = useCompositionBase(drawings, sessions, settings, `${exercise.id}|${JSON.stringify(settings)}`)
+  // opened, so completing other syllables never moves a guide on screen. They
+  // are learned once more when the writer's own size is first known.
+  const sizeCounted = useMemo(() => completedHangulCells(sessions).length >= SIZE_KNOWN_AFTER, [sessions])
+  const sizeKnownRef = useRef(false)
+  if (sizeCounted) sizeKnownRef.current = true
+  const sizeKnown = sizeKnownRef.current
+  const { shapes, composition } = useCompositionBase(drawings, sessions, settings, `${exercise.id}|${JSON.stringify(settings)}|${sizeKnown}`)
   const guideJobNow = sentenceGuideJob(exercise, drawings, storedGuides, shapes, settings, composition)
   const [, setFinishedCount] = useState(0)
   useEffect(() => {

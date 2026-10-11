@@ -2,13 +2,13 @@ import opentype from 'opentype.js'
 import { COMPOUND_FINALS, decomposeHangul, HANGUL_ROLES, type HangulRole, type VowelKind } from '@/font/hangul'
 import { clearanceProbe, hasInkClearance, maximizeSafeIntrusion } from '@/font/geometry/collision'
 import { inkBalance } from '@/font/geometry/optical'
-import { centerX as cx, centerY as cy, clamp, pathBounds as bounds, pathOf, pointsBox, splitContours, translatePath, unionBox as union, type Box } from '@/font/geometry/path-ops'
+import { centerX as cx, centerY as cy, clamp, pathBounds as bounds, pathOf, pointsBox, scalePath, splitContours, translatePath, unionBox as union, type Box } from '@/font/geometry/path-ops'
 import { appendShape, CELL_UNITS, combineShapesSideBySide, stretchShapeWidth, type NormalizedShape, type Zone } from '@/font/geometry/shape'
 import { medianHeight } from '@/font/metrics'
 import { DEFAULT_GAPS, finalGapContext, finalGapPair, gapContext, gapPair, medialGapContext, minimumGap, type GapProfile } from './gap-profile'
 import { allowsOverlap, finalBoxGap } from './overlap-policy'
 import { EMPTY_PROPORTIONS, jamoSize, learnedRatios, proportionContext, proportionPair, type ProportionProfile } from './proportion-profile'
-import { selectJamoSource, sourceKey } from './source-selection'
+import { donors, selectJamoSource, sourceKey } from './source-selection'
 
 export interface LayoutGeometry {
   zones: Partial<Record<HangulRole, Box>>
@@ -41,6 +41,8 @@ interface Slot {
   sizeLimit: number
   /** Widest the jamo may be for its height. */
   maxAspect: number
+  /** The size the writer's jamo of this role have, for a role laid out as an empty box. */
+  placeholderFrame?: { width: number; height: number }
   /** Slots written together in one source cell share a group and move as one. */
   group: string
   path: opentype.Path
@@ -89,6 +91,15 @@ function typicalFrame(shapes: Map<string, NormalizedShape>, key: string) {
     frames.set(layout, width > 0 && height > 0 ? { width, height } : undefined)
   }
   return frames.get(layout)
+}
+
+/** Median width and height of the jamo written for a role, from the nearest layout that has some. */
+export function writtenFrame(shapes: Map<string, NormalizedShape>, role: HangulRole, variant: number, char: string) {
+  for (const candidate of [variant, ...donors(role, variant)]) {
+    const frame = typicalFrame(shapes, sourceKey(role, candidate, char))
+    if (frame) return frame
+  }
+  return undefined
 }
 
 /** `shape` narrowed to `maxAspect` (width / height), its height kept. */
@@ -249,7 +260,8 @@ export function layoutSyllable(input: SyllableLayoutInput) {
     const typical = role === 'initial' && selected ? typicalFrame(input.shapes, selected.key) : undefined
     const sizeLimit = typical ? Math.min(zones[role].width / typical.width, zones[role].height / typical.height) * Math.sqrt(typical.width * typical.height) : Infinity
     const maxAspect = typical ? typical.width / typical.height * INITIAL_ASPECT_REACH : Infinity
-    return { role, shape, zone: zones[role], scale: input.scales?.[role] ?? 1, sizeLimit, maxAspect, group, path: new opentype.Path() }
+    const placeholderFrame = isPlaceholder(role) ? writtenFrame(input.shapes, role, variants[role], chars[role]) : undefined
+    return { role, shape, zone: zones[role], scale: input.scales?.[role] ?? 1, sizeLimit, maxAspect, placeholderFrame, group, path: new opentype.Path() }
   })
   const byRole = Object.fromEntries(slots.map((slot) => [slot.role, slot])) as Partial<Record<HangulRole, Slot>>
   // Only the upper pair is recombined as written. A final captured with the
@@ -290,7 +302,12 @@ export function layoutSyllable(input: SyllableLayoutInput) {
       }
       if (isPlaceholder(slot.role)) {
         const box = bounds(slot.path); slot.path = new opentype.Path()
-        rectangle(slot.path, box ? { x: box.x1, y: box.y1, width: box.x2 - box.x1, height: box.y2 - box.y1 } : { x: slot.zone.x + slot.zone.width * 0.2, y: slot.zone.y + slot.zone.height * 0.2, width: slot.zone.width * 0.6, height: slot.zone.height * 0.6 })
+        const frame = slot.placeholderFrame
+        const width = frame ? frame.width * CELL_UNITS : slot.zone.width * 0.6
+        const height = frame ? frame.height * CELL_UNITS : slot.zone.height * 0.6
+        // The empty box is fitted like a written jamo of the typical size.
+        const fit = frame ? Math.min(slot.zone.width / width, slot.zone.height / height) * slot.scale : 1
+        rectangle(slot.path, box ? { x: box.x1, y: box.y1, width: box.x2 - box.x1, height: box.y2 - box.y1 } : { x: slot.zone.x + (slot.zone.width - width * fit) / 2, y: slot.zone.y + (slot.zone.height - height * fit) / 2, width: width * fit, height: height * fit })
       }
     }
   }
@@ -307,20 +324,22 @@ export function layoutSyllable(input: SyllableLayoutInput) {
 
   /** Rescales a free-standing jamo about its centre, rebuilding its outline so the pen does not scale with it. */
   const resize = (slot: Slot, correction: number) => {
-    if (!slot.shape || isPlaceholder(slot.role) || groups.get(slot.group)!.length > 1) return
+    if ((!slot.shape && !slot.placeholderFrame) || groups.get(slot.group)!.length > 1) return
     const box = bounds(slot.path)!
+    if (!slot.shape) { scalePath(slot.path, correction, { x: cx(box), y: cy(box) }); return }
     const scale = geometry.scales[slot.role]! * correction
     slot.path = new opentype.Path()
     appendCentered(slot.path, slot.shape, cx(box), cy(box), scale, input.penScale)
     geometry.scales[slot.role] = scale
   }
   // Apply learned proportions to the already fitted sizes, not the source-cell extents.
-  if (byRole.initial && !isPlaceholder('initial') && bounds(byRole.initial.path) && ratios) {
+  // An empty initial the size of the writer's typical one is a reference as good as a written one.
+  if (byRole.initial && (!isPlaceholder('initial') || byRole.initial.placeholderFrame) && bounds(byRole.initial.path) && ratios) {
     const i = bounds(byRole.initial.path)!
     const size = (role: HangulRole, box: Box) => jamoSize(role, kind, box.x2 - box.x1 - minimumGap / 1.5 * 2, box.y2 - box.y1 - minimumGap / 1.5 * 2)
     for (const role of ['medial', 'final'] as const) {
       const slot = byRole[role]; const wanted = ratios[role]
-      if (!slot?.shape || wanted === undefined || slot.group === byRole.initial.group || groups.get(slot.group)!.length > 1 || isPlaceholder(role)) continue
+      if ((!slot?.shape && !slot?.placeholderFrame) || wanted === undefined || slot.group === byRole.initial.group || groups.get(slot.group)!.length > 1) continue
       const box = bounds(slot.path)!
       const capacity = Math.min(slot.zone.width / (box.x2 - box.x1), slot.zone.height / (box.y2 - box.y1))
       const correction = Math.max(0.25, Math.min(capacity, 2, wanted * size('initial', i) / Math.max(1, size(role, box))))

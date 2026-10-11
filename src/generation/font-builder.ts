@@ -109,6 +109,12 @@ export function hangulComposeOptions(request: CompositionProfile): Required<Pick
   return { gaps: request.gaps, proportions: request.proportions, targetHeight: request.hangulTargetHeight, targetSize: request.hangulTargetSize, targetCenter: request.hangulTargetCenter }
 }
 
+/** Options for the guides of the writing page: syllables at the size the writer writes them, not the size the font is built at. */
+export function guideComposeOptions(request: CompositionProfile): ReturnType<typeof hangulComposeOptions> {
+  const options = hangulComposeOptions(request)
+  return { ...options, targetHeight: request.hangulWrittenHeight ?? options.targetHeight, targetSize: request.hangulWrittenSize ?? options.targetSize }
+}
+
 export function prepareCompositionContext(request: GenerationRequest): PreparedCompositionContext {
   const shapes = shapesFromRequestDrawings(request.drawings, request.compositionSettings)
   return { shapes, visualScale: visualCalibrationScale(shapes, request.compositionSettings, hangulComposeOptions(request)) }

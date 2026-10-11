@@ -4,7 +4,7 @@ import { composeCellGuide, composeGuideParts, type CellGuideInput } from '@/font
 import type { HangulRole } from '@/font/hangul'
 import { sourceKey } from '@/font/layout/source-selection'
 import { DEFAULT_COMPOSITION_SETTINGS } from '@/font/settings'
-import { boxOf, penStroke, shapeOf } from './helpers'
+import { penStroke, shapeOf } from './helpers'
 
 const line = () => shapeOf([penStroke('line', 10, 74, [[0, 0], [128, 0]])])
 const tall = () => shapeOf([penStroke('tall', 50, 10, [[0, 0], [40, 0], [40, 120]])])
@@ -18,21 +18,14 @@ function guideInput(char: string, roles: HangulRole[], shapes: Map<string, Norma
 }
 
 describe('cell guides', () => {
-  test('a guide is shown at 80% of its composed size, inside the cell margin, and stays as stored', () => {
+  test('a guide is shown inside the cell and stays as stored', () => {
     const shapes = new Map([['ㅡ', line()], ['ㄹ', tall()], ['ㅐ', tall()]])
     for (const [char, roles] of [['끓', ['medial']], ['래', ['initial', 'medial']]] as const) {
       const input = guideInput(char, [...roles], shapes)
-      const composed = composeGuideParts(input.codePoint, shapes, input.settings, {}, input.cellId, roles)
       const guide = composeCellGuide(input)
-      for (const role of roles) {
-        const before = boxOf(composed.parts[role])
-        const after = guide.roles[role]!.box
-        expect((after.x2 - after.x1) / (before.x2 - before.x1), `${char} ${role}`).toBeCloseTo(0.8, 2)
-        expect((after.y2 - after.y1) / (before.y2 - before.y1), `${char} ${role}`).toBeCloseTo(0.8, 2)
-      }
       for (const box of [...Object.values(guide.roles).map((entry) => entry.box), ...Object.values(guide.placeholders)]) {
-        expect(Math.min(box.x1, box.y1)).toBeGreaterThanOrEqual(100)
-        expect(Math.max(box.x2, box.y2)).toBeLessThanOrEqual(900)
+        expect(Math.min(box.x1, box.y1)).toBeGreaterThanOrEqual(0)
+        expect(Math.max(box.x2, box.y2)).toBeLessThanOrEqual(1000)
       }
       // Every role still to be written has a place, and a band to write in that contains it.
       expect(Object.keys(guide.placeholders).length + roles.length).toBe(char === '끓' ? 3 : 2)
