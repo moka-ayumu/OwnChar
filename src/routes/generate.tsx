@@ -66,7 +66,7 @@ function GeneratePage() {
         projectActions.updateGenerationProgress(message.progress, message.message)
       }
       if (message.type === 'complete') {
-        projectActions.completeGeneration(message.buffer)
+        projectActions.completeGeneration(message.buffer, { metadata: state.metadata, globalMetrics: state.globalMetrics, compositionSettings: state.compositionSettings, glyphOverrides: state.glyphOverrides })
         worker.terminate()
         live.current.complete = true
         setComplete(true)

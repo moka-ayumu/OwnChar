@@ -38,8 +38,23 @@ const initialProjectState: ProjectState = {
 
 export const projectStore = new Store<ProjectState>(initialProjectState)
 
+const sameFields = (a: object, b: object) => a === b || (Object.keys(a).length === Object.keys(b).length && Object.entries(a).every(([key, value]) => (b as Record<string, unknown>)[key] === value))
+
+/** Whether the project still holds what its font was generated with. A value changed and changed back is not a change. */
+function matchesGeneratedFont(state: ProjectState, made: NonNullable<ProjectState['generatedWith']>) {
+  return !state.sourceDirty
+    && sameFields(state.metadata, made.metadata) && sameFields(state.globalMetrics, made.globalMetrics) && sameFields(state.compositionSettings, made.compositionSettings)
+    && (state.glyphOverrides === made.glyphOverrides || (Object.keys(state.glyphOverrides).length === Object.keys(made.glyphOverrides).length
+      && Object.entries(state.glyphOverrides).every(([codePoint, override]) => made.glyphOverrides[Number(codePoint)] && sameFields(override, made.glyphOverrides[Number(codePoint)]))))
+}
+
 function update(updater: (state: ProjectState) => ProjectState) {
-  projectStore.setState(updater)
+  projectStore.setState((state) => {
+    const next = updater(state)
+    if (next === state || !next.generatedWith || !next.generatedFont) return next
+    const fontDirty = !matchesGeneratedFont(next, next.generatedWith)
+    return fontDirty === next.fontDirty ? next : { ...next, fontDirty }
+  })
 }
 
 /** Replaces the overrides of `codePoints` as one undoable step. */
@@ -143,11 +158,13 @@ export const projectActions = {
     update((state) => ({ ...state, generation: { progress, message, error: null } }))
   },
 
-  completeGeneration(buffer: ArrayBuffer) {
+  /** `made` is what the request was built with: the project can have changed while the font was generated. */
+  completeGeneration(buffer: ArrayBuffer, made: NonNullable<ProjectState['generatedWith']>) {
     update((state) => ({
       ...state,
       status: 'ready',
       generatedFont: buffer,
+      generatedWith: made,
       fontDirty: false,
       sourceDirty: false,
       fontRevision: state.fontRevision + 1,

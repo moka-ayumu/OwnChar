@@ -44,6 +44,8 @@ export interface ProjectState {
   }
   generation: GenerationState
   generatedFont: ArrayBuffer | null
+  /** What the generated font was made with, besides the handwriting. Absent in a project whose font was generated before this was kept. */
+  generatedWith?: Pick<ProjectState, 'metadata' | 'globalMetrics' | 'compositionSettings' | 'glyphOverrides'>
   /** The generated font no longer matches the project. */
   fontDirty: boolean
   /** Handwriting changed since the font was generated. */
