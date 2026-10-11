@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { exerciseCompletion, WRITING_EXERCISES } from '@/collection/exercises'
+import { exerciseCompletion, WRITING_EXERCISES, type GuideMode } from '@/collection/exercises'
 import { missingPrompts } from '@/collection/prompts'
 import { AppNav } from '@/components/app-nav'
 import { Hint } from '@/components/hint'
@@ -35,24 +35,7 @@ function cellFlags(count: number, indices: number[]) {
   return flags.join('')
 }
 
-const PLACEHOLDER_HINT_KEY = 'ownchar:placeholder-hint'
 const RAIL_KEY = 'ownchar:write-rail'
-
-function readPlaceholderHint() {
-  try {
-    return window.localStorage.getItem(PLACEHOLDER_HINT_KEY) !== 'off'
-  } catch {
-    return true
-  }
-}
-
-function writePlaceholderHint(enabled: boolean) {
-  try {
-    window.localStorage.setItem(PLACEHOLDER_HINT_KEY, enabled ? 'on' : 'off')
-  } catch {
-    // The hint is a per-device convenience; without storage it resets to on.
-  }
-}
 
 function readRailCollapsed() {
   try {
@@ -66,7 +49,7 @@ function writeRailCollapsed(collapsed: boolean) {
   try {
     window.localStorage.setItem(RAIL_KEY, collapsed ? 'closed' : 'open')
   } catch {
-    // Like the hint, the rail's state is a per-device convenience; without storage it opens.
+    // The rail's state is a per-device convenience; without storage it opens.
   }
 }
 
@@ -81,6 +64,7 @@ function WriteSentence({ currentIndex, exerciseId: sourceExerciseId, cellIndex: 
   const navigate = useNavigate()
   const drawings = useProject((state) => state.drawings)
   const sessions = useProject((state) => state.writingSessions)
+  const guideMode = useProject((state) => state.guideMode)
   const status = useProject((state) => state.status)
   const sourceDirty = useProject((state) => state.sourceDirty)
   const generatedFont = useProject((state) => state.generatedFont)
@@ -92,7 +76,6 @@ function WriteSentence({ currentIndex, exerciseId: sourceExerciseId, cellIndex: 
   const { grid, strokes } = session
   const [strokeWidth, setStrokeWidth] = useState(3)
   const [tool, setTool] = useState<CanvasTool>('pen')
-  const [showPlaceholderHint, setShowPlaceholderHint] = useState(readPlaceholderHint)
   const [generationDialog, setGenerationDialog] = useState<GenerationDialog>(null)
   const [railCollapsed, setRailCollapsed] = useState(readRailCollapsed)
   const surface = useRef<WritingSurfaceHandle>(null)
@@ -129,17 +112,14 @@ function WriteSentence({ currentIndex, exerciseId: sourceExerciseId, cellIndex: 
     const warm = (time: IdleTime) => {
       const index = queue[0]
       if (index === undefined) return
-      if (warmSentence(WRITING_EXERCISES[index], drawings, sessions, compositionSettings, stopWhenBusy(time))) queue.shift()
+      if (warmSentence(WRITING_EXERCISES[index], drawings, sessions, compositionSettings, guideMode, stopWhenBusy(time))) queue.shift()
       handle = whenIdle(warm)
     }
     const start = window.setTimeout(() => { handle = whenIdle(warm) }, 400)
     return () => { window.clearTimeout(start); cancelIdle(handle) }
-  }, [currentIndex, drawings, sessions, compositionSettings])
+  }, [currentIndex, drawings, sessions, compositionSettings, guideMode])
 
-  const togglePlaceholderHint = useStableCallback(() => {
-    setShowPlaceholderHint(!showPlaceholderHint)
-    writePlaceholderHint(!showPlaceholderHint)
-  })
+  const setGuideMode = useStableCallback((mode: GuideMode) => projectActions.setGuideMode(mode))
 
   const toggleRail = useStableCallback(() => {
     setRailCollapsed(!railCollapsed)
@@ -162,7 +142,7 @@ function WriteSentence({ currentIndex, exerciseId: sourceExerciseId, cellIndex: 
   })
 
   const remaining = missingPrompts(drawings)
-  const exerciseProgress = exerciseCompletion(exercise, drawings)
+  const exerciseProgress = exerciseCompletion(exercise, drawings, sessions[exercise.id], guideMode)
 
   const generate = () => {
     // Generation opens on the sentence exactly where it sits now.
@@ -188,14 +168,14 @@ function WriteSentence({ currentIndex, exerciseId: sourceExerciseId, cellIndex: 
   return (
     <div className="flow write-flow" data-collapsed={railCollapsed ? 'true' : undefined}>
       <WriteRail
-        drawings={drawings} currentIndex={currentIndex} collapsed={railCollapsed} hasGeneratedFont={Boolean(generatedFont)}
+        drawings={drawings} sessions={sessions} guideMode={guideMode} currentIndex={currentIndex} collapsed={railCollapsed} hasGeneratedFont={Boolean(generatedFont)}
         onToggle={toggleRail} onGo={go} onRequestGeneration={requestGeneration} onOpenExistingFont={openExistingFont}
       />
 
       <section className="stage write-stage" ref={stage}>
         <ToolRail
-          tool={tool} strokeWidth={strokeWidth} endpointStabilization={endpointStabilization} showHints={showPlaceholderHint}
-          onTool={setTool} onStrokeWidth={setStrokeWidth} onToggleHints={togglePlaceholderHint}
+          tool={tool} strokeWidth={strokeWidth} endpointStabilization={endpointStabilization} guideMode={guideMode}
+          onTool={setTool} onStrokeWidth={setStrokeWidth} onGuideMode={setGuideMode}
           onEndpointStabilization={setEndpointStabilization}
           cellSize={grid.cellSize} cellSizeLocked={strokes.length > 0} onCellSize={session.setCellSize}
           onUndo={undo} onRedo={redo} onClear={clear}
@@ -213,7 +193,7 @@ function WriteSentence({ currentIndex, exerciseId: sourceExerciseId, cellIndex: 
           <div className="sentence-canvas-region" ref={region}>
             <div className="sentence-canvas-scroll" ref={viewport}>
               <div className="sentence-canvas-frame" ref={frame} data-testid="writing-canvas" data-cell-size={grid.cellSize} data-columns={grid.columns} data-rows={session.rowCount} data-assignment-prompts={session.capture.assignments.map((item) => item.promptId).join(',')} style={{ width: canvasWidth, height: canvasHeight }}>
-                <FixedCaptureLayer exercise={exercise} drawings={drawings} sessions={sessions} cellGuides={session.cellGuides} writtenRoles={writtenRoles} showHints={showPlaceholderHint} grid={grid} width={canvasWidth} height={canvasHeight} />
+                <FixedCaptureLayer exercise={exercise} drawings={drawings} sessions={sessions} cellGuides={session.cellGuides} rule={session.fixedRule} writtenRoles={writtenRoles} showHints={guideMode === 'placement'} grid={grid} width={canvasWidth} height={canvasHeight} />
                 <WritingGrid
                   exercise={exercise} cellSize={grid.cellSize} finished={finishedKey} written={writtenKey}
                   activeCell={popoverOpen ? active.cellIndex : null} sourceCell={showsSourceCell ? sourceCellIndex ?? null : null} onReopen={reopenCell}

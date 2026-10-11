@@ -1,9 +1,9 @@
 import { memo, useMemo } from 'react'
-import type { WritingExercise } from '@/collection/exercises'
+import type { FixedRule, WritingExercise } from '@/collection/exercises'
 import { cellOrigin, type DrawingRecord, type WritingSessionRecord } from '@/collection/records'
 import { svgPathData } from '@/font/geometry/svg'
 import type { GuideBox, StoredCellGuide } from '@/font/guides'
-import { isHangulSyllable, type HangulRole } from '@/font/hangul'
+import { decomposeHangul, isHangulSyllable, type HangulRole } from '@/font/hangul'
 import { fixedSlots, type CanvasGrid } from './stroke-assignment'
 
 interface GuidePath { key: string; cellIndex: number; promptId: string; d: string; transform: string }
@@ -13,9 +13,11 @@ interface GuideHint { key: string; cellIndex: number; role: HangulRole; band?: b
  * Already collected jamo, drawn where the cell's guide puts them (see
  * `composeCellGuide`), and the places of the jamo still to be written.
  */
-export const FixedCaptureLayer = memo(function FixedCaptureLayer({ exercise, drawings, sessions, cellGuides, writtenRoles, showHints, grid, width, height }: {
+export const FixedCaptureLayer = memo(function FixedCaptureLayer({ exercise, drawings, sessions, cellGuides, rule, writtenRoles, showHints, grid, width, height }: {
   exercise: WritingExercise
   drawings: Record<string, DrawingRecord>
+  /** Which slots each cell holds fixed. */
+  rule: FixedRule
   sessions: Record<string, WritingSessionRecord>
   cellGuides: Map<number, StoredCellGuide>
   /** The roles that have strokes, as `cellIndex:role` joined by commas. */
@@ -27,7 +29,7 @@ export const FixedCaptureLayer = memo(function FixedCaptureLayer({ exercise, dra
 }) {
   const { cellSize, columns } = grid
   const paths = useMemo(() => exercise.cells.flatMap((cell, cellIndex): GuidePath[] => {
-    const fixed = fixedSlots(cell, cellIndex, exercise, drawings)
+    const fixed = fixedSlots(cell, cellIndex, exercise, drawings, rule)
     if (!fixed.length) return []
     const origin = cellOrigin(cellIndex, columns, cellSize)
     if (isHangulSyllable(cell.char.codePointAt(0)!)) {
@@ -57,7 +59,7 @@ export const FixedCaptureLayer = memo(function FixedCaptureLayer({ exercise, dra
         transform: `matrix(${scale} 0 0 ${scale} ${origin.x + path.x * scale} ${origin.y + path.y * scale})`,
       }))
     })
-  }), [exercise, drawings, sessions, cellGuides, cellSize, columns])
+  }), [exercise, drawings, sessions, cellGuides, rule, cellSize, columns])
 
   const hints = useMemo((): GuideHint[] => {
     if (!showHints) return []
@@ -69,14 +71,28 @@ export const FixedCaptureLayer = memo(function FixedCaptureLayer({ exercise, dra
         x: origin.x + box.x1 * scale, y: origin.y + cellSize - box.y2 * scale,
         width: (box.x2 - box.x1) * scale, height: (box.y2 - box.y1) * scale,
       })
-      return (Object.entries(guide.placeholders) as Array<[HangulRole, GuideBox]>)
+      const open = (Object.entries(guide.placeholders) as Array<[HangulRole, GuideBox]>)
         .filter(([role]) => !written.has(`${cellIndex}:${role}`))
-        .flatMap(([role, box]) => [
-          { key: `${cellIndex}-${role}-band`, cellIndex, role, band: true, ...rect(guide.bands[role]!) },
-          { key: `${cellIndex}-${role}`, cellIndex, role, ...rect(box) },
-        ])
+      // The empty initial and compound vowel nest, so together they are shown as one box.
+      const initial = open.find(([role]) => role === 'initial')?.[1]
+      const medial = open.find(([role]) => role === 'medial')?.[1]
+      const nested = initial && medial && decomposeHangul(exercise.cells[cellIndex].char.codePointAt(0)!).kind === 'mixed'
+      const places: Array<[HangulRole, GuideBox, GuideBox]> = open.flatMap(([role, box]) => {
+        if (!nested) return [[role, box, guide.bands[role]!]]
+        if (role === 'initial') return []
+        const bands = [guide.bands.initial!, guide.bands.medial!]
+        return [[role, {
+          x1: Math.min(initial!.x1, box.x1), y1: Math.min(initial!.y1, box.y1), x2: Math.max(initial!.x2, box.x2), y2: Math.max(initial!.y2, box.y2),
+        }, {
+          x1: Math.min(...bands.map((band) => band.x1)), y1: Math.min(...bands.map((band) => band.y1)), x2: Math.max(...bands.map((band) => band.x2)), y2: Math.max(...bands.map((band) => band.y2)),
+        }]]
+      })
+      return places.flatMap(([role, box, band]) => [
+        { key: `${cellIndex}-${role}-band`, cellIndex, role, band: true, ...rect(band) },
+        { key: `${cellIndex}-${role}`, cellIndex, role, ...rect(box) },
+      ])
     })
-  }, [showHints, writtenRoles, cellGuides, cellSize, columns])
+  }, [exercise, showHints, writtenRoles, cellGuides, cellSize, columns])
 
   if (!paths.length && !hints.length) return null
   return <svg className="fixed-capture-layer" viewBox={`0 0 ${width} ${height}`} aria-label="이미 수집되어 고정된 자모">

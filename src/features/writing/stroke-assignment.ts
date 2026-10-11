@@ -1,4 +1,4 @@
-import { isFixedSlot, type CaptureSlot, type WritingCell, type WritingExercise } from '@/collection/exercises'
+import { isFixedSlot, type CaptureSlot, type FixedRule, type WritingCell, type WritingExercise } from '@/collection/exercises'
 import { cellOrigin, type DrawingRecord, type JamoBoundary, type StrokeAssignment, type StrokePath } from '@/collection/records'
 import { strokeSvgPath, type RawStroke } from '@/font/stroke/outline'
 
@@ -44,13 +44,13 @@ function strokesByCell(strokes: readonly RawStroke[], grid: CanvasGrid, cellCoun
 const indexedSlots = (cell: WritingCell): IndexedSlot[] => cell.slots.map((slot, slotIndex) => ({ slot, slotIndex }))
 
 /** Slots of a cell whose jamo was already captured elsewhere and is shown as a guide. */
-export function fixedSlots(cell: WritingCell, cellIndex: number, exercise: WritingExercise, drawings: Record<string, DrawingRecord>) {
-  return indexedSlots(cell).filter(({ slot, slotIndex }) => isFixedSlot(slot.promptId, cellIndex, slotIndex, exercise, drawings))
+export function fixedSlots(cell: WritingCell, cellIndex: number, exercise: WritingExercise, drawings: Record<string, DrawingRecord>, rule?: FixedRule) {
+  return indexedSlots(cell).filter(({ slot, slotIndex }) => isFixedSlot(slot.promptId, cellIndex, slotIndex, exercise, drawings, rule))
 }
 
 /** Slots of a cell that are still written in it, in writing order. */
-export function editableSlots(cell: WritingCell, cellIndex: number, exercise: WritingExercise, drawings: Record<string, DrawingRecord>) {
-  return indexedSlots(cell).filter(({ slot, slotIndex }) => !isFixedSlot(slot.promptId, cellIndex, slotIndex, exercise, drawings))
+export function editableSlots(cell: WritingCell, cellIndex: number, exercise: WritingExercise, drawings: Record<string, DrawingRecord>, rule?: FixedRule) {
+  return indexedSlots(cell).filter(({ slot, slotIndex }) => !isFixedSlot(slot.promptId, cellIndex, slotIndex, exercise, drawings, rule))
 }
 
 /** The leading boundaries that still match the cell: each ends its slot, in order, on a stroke that exists. */
@@ -72,14 +72,14 @@ export function validBoundaries(strokes: RawStroke[], slots: IndexedSlot[], boun
  * its confirmed boundary; without one it takes the stroke count its jamo is
  * usually written with, and the last slot takes whatever remains.
  */
-export function assignStrokes(strokes: readonly RawStroke[], grid: CanvasGrid, exercise: WritingExercise, drawings: Record<string, DrawingRecord>, requestedBoundaries: Record<number, JamoBoundary[]>) {
+export function assignStrokes(strokes: readonly RawStroke[], grid: CanvasGrid, exercise: WritingExercise, drawings: Record<string, DrawingRecord>, requestedBoundaries: Record<number, JamoBoundary[]>, rule?: FixedRule) {
   const byCell = strokesByCell(strokes, grid, exercise.cells.length)
   const groups: CaptureGroup[] = []
   const assignments: StrokeAssignment[] = []
   const boundaries: Record<number, JamoBoundary[]> = {}
   exercise.cells.forEach((cell, cellIndex) => {
     const cellStrokes = byCell[cellIndex]
-    const slots = editableSlots(cell, cellIndex, exercise, drawings)
+    const slots = editableSlots(cell, cellIndex, exercise, drawings, rule)
     const confirmed = validBoundaries(cellStrokes, slots, requestedBoundaries[cellIndex] ?? [])
     if (confirmed.length) boundaries[cellIndex] = confirmed
     let cursor = 0
@@ -194,7 +194,7 @@ export function boundariesThrough(cellIndex: number, count: number, groups: Capt
  * so a slot the writer reopened keeps all that is written there until it is
  * released. `holds` maps a cell to the position of its held editable slot.
  */
-export function holdBoundaries(boundaries: Record<number, JamoBoundary[]>, holds: Record<number, number>, strokes: readonly RawStroke[], grid: CanvasGrid, exercise: WritingExercise, drawings: Record<string, DrawingRecord>) {
+export function holdBoundaries(boundaries: Record<number, JamoBoundary[]>, holds: Record<number, number>, strokes: readonly RawStroke[], grid: CanvasGrid, exercise: WritingExercise, drawings: Record<string, DrawingRecord>, rule?: FixedRule) {
   const entries = Object.entries(holds)
   if (!entries.length) return boundaries
   const byCell = strokesByCell(strokes, grid, exercise.cells.length)
@@ -202,7 +202,7 @@ export function holdBoundaries(boundaries: Record<number, JamoBoundary[]>, holds
   for (const [key, held] of entries) {
     const cellIndex = Number(key)
     const cellStrokes = byCell[cellIndex]
-    const slots = editableSlots(exercise.cells[cellIndex], cellIndex, exercise, drawings)
+    const slots = editableSlots(exercise.cells[cellIndex], cellIndex, exercise, drawings, rule)
     const requested = boundaries[cellIndex] ?? []
     const before = validBoundaries(cellStrokes, slots, requested).slice(0, held)
     const target = slots[held]

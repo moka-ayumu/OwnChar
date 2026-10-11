@@ -1,6 +1,6 @@
 import { Store } from '@tanstack/react-store'
-import { WRITING_EXERCISES } from '@/collection/exercises'
-import { basePromptId, promptRole } from '@/collection/prompts'
+import { keepIfSame, selectDrawings } from '@/collection/drawing-selection'
+import { sessionCaptures, WRITING_EXERCISES, type GuideMode } from '@/collection/exercises'
 import type { DrawingRecord, WritingSessionRecord } from '@/collection/records'
 import type { StoredCellGuide } from '@/font/guides'
 import { DEFAULT_COMPOSITION_SETTINGS, type CompositionSettings } from '@/font/settings'
@@ -14,16 +14,6 @@ const defaultMetadata: FontMetadata = {
   version: '1.0',
 }
 
-/** The stored drawing when `next` repeats it, so what did not change keeps its identity. */
-function keepIfSame(previous: DrawingRecord | undefined, next: DrawingRecord) {
-  if (!previous || previous.previewSvg !== next.previewSvg || previous.codePoint !== next.codePoint || previous.derivedFromPromptId !== next.derivedFromPromptId) return next
-  const { exerciseId, cellIndex, slotIndex } = next.capture
-  if (previous.capture.exerciseId !== exerciseId || previous.capture.cellIndex !== cellIndex || previous.capture.slotIndex !== slotIndex) return next
-  if (previous.elements.length !== next.elements.length) return next
-  const same = previous.elements.every((stroke, index) => stroke.id === next.elements[index].id && stroke.version === next.elements[index].version && Boolean(stroke.isDeleted) === Boolean(next.elements[index].isDeleted))
-  return same ? previous : next
-}
-
 const idleGeneration: GenerationState = { progress: 0, message: '', error: null }
 
 const initialProjectState: ProjectState = {
@@ -31,6 +21,7 @@ const initialProjectState: ProjectState = {
   hydrated: false,
   status: 'empty',
   currentExercise: 0,
+  guideMode: 'blank',
   drawings: {},
   writingSessions: {},
   metadata: defaultMetadata,
@@ -49,12 +40,6 @@ export const projectStore = new Store<ProjectState>(initialProjectState)
 
 function update(updater: (state: ProjectState) => ProjectState) {
   projectStore.setState(updater)
-}
-
-/** How well a contextual jamo stands in for the standalone one: open-syllable forms first, finals last. */
-function sourcePriority(promptId: string) {
-  if (promptRole(promptId) === 'final') return 1
-  return Number(promptId.split('-')[1]) === 0 ? 3 : 2
 }
 
 /** Replaces the overrides of `codePoints` as one undoable step. */
@@ -106,38 +91,35 @@ export const projectActions = {
     })
   },
 
-  /** Saves one sentence canvas and the drawings captured from it, replacing what that sentence captured before. */
+  /** Sets what the writing page shows of the jamo already collected. It does not change any drawing. */
+  setGuideMode(guideMode: GuideMode) {
+    update((state) => state.guideMode === guideMode ? state : { ...state, guideMode })
+  },
+
+  /**
+   * Saves one sentence canvas with every drawing written in it, then picks for
+   * each jamo the best drawing written for it in any sentence.
+   */
   saveSentenceCapture(session: WritingSessionRecord, records: DrawingRecord[]) {
     update((state) => {
-      const drawings = { ...state.drawings }
-      // A contextual jamo also serves as the standalone consonant or vowel,
-      // unless a better form of it is already in use.
-      const derivedRecords = records.flatMap((record): DrawingRecord[] => {
-        const role = promptRole(record.promptId)
-        if (!role) return []
-        const promptId = basePromptId(role === 'medial' ? 'vowel' : 'consonant', String.fromCodePoint(record.codePoint))
-        const existingSource = drawings[promptId]?.derivedFromPromptId
-        // A source from this sentence counts only while it is still written.
-        const existingIsActive = existingSource !== undefined
-          && (drawings[promptId].capture.exerciseId !== session.exerciseId || records.some((candidate) => candidate.promptId === existingSource))
-        if (existingIsActive && sourcePriority(existingSource) > sourcePriority(record.promptId)) return []
-        return [{ ...record, promptId, derivedFromPromptId: record.promptId }]
-      })
-      const allRecords = [...records, ...derivedRecords].map((record) => keepIfSame(drawings[record.promptId], record))
-      const activePromptIds = new Set(allRecords.map((record) => record.promptId))
-      for (const [promptId, record] of Object.entries(drawings)) {
-        if (record.capture.exerciseId === session.exerciseId && !activePromptIds.has(promptId)) delete drawings[promptId]
-      }
+      const key = (record: DrawingRecord) => `${record.promptId}|${record.capture.cellIndex}|${record.capture.slotIndex}`
+      const before = sessionCaptures(session.exerciseId, state.writingSessions[session.exerciseId], state.drawings)
+      const previous = new Map(before.map((record) => [key(record), record]))
+      const captures = records.map((record) => keepIfSame(previous.get(key(record)), record))
+      // A session saved before captures were kept takes its drawings as its captures now, so a better one elsewhere cannot lose them.
+      const writingSessions: Record<string, WritingSessionRecord> = Object.fromEntries(Object.entries(state.writingSessions).map(([id, saved]) => [id, saved.captures ? saved : { ...saved, captures: sessionCaptures(id, saved, state.drawings) }]))
+      writingSessions[session.exerciseId] = { ...session, captures }
+      const drawings = selectDrawings(writingSessions, state.drawings)
       let changed = (state.writingSessions[session.exerciseId]?.elements.length ?? 0) !== session.elements.length
-      for (const record of allRecords) {
-        if (drawings[record.promptId]?.previewSvg !== record.previewSvg) changed = true
-        drawings[record.promptId] = record
+        || Object.keys(state.drawings).length !== Object.keys(drawings).length
+      for (const [promptId, record] of Object.entries(drawings)) {
+        if (state.drawings[promptId]?.previewSvg !== record.previewSvg) changed = true
       }
       return {
         ...state,
         status: changed ? 'writing' : state.status,
         drawings,
-        writingSessions: { ...state.writingSessions, [session.exerciseId]: session },
+        writingSessions,
         fontDirty: changed || state.fontDirty,
         sourceDirty: changed || state.sourceDirty,
       }

@@ -53,8 +53,10 @@ export interface WritingSessionRecord {
   cellSize: number
   columns: number
   updatedAt: number
-  /** Fixed guide jamo of each written cell, kept exactly where they were shown. */
+  /** Fixed guide jamo of each written cell, kept exactly where they were shown. An entry without roles marks a written cell with nothing fixed. */
   guides: Record<number, StoredCellGuide>
+  /** The drawing of every slot written in this sentence, including a jamo another sentence also holds. Absent in a session saved before captures were kept. */
+  captures?: DrawingRecord[]
 }
 
 export function cellId(exerciseId: string, cellIndex: number) {

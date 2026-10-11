@@ -189,8 +189,21 @@ function writingBand(place: GuideBox, others: GuideBox[]): GuideBox {
     if ((other.x1 + other.x2) / 2 < centerX) band.x1 = Math.max(band.x1, other.x2 + BAND_MARGIN)
     else band.x2 = Math.min(band.x2, other.x1 - BAND_MARGIN)
   }
+  const result = { x1: Math.min(band.x1, place.x1), y1, x2: Math.max(band.x2, place.x2), y2 }
+  // A guide the grown band still reaches is cut off on the side that keeps most of the band.
+  for (const other of others) {
+    if (overlap(other.x1, other.x2, result.x1, result.x2) <= 0 || overlap(other.y1, other.y2, result.y1, result.y2) <= 0) continue
+    const cuts: GuideBox[] = []
+    if (other.y2 + BAND_MARGIN <= place.y1) cuts.push({ ...result, y1: Math.max(result.y1, other.y2 + BAND_MARGIN) })
+    if (other.y1 - BAND_MARGIN >= place.y2) cuts.push({ ...result, y2: Math.min(result.y2, other.y1 - BAND_MARGIN) })
+    if (other.x2 + BAND_MARGIN <= place.x1) cuts.push({ ...result, x1: Math.max(result.x1, other.x2 + BAND_MARGIN) })
+    if (other.x1 - BAND_MARGIN >= place.x2) cuts.push({ ...result, x2: Math.min(result.x2, other.x1 - BAND_MARGIN) })
+    const area = (b: GuideBox) => (b.x2 - b.x1) * (b.y2 - b.y1)
+    const best = cuts.sort((a, b) => area(b) - area(a))[0]
+    if (best) Object.assign(result, best)
+  }
   // The place itself is always inside its band, whatever the neighbours leave.
-  return { x1: Math.min(band.x1, place.x1), y1, x2: Math.max(band.x2, place.x2), y2 }
+  return result
 }
 
 export interface CellGuideInput {

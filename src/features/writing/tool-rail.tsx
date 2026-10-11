@@ -1,24 +1,31 @@
 import { memo, useEffect, useRef, useState } from 'react'
-import { Eraser, PenLine, Redo2, SlidersHorizontal, SquareDashed, Trash2, Undo2 } from 'lucide-react'
+import { Eraser, PenLine, Redo2, SlidersHorizontal, Trash2, Undo2 } from 'lucide-react'
+import type { GuideMode } from '@/collection/exercises'
 import { Hint } from '@/components/hint'
 import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
 
 export type CanvasTool = 'pen' | 'eraser'
 
+const GUIDE_MODES: Array<{ mode: GuideMode; label: string; hint: string }> = [
+  { mode: 'blank', label: '빈 칸', hint: '모든 칸을 처음부터 써요. 같은 자모를 여러 번 쓰면 가장 잘 쓴 것을 써요.' },
+  { mode: 'collected', label: '고정 자모', hint: '이미 수집한 자모를 회색으로 고정해서 보여줘요.' },
+  { mode: 'placement', label: '자리 안내', hint: '고정 자모와 아직 쓸 자모의 자리를 점선으로 보여줘요.' },
+]
+
 /** The writing tools, as icons in a column that stays beside the canvas while it scrolls. */
-export const ToolRail = memo(function ToolRail({ tool, strokeWidth, endpointStabilization, showHints, cellSize, cellSizeLocked, onTool, onStrokeWidth, onEndpointStabilization, onToggleHints, onCellSize, onUndo, onRedo, onClear }: {
+export const ToolRail = memo(function ToolRail({ tool, strokeWidth, endpointStabilization, guideMode, cellSize, cellSizeLocked, onTool, onStrokeWidth, onEndpointStabilization, onGuideMode, onCellSize, onUndo, onRedo, onClear }: {
   tool: CanvasTool
   strokeWidth: number
   endpointStabilization: number
-  showHints: boolean
+  guideMode: GuideMode
   cellSize: number
   /** The cell size can change only while nothing is written. */
   cellSizeLocked: boolean
   onTool(tool: CanvasTool): void
   onStrokeWidth(value: number): void
   onEndpointStabilization(value: number): void
-  onToggleHints(): void
+  onGuideMode(mode: GuideMode): void
   onCellSize(value: number): void
   onUndo(): void
   onRedo(): void
@@ -72,8 +79,15 @@ export const ToolRail = memo(function ToolRail({ tool, strokeWidth, endpointStab
               <div><span>손떨림 보정</span><output>{endpointStabilization.toFixed(2)}</output></div>
               <Slider aria-label="손떨림 보정" min={0} max={1} step={0.01} value={[endpointStabilization]} onValueChange={([value]) => onEndpointStabilization(value)} />
             </div>
-            <Button className="w-full" size="sm" variant={showHints ? 'default' : 'secondary'} aria-pressed={showHints} onClick={onToggleHints}><SquareDashed className="size-3.5" /> 자리 안내</Button>
-            <p>아직 쓸 자모의 자리를 점선으로 보여줘요.</p>
+            <div className="pen-setting">
+              <div><span>수집한 자모 보기</span></div>
+              <div className="grid grid-cols-3 gap-1" role="group" aria-label="수집한 자모 보기">
+                {GUIDE_MODES.map(({ mode, label }) => (
+                  <Button key={mode} className="px-1 text-[13px]" size="sm" variant={guideMode === mode ? 'default' : 'secondary'} aria-pressed={guideMode === mode} onClick={() => onGuideMode(mode)}>{label}</Button>
+                ))}
+              </div>
+            </div>
+            <p>{GUIDE_MODES.find(({ mode }) => mode === guideMode)?.hint}</p>
           </div>
         )}
       </div>

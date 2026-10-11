@@ -20,7 +20,7 @@
 | # | 원인 | 해법 | 코드 위치 |
 |---|---|---|---|
 | 1 | 문장을 바꾸면 `WriteSentence`가 key로 다시 마운트된다. 마운트마다 같은 입력으로 글자 모양, 학습 프로필, 보정 배율, 칸별 가이드, 획 윤곽을 처음부터 다시 계산했다. | 입력 객체의 정체성(identity)이 같으면 이전 결과를 쓴다. 쓰기 페이지가 쓰지 않는 보정 배율 계산은 뺐다. | `src/lib/latest-only.ts`, `src/generation/use-composition-context.ts`, `src/generation/inputs.ts`, `src/font/stroke/outline.ts` |
-| 2 | 저장할 때마다 문장의 모든 `DrawingRecord`를 새 객체로 바꿨다. 정체성으로 키를 만든 캐시가 전부 무효가 되었다. | 저장하는 값이 이미 저장된 값과 같으면 이전 객체를 유지한다. | `keepIfSame`, `src/project/store.ts` |
+| 2 | 저장할 때마다 문장의 모든 `DrawingRecord`를 새 객체로 바꿨다. 정체성으로 키를 만든 캐시가 전부 무효가 되었다. | 저장하는 값이 이미 저장된 값과 같으면 이전 객체를 유지한다. | `keepIfSame`, `src/collection/drawing-selection.ts` |
 | 3 | 저장할 때마다 학습이 완성된 모든 칸을 다시 측정했다. | 칸의 획, 격자, 획 보정 설정이 같으면 이전 측정값을 쓴다. | `cellMemo`, `src/generation/learning/samples.ts` |
 | 4 | 포인터가 움직일 때마다 쓰기 페이지 전체를 렌더했다. 이동 1회에 렌더가 약 8 ms였다. | 레일, 칸 그리드, 고정 레이어, 도구 레일을 `memo` 컴포넌트로 나눴다. | `write-rail.tsx`, `writing-grid.tsx`, `fixed-capture-layer.tsx`, `tool-rail.tsx` |
 | 5 | 저장 직후 렌더에서 칸 31개의 가이드를 모두 동기로 다시 계산했다. 한가한 시간의 미리 계산은 문장 하나에 75에서 99 ms를 한 번에 썼다. | 화면의 가이드를 유지하고 새 가이드를 한가한 시간에 칸 단위로 만든다. | `src/lib/idle.ts`, `src/features/writing/use-writing-session.ts` |
@@ -55,6 +55,8 @@ WARNING: 모양을 공유하는 변경을 하기 전에 폰트 골든 해시를 
 
 - 프로젝트는 기록 단위로 저장한다. 키는 `meta`, `font`, `session:<id>`, `drawing:<promptId>`이다.
 - 쓰기는 저장된 객체와 정체성이 다른 기록만 한다. 사라진 기록은 지운다. 저장 구조를 바꾸면 이 비교 방식도 맞춘다.
+- 한 문장의 `session` 기록은 `captures`(그 문장에서 쓴 모든 그림)를 가진다. 프로젝트의 `drawings`는 모든 문장의 `captures` 중 자모마다 점수가 가장 좋은 것이다(`selectDrawings`). 저장 직후 `selectDrawings`는 모든 자모를 다시 고르지만 안 바뀐 그림은 `keepIfSame`으로 같은 객체로 둔다. 중앙값 0.2 ms, 최대 0.8 ms(문장 43칸, 그림 70개, dev 모드)였다.
+- 쓴 칸의 `guides`는 고정 자모가 없어도 빈 가이드 항목을 가진다. 그 칸은 쓸 때의 고정 구성으로 읽는다. 모드(`guideMode`)를 바꿔도 이미 쓴 획의 해석이 바뀌지 않는다.
 - 새 상태 필드는 `meta`에 들어간다. `meta`는 얕은 비교를 한다. 필드를 제자리에서 바꾸면 저장되지 않는다.
 - 저장 형식(`.ownchar`, 샘플 프로젝트)은 `{ meta, sessions, drawings }`이다. 형식을 바꾸면 `tools/lib/project.mjs`, `tools/project/export-project.js`, `tests/e2e/helpers.ts`를 같이 바꾼다.
 

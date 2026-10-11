@@ -1,8 +1,8 @@
 import { memo } from 'react'
 import { ArrowLeft, ArrowRight, Type } from 'lucide-react'
-import { exerciseCompletion, WRITING_EXERCISES } from '@/collection/exercises'
+import { exerciseCompletion, WRITING_EXERCISES, type GuideMode } from '@/collection/exercises'
 import { completedPromptCount, PROMPT_COUNT } from '@/collection/prompts'
-import type { DrawingRecord } from '@/collection/records'
+import type { DrawingRecord, WritingSessionRecord } from '@/collection/records'
 import { Hint } from '@/components/hint'
 import { ProgressRing } from '@/components/progress-ring'
 import { RailBrand } from '@/components/rail-brand'
@@ -13,8 +13,10 @@ import { Progress } from '@/components/ui/progress'
  * The side rail of the write page: collection progress, the sentence list and the way on.
  * Closing it only narrows it: every row keeps its place and its leading icon, and the text beside it is cut off.
  */
-export const WriteRail = memo(function WriteRail({ drawings, currentIndex, collapsed, hasGeneratedFont, onToggle, onGo, onRequestGeneration, onOpenExistingFont }: {
+export const WriteRail = memo(function WriteRail({ drawings, sessions, guideMode, currentIndex, collapsed, hasGeneratedFont, onToggle, onGo, onRequestGeneration, onOpenExistingFont }: {
   drawings: Record<string, DrawingRecord>
+  sessions: Record<string, WritingSessionRecord>
+  guideMode: GuideMode
   currentIndex: number
   collapsed: boolean
   hasGeneratedFont: boolean
@@ -40,7 +42,7 @@ export const WriteRail = memo(function WriteRail({ drawings, currentIndex, colla
           <div className="rail-text mb-2 flex items-center justify-between"><span className="rail-label">연습 문장</span><span className="tnum text-xs font-semibold">{currentIndex + 1} / {WRITING_EXERCISES.length}</span></div>
           <div className="exercise-list" aria-label="문장 진행 상황">
             {WRITING_EXERCISES.map((item, index) => {
-              const progress = exerciseCompletion(item, drawings)
+              const progress = exerciseCompletion(item, drawings, sessions[item.id], guideMode)
               const count = `${progress.completed} / ${progress.total} 자모`
               return (
                 <Hint key={item.id} className="block" label={collapsed ? `${item.title} · ${count}` : count}>

@@ -1,3 +1,4 @@
+import type { GuideMode } from '@/collection/exercises'
 import type { DrawingRecord, WritingSessionRecord } from '@/collection/records'
 import type { CompositionSettings } from '@/font/settings'
 import type { FontMetadata, GlyphOverride } from '@/generation/request'
@@ -27,7 +28,9 @@ export interface ProjectState {
   status: ProjectStatus
   /** Index of the sentence shown on the writing page. */
   currentExercise: number
-  /** The captured strokes of each prompt. */
+  /** What the writing page shows of the jamo already collected. */
+  guideMode: GuideMode
+  /** The captured strokes of each prompt: the best of the drawings written for it. */
   drawings: Record<string, DrawingRecord>
   /** Raw, replayable sentence-canvas input. Kept separately from composed glyph sources. */
   writingSessions: Record<string, WritingSessionRecord>

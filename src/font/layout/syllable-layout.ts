@@ -93,8 +93,12 @@ function typicalFrame(shapes: Map<string, NormalizedShape>, key: string) {
   return frames.get(layout)
 }
 
-/** Median width and height of the jamo written for a role, from the nearest layout that has some. */
+/** Width and height of the jamo as the writer wrote it, else the median of the nearest layout that has some. */
 export function writtenFrame(shapes: Map<string, NormalizedShape>, role: HangulRole, variant: number, char: string) {
+  for (const candidate of [variant, ...donors(role, variant)]) {
+    const own = shapes.get(sourceKey(role, candidate, char))
+    if (own && !own.synthesized) return { width: own.frame.width, height: own.frame.height }
+  }
   for (const candidate of [variant, ...donors(role, variant)]) {
     const frame = typicalFrame(shapes, sourceKey(role, candidate, char))
     if (frame) return frame
@@ -461,7 +465,8 @@ export function layoutSyllable(input: SyllableLayoutInput) {
     }
   }
   if (initial && medial && initial.group !== medial.group) {
-    if (kind === 'mixed') separate([medial], initial, 'corner', -1)
+    // An empty compound-vowel box is not ink: the initial stays in its upper left compartment.
+    if (kind === 'mixed') { if (!isPlaceholder('medial')) separate([medial], initial, 'corner', -1) }
     else {
       // A pair the writer has sampled already carries its own overlap.
       const notch = !upperPlacement && allowsOverlap('initial-medial', chars.initial, chars.medial) ? 90 : 0

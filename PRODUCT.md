@@ -22,13 +22,13 @@ A handwriting font for Hangul built from a few sentences, not 11,172 hand-drawn 
 
 Flow: Home `/` → Write `/write` → Generate `/generate` → Preview `/preview` (download OTF) → optional Edit `/edit` (per-glyph adjustment and composition settings) → "변경 적용" regenerates. Help lives at `/license`. A common header has a logo (home), 도움말, and GitHub link.
 
-State is autosaved to IndexedDB (strokes, jamo, settings, generated font, last sentence); the 자리 안내 toggle uses localStorage. Generation runs in background workers. Private browsing may disable storage; the app then works in memory and loses work on refresh. A "변경됨" marker shows when the font is out of date versus the handwriting or settings.
+State is autosaved to IndexedDB (strokes, jamo, settings, generated font, last sentence); the collected-jamo view mode is saved with the project. Generation runs in background workers. Private browsing may disable storage; the app then works in memory and loses work on refresh. A "변경됨" marker shows when the font is out of date versus the handwriting or settings.
 
 ## Capabilities and Constraints
 
 - Pen pressure maps to stroke width; stroke width 1–5, hand-shake correction 0–1, cell size 112–184 px (locked once strokes exist).
 - Strokes belong to the cell where they started. Wrongly split jamo can be fixed by setting boundaries manually. Eraser, undo/redo (50 steps), clear sentence.
-- Already-collected jamo appear as gray guides; missing slots as dashed boxes. Derived collection fills standalone consonants and vowels. Double final consonants are synthesized, not required.
+- Each project shows collected jamo in one of three ways, set in the writing settings: blank cells (the default; every cell is written in full, and of the jamo written more than once the best drawing is used), collected jamo fixed as gray guides, or fixed jamo with dashed boxes for the slots still to be written. Derived collection fills standalone consonants and vowels. Double final consonants are synthesized, not required.
 - Generation is allowed with missing items: missing symbols and base letters are omitted, missing context variants fall back to other contexts of the same jamo. Conflicts with manual glyph adjustments require an explicit keep/discard/cancel choice.
 - Preview: free text in the user's font, size 36–160 px, font name/author/version, `폰트이름.otf` download.
 - Advanced edit: per-glyph margins, height, scale, rotation; multi-select; global margins; 10 composition settings with instant preview cards; restore defaults.

@@ -1,6 +1,20 @@
 import { decomposeHangul, isHangulSyllable, syllableRoles, type HangulRole } from '@/font/hangul'
-import { basePromptId, SYMBOLS, variantPromptId } from './prompts'
-import type { DrawingRecord } from './records'
+import { basePromptId, promptRole, SYMBOLS, variantPromptId } from './prompts'
+import type { DrawingRecord, WritingSessionRecord } from './records'
+
+/**
+ * What a sentence shows of the jamo already collected. `blank`: nothing, every
+ * cell is written in full. `collected`: the collected jamo as fixed gray ink.
+ * `placement`: the fixed jamo and the places of the jamo still to be written.
+ */
+export type GuideMode = 'blank' | 'collected' | 'placement'
+
+/** Which slots a cell holds fixed, apart from its jamo being collected elsewhere. */
+export interface FixedRule {
+  mode: GuideMode
+  /** The roles a cell keeps fixed since its first stroke. A cell listed here ignores `mode`. */
+  pinned: Readonly<Record<number, readonly HangulRole[]>>
+}
 
 export interface CaptureSlot {
   promptId: string
@@ -35,6 +49,11 @@ const STROKE_COUNTS: Record<string, number> = {
   ㅚ: 3, ㅝ: 4, ㅞ: 5, ㅟ: 3, ㅢ: 2,
 }
 
+/** How many strokes a jamo is usually written with. */
+export function expectedStrokeCount(char: string) {
+  return STROKE_COUNTS[char] ?? 1
+}
+
 /** The contextual jamo a syllable collects; nothing for any other character. */
 function hangulSlots(char: string): CaptureSlot[] {
   const codePoint = char.codePointAt(0)!
@@ -44,7 +63,7 @@ function hangulSlots(char: string): CaptureSlot[] {
     promptId: variantPromptId(role, variants[role], chars[role]),
     char: chars[role],
     role,
-    expectedStrokes: STROKE_COUNTS[chars[role]] ?? 1,
+    expectedStrokes: expectedStrokeCount(chars[role]),
   }))
 }
 
@@ -66,7 +85,7 @@ const HANGUL_SENTENCES = [
 const hangulExercises: WritingExercise[] = HANGUL_SENTENCES.map((text, index) => ({
   id: `hangul-sentence-${index}`,
   title: `한글 문장 ${index + 1}`,
-  instruction: '문장을 평소 글씨처럼 이어서 써주세요. 한 음절의 획은 초성·중성·종성 순서로 자동 분리되고, 이미 모은 자모는 회색으로 고정됩니다.',
+  instruction: '문장을 평소 글씨처럼 이어서 써주세요. 한 음절의 획은 초성·중성·종성 순서로 자동 분리됩니다.',
   text,
   cells: [...text].map((char) => ({ char, slots: hangulSlots(char) })),
   group: 'hangul',
@@ -106,15 +125,43 @@ export const WRITING_EXERCISES: WritingExercise[] = [
   numberSymbolExercise,
 ]
 
-export function exerciseCompletion(exercise: WritingExercise, drawings: Record<string, unknown>) {
-  const ids = new Set(exercise.cells.flatMap((cell) => cell.slots.map((slot) => slot.promptId)))
-  const completed = [...ids].filter((id) => drawings[id]).length
-  return { completed, total: ids.size }
+/** The drawings a sentence's session holds: its saved captures, or for a session saved before captures were kept, its drawings. */
+export function sessionCaptures(exerciseId: string, session: WritingSessionRecord | undefined, drawings: Record<string, DrawingRecord>) {
+  return session?.captures ?? Object.values(drawings).filter((drawing) => drawing.capture.exerciseId === exerciseId && !drawing.derivedFromPromptId)
 }
 
-/** A slot is fixed when its jamo was already captured somewhere other than this slot. */
-export function isFixedSlot(promptId: string, cellIndex: number, slotIndex: number, exercise: WritingExercise, drawings: Record<string, DrawingRecord>) {
+/**
+ * How far a sentence has come. With the collected jamo shown fixed, that is
+ * the kinds of jamo it holds that are collected anywhere. With blank cells, it
+ * is the jamo written in the sentence's own cells.
+ */
+export function exerciseCompletion(exercise: WritingExercise, drawings: Record<string, DrawingRecord>, session?: WritingSessionRecord, mode: GuideMode = 'placement') {
+  if (mode !== 'blank') {
+    const ids = new Set(exercise.cells.flatMap((cell) => cell.slots.map((slot) => slot.promptId)))
+    const completed = [...ids].filter((id) => drawings[id]).length
+    return { completed, total: ids.size }
+  }
+  const written = new Set(sessionCaptures(exercise.id, session, drawings).map(({ capture }) => `${capture.cellIndex}:${capture.slotIndex}`))
+  let completed = 0
+  let total = 0
+  exercise.cells.forEach((cell, cellIndex) => cell.slots.forEach((_, slotIndex) => {
+    total += 1
+    if (written.has(`${cellIndex}:${slotIndex}`)) completed += 1
+  }))
+  return { completed, total }
+}
+
+/**
+ * A slot is fixed when its jamo was already captured somewhere other than this
+ * slot, and the cell shows collected jamo. A cell already written keeps the
+ * fixed roles it had when its first stroke began (`rule.pinned`).
+ */
+export function isFixedSlot(promptId: string, cellIndex: number, slotIndex: number, exercise: WritingExercise, drawings: Record<string, DrawingRecord>, rule?: FixedRule) {
   const capture = drawings[promptId]?.capture
   if (!capture) return false
-  return capture.exerciseId !== exercise.id || capture.cellIndex !== cellIndex || capture.slotIndex !== slotIndex
+  if (capture.exerciseId === exercise.id && capture.cellIndex === cellIndex && capture.slotIndex === slotIndex) return false
+  if (!rule) return true
+  const pinned = rule.pinned[cellIndex]
+  if (pinned) return pinned.includes(promptRole(promptId)!)
+  return rule.mode !== 'blank'
 }
