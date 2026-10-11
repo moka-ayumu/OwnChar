@@ -1,26 +1,36 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type SyntheticEvent } from 'react'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { Download, PenLine, RefreshCw, Settings2 } from 'lucide-react'
 import { BASE_CHARACTER_PROMPTS } from '@/collection/prompts'
 import { RailBrand } from '@/components/rail-brand'
 import { Button, buttonVariants } from '@/components/ui/button'
-import { isHangulSyllable } from '@/font/hangul'
 import { Slider } from '@/components/ui/slider'
+import { DialPanel } from '@/features/preview/dial-panel'
+import { SourcePopover } from '@/features/preview/source-popover'
+import { isHangulSyllable } from '@/font/hangul'
+import { useLiveFont } from '@/generation/use-live-font'
 import { LEAD_SENTENCE, LEAD_SIZE } from '@/lib/flow'
 import { useFontFace } from '@/lib/use-font-face'
+import { useStableCallback } from '@/lib/use-stable-callback'
 import { useProject } from '@/project/use-project'
 import { cn, downloadArrayBuffer, safeFilename } from '@/lib/utils'
 import { projectActions } from '@/project/store'
 
 export const Route = createFileRoute('/preview')({ component: PreviewPage })
 
-const samples = [
-  LEAD_SENTENCE,
-  '가나다라마바사아자차카타파하',
-  'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
-  'abcdefghijklmnopqrstuvwxyz',
-  '0123456789',
-]
+/** Most characters whose sources the popover lists. */
+const SOURCE_LIMIT = 4
+/** Widest the popover is; a wider one is not kept inside the stage when the selection is at the right. */
+const POPOVER_WIDTH = 540
+
+interface Picked { start: number; end: number }
+
+/** The first two syllables of `text`: selected on arrival, so the writer finds out that a selection shows its sources. */
+function leadingSyllables(text: string): Picked | null {
+  const start = text.search(/[가-힣]/)
+  if (start < 0) return null
+  return { start, end: start + (isHangulSyllable(text.codePointAt(start + 1) ?? 0) ? 2 : 1) }
+}
 
 function PreviewPage() {
   const navigate = useNavigate()
@@ -29,27 +39,67 @@ function PreviewPage() {
   const metadata = useProject((state) => state.metadata)
   const dirty = useProject((state) => state.fontDirty)
   const drawings = useProject((state) => state.drawings)
-  // A sample whose letters were never written has no glyphs to show, and says so.
-  const writable = (text: string) => [...text].some((char) => isHangulSyllable(char.codePointAt(0)!) || BASE_CHARACTER_PROMPTS.some((prompt) => prompt.char === char && drawings[prompt.id]))
+  const sessions = useProject((state) => state.writingSessions)
+  const settings = useProject((state) => state.compositionSettings)
+  const overrides = useProject((state) => state.glyphOverrides)
+  const globalMetrics = useProject((state) => state.globalMetrics)
   const fontReady = useFontFace(buffer, revision)
-  const [sample, setSample] = useState(samples[0])
+  const [sample, setSample] = useState(LEAD_SENTENCE)
   // Generation ends on the first sample at this size, standing exactly where it is shown here.
   const [fontSize, setFontSize] = useState(LEAD_SIZE)
+  const [picked, setPicked] = useState<Picked | null>(() => leadingSyllables(LEAD_SENTENCE))
+  const [anchor, setAnchor] = useState<{ left: number; top: number; width: number } | null>(null)
+  const liveFamily = useLiveFont(sample, settings, { drawings, sessions, overrides, globalMetrics })
+  const stack = useRef<HTMLDivElement>(null)
+  const mark = useRef<HTMLElement>(null)
 
   useEffect(() => {
     if (!buffer) void navigate({ to: '/write' })
   }, [buffer, navigate])
 
+  const closePopover = useStableCallback(() => {
+    // The popover is going; a focus left inside it would be nowhere.
+    if (stack.current?.querySelector('.source-popover')?.contains(document.activeElement)) document.getElementById('sample')?.focus()
+    setPicked(null)
+  })
+
+  useEffect(() => {
+    if (!picked) return
+    const close = (event: KeyboardEvent) => { if (event.key === 'Escape') closePopover() }
+    window.addEventListener('keydown', close)
+    return () => window.removeEventListener('keydown', close)
+  }, [picked, closePopover])
+
+  useLayoutEffect(() => {
+    const place = () => {
+      const first = mark.current?.getClientRects()[0]
+      const frame = stack.current?.getBoundingClientRect()
+      if (!first || !frame) { setAnchor(null); return }
+      const width = Math.min(POPOVER_WIDTH, frame.width)
+      const next = { left: Math.max(0, Math.min(first.left - frame.left, frame.width - width)), top: first.bottom - frame.top + 8, width }
+      setAnchor((previous) => previous && previous.left === next.left && previous.top === next.top && previous.width === next.width ? previous : next)
+    }
+    place()
+    window.addEventListener('resize', place)
+    return () => window.removeEventListener('resize', place)
+  }, [picked, sample, fontSize, liveFamily, fontReady])
+
   if (!buffer) return null
-  const fontFamily = fontReady ? 'OwnCharPreview' : 'inherit'
+  // A syllable the live font does not hold yet is drawn from the generated font until it arrives.
+  const fontFamily = [liveFamily, fontReady && 'OwnCharPreview'].filter(Boolean).join(', ') || 'inherit'
   const textStyle = { fontFamily, fontSize, lineHeight: 1.25 }
+  const selected = picked ? [...sample.slice(picked.start, picked.end)].filter((char) => isHangulSyllable(char.codePointAt(0)!) || BASE_CHARACTER_PROMPTS.some((prompt) => prompt.char === char && drawings[prompt.id])) : []
+  const readSelection = ({ currentTarget }: SyntheticEvent<HTMLTextAreaElement>) => {
+    const { selectionStart: start, selectionEnd: end } = currentTarget
+    setPicked((previous) => start === end ? null : previous?.start === start && previous.end === end ? previous : { start, end })
+  }
 
   return (
     <div className="flow">
       <aside className="rail">
         <RailBrand />
         <h1 className="text-[26px] font-extrabold leading-tight tracking-[-0.03em]">손글씨가 폰트가 되었어요.</h1>
-        <p className="rail-note mt-2">문장을 바꿔 보거나 글자 간격을 더 세밀하게 다듬어 보세요.</p>
+        <p className="rail-note mt-2">문장을 바꿔 보거나 글자를 더 고르게 다듬어 보세요.</p>
 
         <div className="mt-6 space-y-4">
           <div><label className="input-label" htmlFor="familyName">폰트 이름</label><input id="familyName" className="text-input mt-1.5" value={metadata.familyName} onChange={(event) => projectActions.updateFontMetadata({ familyName: event.target.value })} /></div>
@@ -69,13 +119,6 @@ function PreviewPage() {
 
       <section className="stage">
         <div className="preview-stage">
-          {dirty && (
-            <div className="mb-6 flex items-center justify-between gap-4 rounded-md bg-ink px-4 py-3 text-sm text-white" role="status">
-              <span>필기 또는 폰트 생성 설정이 변경되었습니다. 변경 적용 후 새 OTF를 받을 수 있습니다.</span>
-              <Button size="sm" variant="lime" onClick={() => void navigate({ to: '/generate', viewTransition: true })}><RefreshCw className="size-3.5" /> 변경 적용</Button>
-            </div>
-          )}
-
           <div className="flex h-6 items-center justify-between gap-6">
             <label htmlFor="sample" className="text-sm font-semibold text-ink-2">직접 입력해 보세요</label>
             <div className="flex w-64 items-center gap-3">
@@ -85,23 +128,38 @@ function PreviewPage() {
             </div>
           </div>
 
-          <div className="type-stack">
+          <div ref={stack} className="type-stack">
+            {/* The text again, unseen, under the text area: it marks the picked characters and says where they stand. */}
+            <div className="font-preview type-overlay type-picked" style={textStyle} aria-hidden="true">
+              {picked ? <>{sample.slice(0, picked.start)}<mark ref={mark}>{sample.slice(picked.start, picked.end)}</mark>{sample.slice(picked.end)}</> : sample}{'\n'}
+            </div>
             <textarea
               id="sample"
               value={sample}
-              onChange={(event) => setSample(event.target.value)}
-              className="font-preview min-h-64 w-full resize-y border-0 bg-transparent p-0 outline-none placeholder:text-ink-3"
+              onChange={(event) => { setSample(event.target.value); setPicked(null) }}
+              onSelect={readSelection}
+              onKeyUp={readSelection}
+              onClick={readSelection}
+              className="font-preview min-h-64 w-full resize-none overflow-hidden border-0 bg-transparent p-0 outline-none placeholder:text-ink-3"
               style={textStyle}
             />
+            {anchor && selected.length > 0 && (
+              <SourcePopover
+                chars={selected.slice(0, SOURCE_LIMIT)} hidden={Math.max(0, selected.length - SOURCE_LIMIT)}
+                drawings={drawings} sessions={sessions} fontFamily={fontFamily}
+                style={{ left: anchor.left, top: anchor.top, maxWidth: anchor.width }} onClose={closePopover}
+              />
+            )}
           </div>
 
-          <div className="settle mt-10">
-            {samples.slice(1).map((text) => (
-              writable(text)
-                ? <button key={text} onClick={() => setSample(text)} className="font-preview sample-row" style={{ fontFamily }}><span>{text}</span></button>
-                : <button key={text} onClick={() => setSample(text)} className="sample-row unwritten"><span>{text}</span><small>아직 쓰지 않은 글자예요</small></button>
-            ))}
-          </div>
+          <DialPanel settings={settings} />
+
+          {dirty && (
+            <div className="mt-6 flex max-w-[760px] items-center justify-between gap-4 rounded-md bg-ink px-4 py-3 text-sm text-white" role="status">
+              <span>필기 또는 폰트 생성 설정이 변경되었습니다. 변경 적용 후 새 OTF를 받을 수 있습니다.</span>
+              <Button size="sm" variant="lime" onClick={() => void navigate({ to: '/generate', viewTransition: true })}><RefreshCw className="size-3.5" /> 변경 적용</Button>
+            </div>
+          )}
         </div>
       </section>
     </div>

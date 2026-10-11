@@ -269,12 +269,24 @@ button.app-logo-mark:active { transform: scale(.94); }
 .type-stack > * { grid-area: 1 / 1; }
 .font-preview { letter-spacing: -.04em; caret-color: var(--color-ink); }
 .type-overlay { pointer-events: none; white-space: pre-wrap; overflow-wrap: anywhere; }
-.sample-row { display: block; width: 100%; border: 0; border-top: 1px solid var(--color-rule); background: transparent; padding: 18px 0; color: var(--color-ink-2); font-size: 30px; line-height: 1.5; text-align: left; transition: color 150ms; }
-.sample-row span { display: inline-block; transition: transform 300ms var(--ease-out-expo); }
-.sample-row:hover { color: var(--color-ink); }
-.sample-row:hover span { transform: translateX(10px); }
-.sample-row.unwritten { font-size: 16px; line-height: 1.5; }
-.sample-row.unwritten small { margin-left: 12px; font-size: 12px; font-weight: 600; color: var(--color-ink-3); }
+.type-picked { color: transparent; }
+.type-picked mark { background: var(--color-lime); color: inherit; }
+.dial-panel { display: grid; max-width: 760px; gap: 10px; margin-top: 24px; border-top: 1px solid var(--color-rule); padding-top: 20px; }
+.dial-details { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px 28px; padding-top: 6px; }
+.dial-details > div { display: grid; gap: 6px; }
+.source-popover { position: absolute; z-index: 5; display: grid; width: max-content; gap: 6px; border: 1px solid var(--color-ink); border-radius: 6px; background: #fff; padding: 10px 12px 12px; animation: popover-in 180ms var(--ease-out-expo) backwards; }
+.source-popover-close { display: grid; width: 24px; height: 24px; place-items: center; margin-right: -4px; border: 0; border-radius: 4px; background: transparent; color: var(--color-ink); transition: background-color 150ms; }
+.source-popover-close:hover { background: rgb(16 17 20 / 8%); }
+.source-row { display: grid; grid-template-columns: 40px minmax(0, 1fr); align-items: start; gap: 8px; }
+.source-glyph { font-size: 34px; line-height: 46px; text-align: center; }
+.source-chip { display: flex; align-items: center; gap: 8px; border: 1px solid var(--color-rule); border-radius: 6px; background: #fff; padding: 3px 10px 3px 3px; color: var(--color-ink); text-align: left; transition: background-color 150ms, border-color 150ms; }
+button.source-chip:hover { border-color: var(--color-ink); background: var(--color-lime); }
+.source-chip > span:last-child { display: grid; }
+.source-chip strong { font-size: 12px; font-weight: 600; line-height: 1.5; white-space: nowrap; }
+.source-chip small { color: var(--color-ink-3); font-size: 12px; line-height: 1.5; white-space: nowrap; }
+button.source-chip:hover small { color: var(--color-lime-ink); }
+.source-cell { display: block; width: 38px; height: 38px; flex: none; border-radius: 4px; background: #fff; fill: var(--color-ink); }
+.source-chip.is-missing .source-cell { border: 1px dashed var(--color-ink-3); background: rgb(198 244 50 / 22%); }
 .settle > * { animation: settle 520ms var(--ease-out-expo) backwards; }
 .settle > :nth-child(2) { animation-delay: 60ms; }
 .settle > :nth-child(3) { animation-delay: 120ms; }
@@ -339,6 +351,7 @@ button.app-logo-mark:active { transform: scale(.94); }
 
 @media (max-width: 1100px) {
   .rail-brand .save-indicator span { display: none; }
+  .dial-details { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   :root { --rail: 244px; }
   .rail { padding-inline: 18px; }
   .sentence-prompt { padding-left: 20px; }
