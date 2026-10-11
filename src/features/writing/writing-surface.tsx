@@ -1,6 +1,6 @@
 import { forwardRef, memo, useImperativeHandle, useRef, useState, type PointerEvent } from 'react'
 import type { Point } from '@/font/geometry/path-ops'
-import { strokeSvgPath, type RawStroke } from '@/font/stroke/outline'
+import { penDiameter, strokeSvgPath, type RawStroke } from '@/font/stroke/outline'
 
 export interface WritingSurfaceHandle {
   undo(): void
@@ -72,6 +72,16 @@ export const WritingSurface = forwardRef<WritingSurfaceHandle, Props>(function W
   const pointer = useRef<{ id: number; strokeId?: string } | null>(null)
   const onChangeRef = useRef(onChange)
   onChangeRef.current = onChange
+  const brush = useRef<SVGGElement>(null)
+  // At full pressure perfect-freehand draws a stroke whose radius equals `size`.
+  const brushRadius =tool === 'eraser' ? Math.max(9, strokeWidth / 6 * 5) : Math.max(1.5, penDiameter(strokeWidth / 6, cellSize))
+
+  const moveBrush = (event: PointerEvent<SVGSVGElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect()
+    brush.current?.setAttribute('transform', `translate(${event.clientX - rect.left} ${event.clientY - rect.top})`)
+    brush.current?.setAttribute('visibility', event.pointerType === 'touch' ? 'hidden' : 'visible')
+  }
+  const hideBrush = () => brush.current?.setAttribute('visibility', 'hidden')
 
   const publish = (next: RawStroke[]) => {
     current.current = next
@@ -148,6 +158,7 @@ export const WritingSurface = forwardRef<WritingSurfaceHandle, Props>(function W
     }])
   }
   const onPointerMove = (event: PointerEvent<SVGSVGElement>) => {
+    moveBrush(event)
     if (pointer.current?.id !== event.pointerId || !(event.buttons & 1)) return
     const incoming = samples(event)
     if (pointer.current.strokeId) updateActive((stroke) => withSamples(stroke, incoming))
@@ -165,7 +176,11 @@ export const WritingSurface = forwardRef<WritingSurfaceHandle, Props>(function W
     pointer.current = null
   }
 
-  return <svg className="writing-surface" width={width} height={height} viewBox={`0 0 ${width} ${height}`} aria-label="손글씨 입력 영역" onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerEnd} onPointerCancel={onPointerEnd}>
+  return <svg className="writing-surface" width={width} height={height} viewBox={`0 0 ${width} ${height}`} aria-label="손글씨 입력 영역" onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerEnd} onPointerCancel={onPointerEnd} onPointerLeave={hideBrush}>
     {strokes.filter((stroke) => !stroke.isDeleted).map((stroke) => <StrokePathView key={stroke.id} stroke={stroke} cellSize={cellSize} endpointStabilization={endpointStabilization} />)}
+    <g ref={brush} visibility="hidden" pointerEvents="none" fill="none">
+      <circle r={brushRadius + 0.5} stroke="#ffffff" strokeWidth={1} />
+      <circle r={brushRadius} stroke="#101114" strokeWidth={1} />
+    </g>
   </svg>
 })
