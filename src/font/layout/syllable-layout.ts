@@ -2,7 +2,7 @@ import opentype from 'opentype.js'
 import { COMPOUND_FINALS, decomposeHangul, HANGUL_ROLES, type HangulRole, type VowelKind } from '@/font/hangul'
 import { clearanceProbe, hasInkClearance, maximizeSafeIntrusion } from '@/font/geometry/collision'
 import { inkBalance } from '@/font/geometry/optical'
-import { centerX as cx, centerY as cy, clamp, pathBounds as bounds, pathOf, pointsBox, scalePath, splitContours, translatePath, unionBox as union, type Box } from '@/font/geometry/path-ops'
+import { centerX as cx, centerY as cy, clamp, mapPoints, pathBounds as bounds, pathOf, pointsBox, scalePath, splitContours, translatePath, unionBox as union, type Box } from '@/font/geometry/path-ops'
 import { appendShape, CELL_UNITS, combineShapesSideBySide, stretchShapeWidth, type NormalizedShape, type Zone } from '@/font/geometry/shape'
 import { medianHeight } from '@/font/metrics'
 import { DEFAULT_GAPS, finalGapContext, finalGapPair, gapContext, gapPair, medialGapContext, minimumGap, type GapProfile } from './gap-profile'
@@ -30,6 +30,52 @@ export interface SyllableLayoutInput {
   proportions?: ProportionProfile
   /** Width / height of the average syllable the writer wrote. */
   targetAspect?: number
+  normalization?: SizeNormalization
+}
+
+/** Mean jamo sizes and syllable widths, per layout (`proportionContext`), in layout units. */
+export interface SizeTargets {
+  roles: Record<string, Partial<Record<HangulRole, number>>>
+  widths: Record<string, number>
+}
+
+/** How far each jamo and the width of the syllable are drawn toward `targets`: all the way at 1, and up to 2 with a longer reach. */
+export interface SizeNormalization extends Record<HangulRole, number> {
+  targets: SizeTargets
+  width: number
+  /** Only the size of the syllable is wanted: the outlines are scaled, not made again with the pen, and may come too close. */
+  draft?: boolean
+}
+
+/** Furthest a size dial at 1 rescales a jamo, and the width dial stretches a syllable, from where the layout left it. A dial at 2 reaches twice as far. */
+const SIZE_REACH = 0.15
+const WIDTH_REACH = 0.1
+
+const stretched = new WeakMap<NormalizedShape, Map<number, NormalizedShape>>()
+
+/** `stretchShapeWidth`, giving the same shape back for the same factor so that its outlines stay cached. */
+function stretchedBy(shape: NormalizedShape, factor: number) {
+  let byFactor = stretched.get(shape)
+  if (!byFactor) stretched.set(shape, byFactor = new Map())
+  let result = byFactor.get(factor)
+  if (!result) byFactor.set(factor, result = stretchShapeWidth(shape, factor))
+  return result
+}
+
+/** The size of each jamo and the width of the syllable, as the size dials compare them. */
+export function layoutSizes(kind: VowelKind, parts: Record<HangulRole, opentype.Path>, penScale = 1) {
+  // Measured on the pen centerline: the pen has another width in each pass of the composition.
+  const pen = minimumGap / 1.5 * penScale
+  const sizes: Partial<Record<HangulRole, number>> = {}
+  const boxes: Box[] = []
+  for (const role of HANGUL_ROLES) {
+    const box = bounds(parts[role])
+    if (!box) continue
+    boxes.push(box)
+    sizes[role] = jamoSize(role, kind, box.x2 - box.x1 - pen, box.y2 - box.y1 - pen)
+  }
+  const body = boxes.length ? union(boxes) : undefined
+  return { sizes, width: body ? Math.max(1, body.x2 - body.x1 - pen) : 0 }
 }
 
 interface Slot {
@@ -569,6 +615,76 @@ export function layoutSyllable(input: SyllableLayoutInput) {
     if (f && fixed.length) {
       const upper = union(fixed.map((slot) => bounds(slot.path)!))
       if (f.y2 > upper.y1 - floor) move(final, 0, upper.y1 - floor - f.y2)
+    }
+  }
+
+  // The size dials act last, on the settled layout: an earlier correction is taken back by the rules above.
+  const dial = input.normalization
+  const inked = dial ? slots.filter((slot) => slot.shape && !isPlaceholder(slot.role) && bounds(slot.path)) : []
+  if (dial && inked.length) {
+    const context = proportionContext(kind, hasFinal)
+    const pen = minimumGap / 1.5 * input.penScale
+    // Everything is planned on the boxes of the pen centerlines, and each jamo is then outlined once.
+    const lines = inked.map((slot): Box => {
+      const box = bounds(slot.path)!
+      return { x1: box.x1 + pen / 2, y1: box.y1 + pen / 2, x2: Math.max(box.x1 + pen / 2 + 1, box.x2 - pen / 2), y2: Math.max(box.y1 + pen / 2 + 1, box.y2 - pen / 2) }
+    })
+    /** Past 1 a dial does not draw further than the target: it reaches further for it. */
+    const toward = (strength: number, ratio: number, reach: number) => strength > 0 ? clamp(1 + Math.min(1, strength) * (ratio - 1), 1 - reach * Math.max(1, strength), 1 + reach * Math.max(1, strength)) : 1
+    const plans = inked.map((slot, index) => {
+      const box = lines[index]
+      const target = dial.targets.roles[context]?.[slot.role]
+      const correction = target ? toward(dial[slot.role], target / jamoSize(slot.role, kind, box.x2 - box.x1, box.y2 - box.y1), SIZE_REACH) : 1
+      // A jamo grows away from the others: the side of its box that faces them stays where it is.
+      const rest = lines.filter((_, other) => other !== index)
+      const facing = rest.length ? union(rest) : box
+      return { box, correction: Math.abs(correction - 1) > 0.005 ? correction : 1,
+        heldX: cx(facing) > box.x2 ? box.x2 : cx(facing) < box.x1 ? box.x1 : cx(box),
+        heldY: cy(facing) > box.y2 ? box.y2 : cy(facing) < box.y1 ? box.y1 : cy(box) }
+    })
+    const targetWidth = dial.targets.widths[context]
+    const before = inked.map((slot) => ({ path: slot.path, shape: slot.shape!, scale: geometry.scales[slot.role]!, group: slot.group, members: groups.get(slot.group)! }))
+    const restore = () => inked.forEach((slot, index) => {
+      const kept = before[index]
+      slot.path = kept.path; slot.shape = kept.shape; geometry.scales[slot.role] = kept.scale
+      if (slot.group !== kept.group) { groups.delete(slot.group); slot.group = kept.group; groups.set(kept.group, kept.members) }
+    })
+    const floor = minimumGap * 0.2
+    /** The gap the layout keeps between two jamo, or the smallest one it accepts if they already sat closer than that. */
+    const clear = (a: number, b: number) => hasInkClearance(inked[a].path, inked[b].path, inkClearance)
+      || (!hasInkClearance(before[a].path, before[b].path, inkClearance) && hasInkClearance(inked[a].path, inked[b].path, floor))
+    // Too close after the change, every correction is halved, and halved again; then the layout stays as it was.
+    for (const share of [1, 0.5, 0.25, 0]) {
+      restore()
+      if (!share) break
+      const sized = plans.map(({ box, correction, heldX, heldY }) => {
+        const scale = 1 + (correction - 1) * share
+        return { scale, box: { x1: heldX + (box.x1 - heldX) * scale, y1: heldY + (box.y1 - heldY) * scale, x2: heldX + (box.x2 - heldX) * scale, y2: heldY + (box.y2 - heldY) * scale } }
+      })
+      const body = union(sized.map((plan) => plan.box))
+      // Whole percents: a jamo stretched by the same factor in another syllable is stretched once.
+      const stretch = targetWidth ? Math.round((1 + (toward(dial.width, targetWidth / Math.max(1, body.x2 - body.x1), WIDTH_REACH) - 1) * share) * 100) / 100 : 1
+      const changed = sized.map((plan) => plan.scale !== 1 || stretch !== 1)
+      if (!changed.some(Boolean)) break
+      if (dial.draft) {
+        inked.forEach((slot, index) => {
+          const { scale, box } = sized[index]; const from = lines[index]
+          const x = cx(body) + (cx(box) - cx(body)) * stretch
+          if (changed[index]) mapPoints(slot.path.commands, (px, py) => [x + (px - cx(from)) * scale * stretch, cy(box) + (py - cy(from)) * scale])
+        })
+        break
+      }
+      inked.forEach((slot, index) => {
+        if (!changed[index]) return
+        const { scale, box } = sized[index]
+        if (scale !== 1 && before[index].members.length > 1 && slot.group === before[index].group) release(slot.group, before[index].members)
+        // Centerlines are stretched about the middle of the syllable and outlined again, so the pen keeps its width.
+        slot.shape = stretch === 1 ? before[index].shape : stretchedBy(before[index].shape, stretch)
+        slot.path = new opentype.Path()
+        geometry.scales[slot.role] = before[index].scale * scale
+        appendCentered(slot.path, slot.shape, cx(body) + (cx(box) - cx(body)) * stretch, cy(box), geometry.scales[slot.role]!, input.penScale)
+      })
+      if (inked.every((_, a) => inked.every((_, b) => b <= a || (!changed[a] && !changed[b]) || clear(a, b)))) break
     }
   }
 

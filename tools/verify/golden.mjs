@@ -15,7 +15,7 @@ const server = await startVite()
 try {
   const builder = await server.ssrLoadModule('/src/generation/font-builder.ts')
   const inputs = await server.ssrLoadModule('/src/generation/inputs.ts')
-  const settings = project.compositionSettings
+  const settings = { ...(await server.ssrLoadModule('/src/font/settings.ts')).DEFAULT_COMPOSITION_SETTINGS, ...project.compositionSettings }
   const generation = inputs.buildGenerationInputs(project.drawings, project.writingSessions, settings)
   const request = {
     type: 'compose-font', ...generation, compositionSettings: settings,

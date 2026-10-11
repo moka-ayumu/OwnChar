@@ -93,8 +93,11 @@ export const projectActions = {
   },
 
   restoreProject(project: ProjectState | null) {
-    const saved = project?.schemaVersion === SCHEMA_VERSION ? project : {}
-    update(() => ({ ...initialProjectState, ...saved, hydrated: true }))
+    const saved: Partial<ProjectState> = project?.schemaVersion === SCHEMA_VERSION ? project : {}
+    // A setting the saved project did not have takes its default, which its font was not made with.
+    const added = Boolean(saved.compositionSettings) && Object.keys(DEFAULT_COMPOSITION_SETTINGS).some((key) => !(key in saved.compositionSettings!))
+    const compositionSettings = saved.compositionSettings && !added ? saved.compositionSettings : { ...DEFAULT_COMPOSITION_SETTINGS, ...saved.compositionSettings }
+    update(() => ({ ...initialProjectState, ...saved, compositionSettings, fontDirty: (added && Boolean(saved.generatedFont)) || Boolean(saved.fontDirty), hydrated: true }))
   },
 
   /** Keep the guides a sentence shows; they are display state and do not change the font sources. */
@@ -193,9 +196,10 @@ export const projectActions = {
   },
 
   updateCompositionSettings(patch: Partial<CompositionSettings>) {
-    const normalized = patch.endpointStabilization === undefined ? patch : {
-      ...patch,
-      endpointStabilization: Math.max(0, Math.min(1, patch.endpointStabilization)),
+    const normalized = { ...patch }
+    if (normalized.endpointStabilization !== undefined) normalized.endpointStabilization = Math.max(0, Math.min(1, normalized.endpointStabilization))
+    for (const key of ['initialNormalization', 'medialNormalization', 'finalNormalization', 'widthNormalization'] as const) {
+      if (normalized[key] !== undefined) normalized[key] = Math.max(0, Math.min(2, normalized[key]))
     }
     update((state) => ({
       ...state,

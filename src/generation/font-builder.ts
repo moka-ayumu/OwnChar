@@ -7,7 +7,9 @@ import { appendShape, scaleZone, type NormalizedShape, type Zone } from '@/font/
 import { renderCalibratedGlyph, visualCalibrationScale, VISUAL_HANGUL_HEIGHT } from '@/font/glyphs/calibration'
 import { composeStandaloneJamoPath, type ReferenceEnvelope } from '@/font/glyphs/standalone-jamo'
 import { appendNumeral, appendSymbol, symbolCalibrationAnchor, symbolMaximumHeight } from '@/font/glyphs/symbols'
-import { composeHangulParts, composeHangulPath, type HangulComposeOptions, type HangulParts } from '@/font/layout/compose-syllable'
+import { composeHangulParts, composeHangulPath, learnSizeTargets, type HangulComposeOptions, type HangulParts } from '@/font/layout/compose-syllable'
+import type { SizeTargets } from '@/font/layout/syllable-layout'
+import { latestOnly } from '@/lib/latest-only'
 import { alignVerticalCenter, medianHeight, normalizationFactor } from '@/font/metrics'
 import type { CompositionSettings } from '@/font/settings'
 import { shapesFromRequestDrawings } from './inputs'
@@ -29,10 +31,11 @@ export type HangulSource = (codePoint: number) => opentype.Path['commands']
 export interface PreparedCompositionContext {
   shapes: Map<string, NormalizedShape>
   visualScale: number
+  sizeTargets?: SizeTargets
 }
 
 /** The part of a generation request that decides how a Hangul syllable is composed. */
-export type HangulCompositionInputs = CompositionProfile & { compositionSettings: CompositionSettings }
+export type HangulCompositionInputs = CompositionProfile & { compositionSettings: CompositionSettings; sizeTargets?: SizeTargets }
 
 const LATIN_ZONE: Zone = { x: 90, y: 80, width: 820, height: 720 }
 
@@ -105,24 +108,35 @@ export function encodeGlyph(out: GlyphEncoder, codePoint: number, path: opentype
   out.add(codePoint, path, advanceWidth)
 }
 
-export function hangulComposeOptions(request: CompositionProfile): Required<Pick<HangulComposeOptions, 'gaps' | 'proportions' | 'targetHeight' | 'targetSize' | 'targetCenter'>> {
-  return { gaps: request.gaps, proportions: request.proportions, targetHeight: request.hangulTargetHeight, targetSize: request.hangulTargetSize, targetCenter: request.hangulTargetCenter }
+export function hangulComposeOptions(request: CompositionProfile & { sizeTargets?: SizeTargets }): Required<Pick<HangulComposeOptions, 'gaps' | 'proportions' | 'targetHeight' | 'targetSize' | 'targetCenter'>> & Pick<HangulComposeOptions, 'sizeTargets'> {
+  return { gaps: request.gaps, proportions: request.proportions, targetHeight: request.hangulTargetHeight, targetSize: request.hangulTargetSize, targetCenter: request.hangulTargetCenter, sizeTargets: request.sizeTargets }
+}
+
+const cachedSizeTargets = latestOnly((shapes: Map<string, NormalizedShape>, _gaps: CompositionProfile['gaps'], _proportions: CompositionProfile['proportions'], _height: number, _size: number, _initial: number, _medial: number, _final: number, inputs: HangulCompositionInputs) =>
+  learnSizeTargets(shapes, inputs.compositionSettings, hangulComposeOptions(inputs)), 8)
+
+/** `inputs` with what its size dials draw toward. The dials change nothing without it, so it is learned only once one of them is above 0. */
+export function withSizeTargets<Inputs extends HangulCompositionInputs>(shapes: Map<string, NormalizedShape>, inputs: Inputs): Inputs {
+  const settings = inputs.compositionSettings
+  if (!(settings.initialNormalization > 0 || settings.medialNormalization > 0 || settings.finalNormalization > 0 || settings.widthNormalization > 0)) return inputs
+  return { ...inputs, sizeTargets: cachedSizeTargets(shapes, inputs.gaps, inputs.proportions, inputs.hangulTargetHeight, inputs.hangulTargetSize, settings.singleInitialScale, settings.vowelScale, settings.finalScale, { ...inputs, sizeTargets: undefined }) }
 }
 
 /** Options for the guides of the writing page: syllables at the size the writer writes them, not the size the font is built at. */
 export function guideComposeOptions(request: CompositionProfile): ReturnType<typeof hangulComposeOptions> {
   const options = hangulComposeOptions(request)
-  return { ...options, targetHeight: request.hangulWrittenHeight ?? options.targetHeight, targetSize: request.hangulWrittenSize ?? options.targetSize }
+  return { ...options, sizeTargets: undefined, targetHeight: request.hangulWrittenHeight ?? options.targetHeight, targetSize: request.hangulWrittenSize ?? options.targetSize }
 }
 
 export function prepareCompositionContext(request: GenerationRequest): PreparedCompositionContext {
   const shapes = shapesFromRequestDrawings(request.drawings, request.compositionSettings)
-  return { shapes, visualScale: visualCalibrationScale(shapes, request.compositionSettings, hangulComposeOptions(request)) }
+  // The calibration and the base glyphs stay as they are when a size dial moves: neither reads the targets.
+  return { shapes, visualScale: visualCalibrationScale(shapes, request.compositionSettings, hangulComposeOptions(request)), sizeTargets: withSizeTargets<HangulCompositionInputs>(shapes, request).sizeTargets }
 }
 
 /** The ink envelope of 가, which standalone jamo are sized against. */
 export function jamoReference(shapes: Map<string, NormalizedShape>, request: HangulCompositionInputs, visualScale: number): ReferenceEnvelope {
-  const path = composeHangulPath('가'.codePointAt(0)!, shapes, request.compositionSettings, hangulComposeOptions(request))
+  const path = composeHangulPath('가'.codePointAt(0)!, shapes, request.compositionSettings, { ...hangulComposeOptions(request), sizeTargets: undefined })
   if (!path.commands.length) return { width: VISUAL_HANGUL_HEIGHT / visualScale, height: VISUAL_HANGUL_HEIGHT / visualScale, centerX: 500, centerY: request.hangulTargetCenter }
   const box = path.getBoundingBox()
   return { width: box.x2 - box.x1, height: box.y2 - box.y1, centerX: (box.x1 + box.x2) / 2, centerY: (box.y1 + box.y2) / 2 }
@@ -165,7 +179,8 @@ export function composedHangulParts(codePoint: number, shapes: Map<string, Norma
 
 /** Composes each syllable from the prepared shapes. */
 export function hangulComposer(request: GenerationRequest, prepared: PreparedCompositionContext): HangulSource {
-  return (codePoint) => composedHangulPath(codePoint, prepared.shapes, request, prepared.visualScale).commands
+  const inputs = { ...request, sizeTargets: prepared.sizeTargets }
+  return (codePoint) => composedHangulPath(codePoint, prepared.shapes, inputs, prepared.visualScale).commands
 }
 
 /** The syllables from index `start` up to `end`, encoded as they are written to the font. */
@@ -234,15 +249,27 @@ function encodeBaseGlyphs(out: GlyphEncoder, request: GenerationRequest, shapes:
   }
 }
 
-export async function composeFont(request: GenerationRequest, options: ComposeOptions) {
-  const prepared = options.preparedContext ?? prepareCompositionContext(request)
+/** .notdef, the space, and every glyph that is not a syllable. */
+export function encodeBaseBlock(request: GenerationRequest, prepared: PreparedCompositionContext): EncodedGlyphs {
   const base = new GlyphEncoder()
   base.add(NOTDEF, createNotdef(), 700)
   base.add(32, new opentype.Path(), 400)
+  encodeBaseGlyphs(base, request, prepared.shapes, prepared.visualScale)
+  return base.finish()
+}
+
+/** A font of `base` and only the syllables in `codePoints`, for a preview that follows the settings as they change. */
+export function composeSubsetFont(request: GenerationRequest, base: EncodedGlyphs, codePoints: number[], source: HangulSource): ArrayBuffer {
+  const syllables = new GlyphEncoder()
+  for (const codePoint of [...codePoints].sort((a, b) => a - b)) encodeGlyph(syllables, codePoint, pathOf(source(codePoint)), 1000, request)
+  return writeOtf(request.metadata, [base, syllables.finish()])
+}
+
+export async function composeFont(request: GenerationRequest, options: ComposeOptions) {
+  const prepared = options.preparedContext ?? prepareCompositionContext(request)
 
   options.progress('latin', options.encodedHangul ? 94 : 2, '영문과 숫자를 정리하고 있어요')
-  encodeBaseGlyphs(base, request, prepared.shapes, prepared.visualScale)
-  const blocks = [base.finish()]
+  const blocks = [encodeBaseBlock(request, prepared)]
 
   if (options.encodedHangul) blocks.push(...options.encodedHangul)
   else {

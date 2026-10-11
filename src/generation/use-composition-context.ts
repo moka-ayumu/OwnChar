@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import type { DrawingRecord, WritingSessionRecord } from '@/collection/records'
 import { visualCalibrationScale } from '@/font/glyphs/calibration'
 import type { CompositionSettings } from '@/font/settings'
-import { hangulComposeOptions, type HangulCompositionInputs } from './font-builder'
+import { hangulComposeOptions, withSizeTargets, type HangulCompositionInputs } from './font-builder'
 import { latestOnly } from '@/lib/latest-only'
 import type { CompositionProfile } from './request'
 import { learnCompositionProfile, shapesFromRequestDrawings, toRequestDrawings } from './inputs'
@@ -52,7 +52,9 @@ export function useCompositionBase(drawings: Drawings, sessions: Sessions, setti
 
 /** The shapes, learned profile and calibration the font worker will use. */
 export function useCompositionContext(drawings: Drawings, sessions: Sessions, settings: CompositionSettings) {
-  const { shapes, profile, composition } = useCompositionBase(drawings, sessions, settings)
+  const base = useCompositionBase(drawings, sessions, settings)
+  const { shapes, profile } = base
+  const composition = useMemo(() => withSizeTargets(shapes, base.composition), [shapes, base.composition])
   const visualScale = useMemo(() => visualCalibrationScale(shapes, settings, hangulComposeOptions(profile)), [shapes, settings, profile])
   return { shapes, composition, visualScale }
 }

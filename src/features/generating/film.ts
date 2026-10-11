@@ -13,7 +13,7 @@ import { decomposeHangul, HANGUL_BASE, HANGUL_COUNT, INITIALS, isHangulSyllable,
 import { selectJamoSource, sourceKey } from '@/font/layout/source-selection'
 import { penDiameter, strokeSvgPath, type RawStroke } from '@/font/stroke/outline'
 import { stabilizeStroke } from '@/font/stroke/stabilizer'
-import { composedHangulParts, hangulComposeOptions, mergedOverride, type HangulCompositionInputs } from '@/generation/font-builder'
+import { composedHangulParts, hangulComposeOptions, mergedOverride, withSizeTargets, type HangulCompositionInputs } from '@/generation/font-builder'
 import { learnCompositionProfile, shapesFromRequestDrawings, toRequestDrawings } from '@/generation/inputs'
 import { completedHangulCells } from '@/generation/learning/samples'
 import { LEAD_SENTENCE, type StageOrigin } from '@/lib/flow'
@@ -118,7 +118,7 @@ export function buildFilm(state: ProjectState, origin: StageOrigin | null): Film
   const strength = settings.endpointStabilization
   const shapes = shapesFromRequestDrawings(toRequestDrawings(state.drawings, state.writingSessions), settings)
   const profile = learnCompositionProfile(state.writingSessions, settings)
-  const composition: HangulCompositionInputs = { ...profile, compositionSettings: settings }
+  const composition: HangulCompositionInputs = withSizeTargets(shapes, { ...profile, compositionSettings: settings })
   const visualScale = visualCalibrationScale(shapes, settings, hangulComposeOptions(profile))
 
   const cache = new Map<number, Composed | undefined>()
