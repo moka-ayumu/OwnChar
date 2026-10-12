@@ -1,7 +1,7 @@
 import { BASE_CHARACTER_PROMPTS, CHARACTER_PROMPTS, promptRole } from '@/collection/prompts'
 import type { DrawingRecord } from '@/collection/records'
-import { COMPOUND_FINALS, decomposeHangul, isHangulSyllable, syllableRoles, type HangulRole } from '@/font/hangul'
-import { selectJamoSource, sourceKey, type SourceMatch } from '@/font/layout/source-selection'
+import { COMPOUND_FINALS, decomposeHangul, DOUBLE_CONSONANTS, isHangulSyllable, syllableRoles, type HangulRole } from '@/font/hangul'
+import { donors, selectJamoSource, sourceKey, type SourceMatch } from '@/font/layout/source-selection'
 
 /** Where the ink of one part of a glyph was written. */
 export interface GlyphSource {
@@ -34,9 +34,9 @@ export function glyphSources(codePoint: number, drawings: Record<string, Drawing
     const char = chars[role]
     const selected = selectJamoSource(records, role, variants[role], char)
     if (selected) return [{ role, char, match: selected.match, ...source(selected.source) }]
-    // Mirrors the compound-final synthesis in `shapesFromRequestDrawings`.
-    const parts = role === 'final' ? COMPOUND_FINALS[char] : undefined
-    const partRecords = parts?.map((part) => records.get(sourceKey('final', 0, part)))
+    // Mirrors the synthesis of compound finals and double consonants in `shapesFromRequestDrawings`.
+    const parts = char in DOUBLE_CONSONANTS ? [DOUBLE_CONSONANTS[char]] : role === 'final' ? COMPOUND_FINALS[char] : undefined
+    const partRecords = parts?.map((part) => [variants[role], ...donors(role, variants[role])].map((variant) => records.get(sourceKey(role, variant, part))).find(Boolean))
     if (parts && partRecords?.every(Boolean)) return partRecords.map((record, index) => ({ role, char: parts[index], match: 'compound', ...source(record!) }))
     return [{ role, char, match: 'missing', originPromptId: '' }]
   })

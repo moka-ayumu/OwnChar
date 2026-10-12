@@ -3,6 +3,8 @@ export interface CompositionSettings {
   singleInitialScale: number
   vowelScale: number
   finalScale: number
+  /** Gap between the two parts of a double consonant built from its single one: 0 joins them, 1 is the gap of a compound final. */
+  doubleConsonantGap: number
   hangulNormalization: number
   /** How far, from 0 to 2, each jamo of a syllable is drawn toward the mean size of its role, and the syllable toward the mean width, in its layout. */
   initialNormalization: number
@@ -21,6 +23,7 @@ export const DEFAULT_COMPOSITION_SETTINGS: CompositionSettings = {
   singleInitialScale: 1,
   vowelScale: 1,
   finalScale: 1,
+  doubleConsonantGap: 0,
   hangulNormalization: 0.8,
   initialNormalization: 1,
   medialNormalization: 1,

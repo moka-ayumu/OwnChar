@@ -31,7 +31,7 @@ function Source({ source, drawings, sessions }: { source: GlyphSource; drawings:
   if (!record || !session || !exercise) {
     return <div className="source-chip is-missing"><span className="source-cell" /><span><strong>{label}</strong><small>아직 쓰지 않았어요</small></span></div>
   }
-  const note = source.match === 'derived' ? ' · 다른 문맥에서 파생' : source.match === 'compound' ? ' · 겹받침 합성' : ''
+  const note = source.match === 'derived' ? ' · 다른 문맥에서 파생' : source.match === 'compound' ? ' · 자모 합성' : ''
   return (
     <button type="button" className="source-chip" onClick={() => void navigate({ to: '/write', search: { exerciseId: exercise.id, cellIndex: record.capture.cellIndex } })}>
       <SourceCell record={record} session={session} drawings={drawings} />

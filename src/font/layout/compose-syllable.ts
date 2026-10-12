@@ -35,7 +35,7 @@ export interface HangulParts {
 function layoutInput(codePoint: number, shapes: Map<string, NormalizedShape>, settings: CompositionSettings, options: HangulComposeOptions, penScale: number): SyllableLayoutInput {
   return { codePoint, shapes, penScale, gaps: options.gaps, proportions: options.proportions,
     targetAspect: options.targetHeight && options.targetSize ? (options.targetSize / options.targetHeight) ** 2 : undefined,
-    placeholder: new Set(options.placeholderRoles),
+    placeholder: new Set(options.placeholderRoles), doubleConsonantGap: settings.doubleConsonantGap,
     scales: { initial: settings.singleInitialScale, medial: settings.vowelScale, final: settings.finalScale },
   }
 }

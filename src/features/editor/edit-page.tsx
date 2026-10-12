@@ -33,7 +33,7 @@ const metricFields = [['left', '왼쪽'], ['right', '오른쪽'], ['y', '높이'
 
 function sourceLabel(source: GlyphSource) {
   const name = source.symbol ? '기호' : source.role ? ROLE_LABELS[source.role] : '글자'
-  return source.match === 'derived' ? `${name} · 다른 문맥에서 파생` : source.match === 'compound' ? `${name} · 겹받침 합성` : name
+  return source.match === 'derived' ? `${name} · 다른 문맥에서 파생` : source.match === 'compound' ? `${name} · 자모 합성` : name
 }
 
 export function EditPage({ glyph, query }: EditSearch) {

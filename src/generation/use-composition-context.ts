@@ -10,8 +10,8 @@ import { learnCompositionProfile, shapesFromRequestDrawings, toRequestDrawings }
 type Drawings = Record<string, DrawingRecord>
 type Sessions = Record<string, WritingSessionRecord>
 
-const cachedShapes = latestOnly((drawings: Drawings, sessions: Sessions, _stabilization: number, settings: CompositionSettings) =>
-  shapesFromRequestDrawings(toRequestDrawings(drawings, sessions), settings), 3)
+const cachedShapes = latestOnly((drawings: Drawings, sessions: Sessions, _stabilization: number, _doubleConsonantGap: number, settings: CompositionSettings) =>
+  shapesFromRequestDrawings(toRequestDrawings(drawings, sessions), settings), 4)
 const compositions = new WeakMap<CompositionProfile, { settings: CompositionSettings; value: HangulCompositionInputs }>()
 
 /** One composition per profile, so a frozen profile and a fresh one can both stay cached. */
@@ -26,7 +26,7 @@ const cachedProfile = latestOnly((sessions: Sessions, _stabilization: number, se
 
 /** Computes ahead of time what the next sentence will ask for, so opening it finds the result ready. */
 export function warmCompositionBase(drawings: Drawings, sessions: Sessions, settings: CompositionSettings) {
-  const shapes = cachedShapes(drawings, sessions, settings.endpointStabilization, settings)
+  const shapes = cachedShapes(drawings, sessions, settings.endpointStabilization, settings.doubleConsonantGap, settings)
   const composition = cachedComposition(cachedProfile(sessions, settings.endpointStabilization, settings), settings)
   return { shapes, composition }
 }
@@ -39,7 +39,7 @@ export function warmCompositionBase(drawings: Drawings, sessions: Sessions, sett
  * Shapes stay live, so newly captured jamo appear at once.
  */
 export function useCompositionBase(drawings: Drawings, sessions: Sessions, settings: CompositionSettings, freezeKey?: string) {
-  const shapes = cachedShapes(drawings, sessions, settings.endpointStabilization, settings)
+  const shapes = cachedShapes(drawings, sessions, settings.endpointStabilization, settings.doubleConsonantGap, settings)
   const profile = useMemo(
     () => cachedProfile(sessions, settings.endpointStabilization, settings),
     // Only the stroke conditioning setting changes what is learned.

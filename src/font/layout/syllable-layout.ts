@@ -1,5 +1,5 @@
 import opentype from 'opentype.js'
-import { COMPOUND_FINALS, decomposeHangul, HANGUL_ROLES, type HangulRole, type VowelKind } from '@/font/hangul'
+import { decomposeHangul, DOUBLE_CONSONANTS, HANGUL_ROLES, jamoParts, type HangulRole, type VowelKind } from '@/font/hangul'
 import { clearanceProbe, hasInkClearance, maximizeSafeIntrusion } from '@/font/geometry/collision'
 import { inkBalance } from '@/font/geometry/optical'
 import { centerX as cx, centerY as cy, clamp, mapPoints, pathBounds as bounds, pathOf, pointsBox, scalePath, splitContours, translatePath, unionBox as union, type Box } from '@/font/geometry/path-ops'
@@ -30,6 +30,8 @@ export interface SyllableLayoutInput {
   proportions?: ProportionProfile
   /** Width / height of the average syllable the writer wrote. */
   targetAspect?: number
+  /** Share of the gap of a compound final left inside a double consonant built from parts. */
+  doubleConsonantGap?: number
   normalization?: SizeNormalization
 }
 
@@ -127,13 +129,13 @@ function typicalOf(shapes: Map<string, NormalizedShape>) {
   return typical
 }
 
-/** Median width and height, in cell fractions, of the jamo written for the layout of source `key`. */
+/** Median width and height, in cell fractions, of the jamo written for the layout of source `key`. A double consonant built from parts stands in for the written one. */
 function typicalFrame(shapes: Map<string, NormalizedShape>, key: string) {
   const layout = key.slice(0, key.lastIndexOf(':') + 1)
   if (!layout) return undefined
   const { frames } = typicalOf(shapes)
   if (!frames.has(layout)) {
-    const written = [...shapes].filter(([source, shape]) => source.startsWith(layout) && !shape.synthesized).map(([, shape]) => shape.frame)
+    const written = [...shapes].filter(([source, shape]) => source.startsWith(layout) && (!shape.synthesized || source.slice(layout.length) in DOUBLE_CONSONANTS)).map(([, shape]) => shape.frame)
     const width = medianHeight(written.map((f) => f.width), 0); const height = medianHeight(written.map((f) => f.height), 0)
     frames.set(layout, width > 0 && height > 0 ? { width, height } : undefined)
   }
@@ -563,14 +565,14 @@ export function layoutSyllable(input: SyllableLayoutInput) {
   }
   // A final built from parts has no written width: it stays within 90% of the
   // settled upper body, narrowing its wider part before shrinking as a whole.
-  if (final?.shape?.synthesized && COMPOUND_FINALS[chars.final]) {
+  if (final?.shape?.synthesized && jamoParts(chars.final)) {
     const upper = upperSlots(); const f = bounds(final.path)
     if (upper.length && f) {
       const body = union(upper.map((slot) => bounds(slot.path)!))
       const limit = (body.x2 - body.x1) * 0.9
-      const [left, right] = COMPOUND_FINALS[chars.final].map((part) => input.shapes.get(sourceKey('final', 0, part)))
+      const [left, right] = jamoParts(chars.final)!.map((part) => input.shapes.get(sourceKey('final', 0, part)))
       if (f.x2 - f.x1 > limit && left && right) {
-        final.shape = { ...combineShapesSideBySide(left, right, limit / (f.y2 - f.y1)), sourceRole: 'final' }
+        final.shape = { ...combineShapesSideBySide(left, right, limit / (f.y2 - f.y1), chars.final in DOUBLE_CONSONANTS ? input.doubleConsonantGap ?? 0 : 1), sourceRole: 'final' }
         resize(final, 1)
       }
       // The pen does not shrink with the jamo, so one correction falls short.

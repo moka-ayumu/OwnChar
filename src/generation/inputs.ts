@@ -1,8 +1,9 @@
-import { CHARACTER_PROMPTS, promptRole } from '@/collection/prompts'
+import { CHARACTER_PROMPTS, promptRole, type CharacterPrompt } from '@/collection/prompts'
 import { cellId, cellOrigin, type DrawingRecord, type WritingSessionRecord } from '@/collection/records'
-import { COMPOUND_FINALS } from '@/font/hangul'
+import { COMPOUND_FINALS, DOUBLE_CONSONANTS } from '@/font/hangul'
 import { combineShapesSideBySide, normalizeRawStrokes, type NormalizedShape } from '@/font/geometry/shape'
-import { sourceKey } from '@/font/layout/source-selection'
+import { selectJamoSource, sourceKey } from '@/font/layout/source-selection'
+import { medianHeight } from '@/font/metrics'
 import type { CompositionSettings } from '@/font/settings'
 import { learnGaps } from './learning/gaps'
 import { learnHangulMetrics } from './learning/metrics'
@@ -11,6 +12,8 @@ import type { CompositionProfile, RequestDrawing } from './request'
 
 /** Widest a standalone compound final built from parts may be, as width / height. */
 const STANDALONE_COMPOUND_ASPECT = 1.5
+/** How many times wider for its height a double consonant is than its single one, for a writer who wrote no double consonant. */
+const DOUBLE_CONSONANT_WIDENING = 1.4
 
 type SourceDrawing = Extract<RequestDrawing, { elements: unknown }>
 
@@ -46,6 +49,11 @@ function normalizedSource(source: SourceDrawing, endpointStabilization: number) 
   return shape && { ...shape, frame: { ...shape.frame }, strokes: shape.strokes.map((stroke) => ({ ...stroke, centerline: { ...stroke.centerline } })) }
 }
 
+/** The key of the shape of `char` in the role and layout of `prompt`. */
+function shapeKey(prompt: CharacterPrompt, char = prompt.char) {
+  return prompt.variantRole === undefined ? char : sourceKey(prompt.variantRole, prompt.variantIndex!, char)
+}
+
 /** Every captured jamo and character as a placeable shape, keyed by character or by contextual source key. */
 export function shapesFromRequestDrawings(drawings: Record<string, RequestDrawing>, settings: CompositionSettings) {
   const shapes = new Map<string, NormalizedShape>()
@@ -58,7 +66,7 @@ export function shapesFromRequestDrawings(drawings: Record<string, RequestDrawin
     if (!shape) continue
     shape.sourceCellId = source.sourceCellId
     if ('sourcePromptId' in drawing) shape.sourceRole = promptRole(drawing.sourcePromptId)
-    shapes.set(prompt.variantRole === undefined ? prompt.char : sourceKey(prompt.variantRole, prompt.variantIndex!, prompt.char), shape)
+    shapes.set(shapeKey(prompt), shape)
   }
   // Unwritten compound finals are composed from their captured single finals,
   // both in syllables and as standalone jamo.
@@ -75,6 +83,21 @@ export function shapesFromRequestDrawings(drawings: Record<string, RequestDrawin
     // narrowed toward the proportions of a written compound.
     if (!shapes.has(compound)) shapes.set(compound, { ...combineShapesSideBySide(left, right, STANDALONE_COMPOUND_ASPECT), sourceRole: 'final' })
   }
+  // A double consonant written nowhere is composed from two of its single
+  // consonant of the same role and layout, as wide for its height as the
+  // writer makes the double ones.
+  const doubles = CHARACTER_PROMPTS.filter((prompt) => prompt.char in DOUBLE_CONSONANTS)
+    .map((prompt) => ({ prompt, key: shapeKey(prompt), part: shapes.get(shapeKey(prompt, DOUBLE_CONSONANTS[prompt.char])) }))
+  const widening = medianHeight(doubles.flatMap(({ key, part }) => {
+    const written = shapes.get(key)
+    return written && part ? [written.aspectRatio / part.aspectRatio] : []
+  }), DOUBLE_CONSONANT_WIDENING)
+  const composed = doubles.flatMap(({ prompt, key, part }): Array<[string, NormalizedShape]> => {
+    const written = prompt.variantRole ? selectJamoSource(shapes, prompt.variantRole, prompt.variantIndex!, prompt.char) : shapes.get(key)
+    if (written || !part) return []
+    return [[key, { ...combineShapesSideBySide(part, part, part.aspectRatio * widening, settings.doubleConsonantGap), sourceRole: prompt.variantRole ?? part.sourceRole, sourceCellId: part.sourceCellId }]]
+  })
+  for (const [key, shape] of composed) shapes.set(key, shape)
   return shapes
 }
 

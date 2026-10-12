@@ -1,4 +1,4 @@
-import { COMPOUND_FINALS, FINALS, INITIALS, MEDIALS, type HangulRole } from '@/font/hangul'
+import { COMPOUND_FINALS, DOUBLE_CONSONANTS, FINALS, INITIALS, MEDIALS, type HangulRole } from '@/font/hangul'
 
 export type PromptGroup = 'consonant' | 'vowel' | 'uppercase' | 'lowercase' | 'number' | 'symbol' | 'initialVariant' | 'medialVariant' | 'finalVariant'
 
@@ -66,11 +66,13 @@ export const CHARACTER_PROMPTS: CharacterPrompt[] = [...BASE_CHARACTER_PROMPTS, 
 // Initials: vertical (가), ㅗ/ㅛ/ㅡ (고), vertical + final (각), horizontal +
 // final (곡). ㅜ/ㅠ reuse the ㅗ layout zone, and the compound-vowel layouts
 // are fitted from the vertical ones. Medials with a final are uniformly fitted from
-// the open form for the rare ㅒㅖㅙㅞㅢ.
+// the open form for the rare ㅒㅖㅙㅞㅢ. Double consonants and compound finals
+// are composed from their parts.
 const REQUIRED_INITIAL_VARIANTS = new Set([0, 1, 5, 6])
 const DERIVED_MEDIALS_WITH_FINAL = new Set([...'ㅒㅖㅙㅞㅢ'])
 
 export function isRequiredPrompt(prompt: CharacterPrompt) {
+  if (prompt.char in DOUBLE_CONSONANTS) return false
   if (prompt.variantRole === 'initial') return REQUIRED_INITIAL_VARIANTS.has(prompt.variantIndex!)
   if (prompt.variantRole === 'medial') return prompt.variantIndex === 0 || !DERIVED_MEDIALS_WITH_FINAL.has(prompt.char)
   if (prompt.variantRole === 'final' || prompt.group === 'consonant') return !(prompt.char in COMPOUND_FINALS)

@@ -26,8 +26,8 @@ const scope = self as unknown as DedicatedWorkerGlobalScope
 const metadata = { familyName: 'OwnCharLive', styleName: 'Regular', designer: '', version: '1.0' }
 
 let source: LiveFontSource | undefined
-/** What is learned from the handwriting: it changes with the source and the stroke conditioning only. */
-let learned: { stabilization: number; inputs: ReturnType<typeof buildGenerationInputs>; shapes: Map<string, NormalizedShape> } | undefined
+/** What is learned from the handwriting: it changes with the source, the stroke conditioning and the gap of built double consonants only. */
+let learned: { stabilization: number; doubleConsonantGap: number; inputs: ReturnType<typeof buildGenerationInputs>; shapes: Map<string, NormalizedShape> } | undefined
 /** What no size dial changes: the calibration and the base glyphs. */
 let fixed: { key: string; visualScale: number; base?: EncodedGlyphs } | undefined
 /** The syllables already composed with the latest settings. */
@@ -35,9 +35,9 @@ let composed: { key: string; glyphs: Map<number, ReturnType<HangulSource>> } | u
 
 function compose(settings: CompositionSettings, codePoints: number[]) {
   if (!source) throw new Error('no source')
-  if (!learned || learned.stabilization !== settings.endpointStabilization) {
+  if (!learned || learned.stabilization !== settings.endpointStabilization || learned.doubleConsonantGap !== settings.doubleConsonantGap) {
     const inputs = buildGenerationInputs(source.drawings, source.sessions, settings)
-    learned = { stabilization: settings.endpointStabilization, inputs, shapes: shapesFromRequestDrawings(inputs.drawings, settings) }
+    learned = { stabilization: settings.endpointStabilization, doubleConsonantGap: settings.doubleConsonantGap, inputs, shapes: shapesFromRequestDrawings(inputs.drawings, settings) }
     fixed = composed = undefined
   }
   const request: GenerationRequest = { type: 'compose-font', ...learned.inputs, metadata, overrides: source.overrides, globalMetrics: source.globalMetrics, compositionSettings: settings }

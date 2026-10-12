@@ -130,6 +130,9 @@ function CompositionControls({ settings }: { settings: CompositionSettings }) {
       <Section title="손떨림 보정" help="0은 원본 획, 1은 획의 떨림과 시작·끝의 갈고리를 최대로 보정합니다. 모서리는 유지됩니다.">
         <div className="mt-4"><RangeField label="손떨림 보정 강도" value={settings.endpointStabilization} display={settings.endpointStabilization.toFixed(2)} onChange={(value) => set({ endpointStabilization: value })} /></div>
       </Section>
+      <Section title="쌍자음 간격" help="쓰지 않은 쌍자음(ㄲㄸㅃㅆㅉ)은 단자음 둘로 만듭니다. 0은 두 자음을 붙이고, 1은 겹받침과 같은 간격을 둡니다.">
+        <div className="mt-4"><RangeField label="합성 쌍자음 간격" value={settings.doubleConsonantGap} display={settings.doubleConsonantGap.toFixed(2)} onChange={(value) => set({ doubleConsonantGap: value })} /></div>
+      </Section>
       <Section title="크기 정규화" help="0은 원본 크기, 1은 완성된 필기의 대표 크기에 가장 가깝게 맞춥니다.">
         <div className="mt-4 space-y-4">
           {normalizationFields.map(([key, label]) => <RangeField key={key} label={label} value={settings[key]} display={settings[key].toFixed(2)} onChange={(value) => set({ [key]: value })} />)}

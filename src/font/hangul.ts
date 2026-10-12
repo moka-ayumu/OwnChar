@@ -14,6 +14,15 @@ export const COMPOUND_FINALS: Record<string, [string, string]> = {
   ㄽ: ['ㄹ', 'ㅅ'], ㄾ: ['ㄹ', 'ㅌ'], ㄿ: ['ㄹ', 'ㅍ'], ㅀ: ['ㄹ', 'ㅎ'], ㅄ: ['ㅂ', 'ㅅ'],
 }
 
+/** Double consonants are composed from two of their single consonant when not written directly. */
+export const DOUBLE_CONSONANTS: Record<string, string> = { ㄲ: 'ㄱ', ㄸ: 'ㄷ', ㅃ: 'ㅂ', ㅆ: 'ㅅ', ㅉ: 'ㅈ' }
+
+/** The two jamo a compound final or a double consonant is composed from. */
+export function jamoParts(char: string): [string, string] | undefined {
+  const single = DOUBLE_CONSONANTS[char]
+  return single ? [single, single] : COMPOUND_FINALS[char]
+}
+
 export const HANGUL_BASE = 0xac00
 export const HANGUL_COUNT = 11_172
 
