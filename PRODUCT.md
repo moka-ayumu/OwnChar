@@ -12,7 +12,7 @@ People who want a font in their own handwriting and write with a pen, mouse, or 
 
 ## Product Purpose
 
-OwnChar turns handwriting into an installable OTF font, entirely in the browser. The user writes 12 practice sentences (9 Hangul, uppercase, lowercase, digits and symbols) in per-character cells. The system splits strokes into jamo (초성/중성/종성), collects them, and composes all 11,172 modern Hangul syllables plus Latin, digits and symbols. Success is a downloaded `.otf` that looks like the user's own writing and has balanced composition.
+OwnChar turns handwriting into an installable OTF font, entirely in the browser. The user writes 8 practice sentences (5 Hangul, uppercase, lowercase, digits and symbols) in per-character cells. The system splits strokes into jamo (초성/중성/종성), collects them, and composes all 11,172 modern Hangul syllables plus Latin, digits and symbols. Success is a downloaded `.otf` that looks like the user's own writing and has balanced composition.
 
 ## Positioning
 

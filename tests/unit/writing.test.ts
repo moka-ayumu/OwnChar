@@ -5,7 +5,7 @@ import { assignStrokes, boundariesThrough, captureRecords, cellProgress, complet
 import { projectActions, projectStore } from '@/project/store'
 import { CELL, penStroke } from './helpers'
 
-// 배고픈 너구리가 …: 배 = ㅂ(4 strokes) + ㅐ(3), 고 = ㄱ(1) + ㅗ(2).
+// 흐린 퇴근길 …: 흐 = ㅎ(3 strokes) + ㅡ(1), 근 = ㄱ(1) + ㅡ(1) + ㄴ(1), 길 = ㄱ(1) + ㅣ(1) + ㄹ(3).
 const exercise = WRITING_EXERCISES[0]
 const grid = { cellSize: CELL, columns: 6 }
 const id = (role: string, variant: number, char: string) => `${role}-${variant}-${char.codePointAt(0)}`
@@ -14,34 +14,34 @@ const strokeIn = (name: string, cell: number, dx = 30) => penStroke(name, cell *
 
 describe('stroke assignment', () => {
   test('strokes go to the cell they start in and fill its jamo in order, by their usual stroke counts', () => {
-    // A stroke of 고 that ends in the next cell still belongs to 고.
-    const strokes = [strokeIn('a', 1), penStroke('b', 1 * CELL + 100, 60, [[0, 0], [80, 0]]), strokeIn('c', 1), strokeIn('d', 1)]
+    // A stroke of 근 that ends in the next cell still belongs to 근.
+    const strokes = [strokeIn('a', 4), penStroke('b', 4 * CELL + 100, 60, [[0, 0], [80, 0]]), strokeIn('c', 4), strokeIn('d', 4)]
     const { groups, assignments } = assignStrokes(strokes, grid, exercise, {}, {})
     expect(assignments.map((item) => [item.elementId, item.promptId])).toEqual([
-      ['a', id('initial', 1, 'ㄱ')],
-      ['b', id('medial', 0, 'ㅗ')],
-      ['c', id('medial', 0, 'ㅗ')],
+      ['a', id('initial', 6, 'ㄱ')],
+      ['b', id('medial', 1, 'ㅡ')],
+      ['c', id('final', 0, 'ㄴ')],
       // The last jamo takes every further stroke.
-      ['d', id('medial', 0, 'ㅗ')],
+      ['d', id('final', 0, 'ㄴ')],
     ])
     const records = captureRecords(groups, grid, exercise.id, 1)
-    expect(records.map((record) => record.promptId)).toEqual([id('initial', 1, 'ㄱ'), id('medial', 0, 'ㅗ')])
-    expect(records[0].capture).toEqual({ exerciseId: exercise.id, cellIndex: 1, slotIndex: 0 })
+    expect(records.map((record) => record.promptId)).toEqual([id('initial', 6, 'ㄱ'), id('medial', 1, 'ㅡ'), id('final', 0, 'ㄴ')])
+    expect(records[0].capture).toEqual({ exerciseId: exercise.id, cellIndex: 4, slotIndex: 0 })
     // Display paths are positioned inside the cell.
     expect(records[0].paths[0].x).toBe(30)
     expect(records[0].previewSvg).toContain('fill-rule="nonzero"')
   })
 
   test('a confirmed boundary ends a jamo early, until the stroke it was set on is erased', () => {
-    // ㅂ is usually four strokes; here it is finished after one.
+    // ㅎ is usually three strokes; here it is finished after one.
     const strokes = [strokeIn('a', 0), strokeIn('b', 0)]
-    const boundary = { slotIndex: 0, promptId: id('initial', 0, 'ㅂ'), afterElementId: 'a', confirmedAt: 0 }
+    const boundary = { slotIndex: 0, promptId: id('initial', 1, 'ㅎ'), afterElementId: 'a', confirmedAt: 0 }
     const confirmed = assignStrokes(strokes, grid, exercise, {}, { 0: [boundary] })
-    expect(confirmed.assignments.map((item) => item.promptId)).toEqual([id('initial', 0, 'ㅂ'), id('medial', 0, 'ㅐ')])
+    expect(confirmed.assignments.map((item) => item.promptId)).toEqual([id('initial', 1, 'ㅎ'), id('medial', 0, 'ㅡ')])
     expect(confirmed.boundaries).toEqual({ 0: [boundary] })
 
     const erased = assignStrokes([{ ...strokes[0], isDeleted: true }, strokes[1]], grid, exercise, {}, { 0: [boundary] })
-    expect(erased.assignments.map((item) => item.promptId)).toEqual([id('initial', 0, 'ㅂ')])
+    expect(erased.assignments.map((item) => item.promptId)).toEqual([id('initial', 1, 'ㅎ')])
     expect(erased.boundaries).toEqual({})
   })
 
@@ -112,21 +112,21 @@ describe('jamo collection of a cell', () => {
   const progress = (strokes: ReturnType<typeof strokeIn>[], boundaries = {}, holds: Record<number, number> = {}) => {
     const held = holdBoundaries(boundaries, holds, strokes, grid, exercise, {})
     const { groups, boundaries: confirmed } = assignStrokes(strokes, grid, exercise, {}, held)
-    return { groups, confirmed, slots: cellProgress(1, groups, confirmed, holds[1]), finished: completedCells(strokes, grid, exercise, groups, confirmed, holds) }
+    return { groups, confirmed, slots: cellProgress(5, groups, confirmed, holds[5]), finished: completedCells(strokes, grid, exercise, groups, confirmed, holds) }
   }
 
   test('a cell is finished when every jamo has its strokes, and a space once writing has passed it', () => {
-    // 고 = ㄱ(1) + ㅗ(2); cell 3 is the space before 너.
-    const partial = progress([strokeIn('a', 1), strokeIn('b', 1)])
-    expect(partial.slots.map((slot) => [slot.slot.char, slot.count, slot.done])).toEqual([['ㄱ', 1, true], ['ㅗ', 1, false]])
-    expect(partial.finished[1]).toBe(false)
-    const whole = progress([strokeIn('a', 1), strokeIn('b', 1), strokeIn('c', 1)])
-    expect(whole.finished.slice(0, 5)).toEqual([false, true, false, false, false])
-    expect(progress([strokeIn('a', 1), strokeIn('d', 4)]).finished[3]).toBe(true)
+    // 길 = ㄱ(1) + ㅣ(1) + ㄹ(3); cell 2 is the space before 퇴, cell 6 the space before 휴.
+    const partial = progress([strokeIn('a', 5), strokeIn('b', 5), strokeIn('c', 5)])
+    expect(partial.slots.map((slot) => [slot.slot.char, slot.count, slot.done])).toEqual([['ㄱ', 1, true], ['ㅣ', 1, true], ['ㄹ', 1, false]])
+    expect(partial.finished[5]).toBe(false)
+    const whole = progress([strokeIn('a', 5), strokeIn('b', 5), strokeIn('c', 5), strokeIn('d', 5), strokeIn('e', 5)])
+    expect(whole.finished.slice(0, 7)).toEqual([false, false, true, false, false, true, false])
+    expect(progress([strokeIn('a', 5), penStroke('f', CELL + 30, CELL + 40, [[0, 0], [20, 0]])]).finished[6]).toBe(true)
   })
 
   test('a last cell whose jamo are all fixed is finished with the rest of the sentence', () => {
-    // 요 ends the sentence; with both its jamo captured elsewhere it collects nothing here.
+    // 다 ends the sentence; with both its jamo captured elsewhere it collects nothing here.
     const last = exercise.cells.length - 1
     const captured = Object.fromEntries(exercise.cells[last].slots.map((slot) => [slot.promptId, { capture: { exerciseId: 'elsewhere', cellIndex: 0, slotIndex: 0 } } as DrawingRecord]))
     const finishedWith = (drawings: Record<string, DrawingRecord>) => {
@@ -140,15 +140,15 @@ describe('jamo collection of a cell', () => {
   })
 
   test('a jamo ended by hand is done, and one held open keeps every later stroke of its cell', () => {
-    const strokes = [strokeIn('a', 1), strokeIn('b', 1), strokeIn('c', 1)]
-    // ㅗ ended after one stroke of its two.
-    const early = progress(strokes.slice(0, 2), { 1: boundariesThrough(1, 2, progress(strokes.slice(0, 2)).groups, [], 0)! })
-    expect(early.finished[1]).toBe(true)
+    const strokes = [strokeIn('a', 5), strokeIn('b', 5), strokeIn('c', 5)]
+    // ㄹ ended after one stroke of its three.
+    const early = progress(strokes, { 5: boundariesThrough(5, 3, progress(strokes).groups, [], 0)! })
+    expect(early.finished[5]).toBe(true)
     // ㄱ held open: it takes all three strokes and is not done until released.
-    const held = progress(strokes, {}, { 1: 0 })
-    expect(held.slots.map((slot) => [slot.count, slot.done])).toEqual([[3, false], [0, false]])
-    expect(held.confirmed[1].map((boundary) => boundary.afterElementId)).toEqual(['c'])
+    const held = progress(strokes, {}, { 5: 0 })
+    expect(held.slots.map((slot) => [slot.count, slot.done])).toEqual([[3, false], [0, false], [0, false]])
+    expect(held.confirmed[5].map((boundary) => boundary.afterElementId)).toEqual(['c'])
     // Released, the boundary it ended on stays.
-    expect(progress(strokes, held.confirmed).slots.map((slot) => [slot.count, slot.done])).toEqual([[3, true], [0, false]])
+    expect(progress(strokes, held.confirmed).slots.map((slot) => [slot.count, slot.done])).toEqual([[3, true], [0, false], [0, false]])
   })
 })

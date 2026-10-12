@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import type { FileChooser, Page } from '@playwright/test'
 import { savedProject, startProject, storedProject, writingCanvas } from './helpers'
 
-const PROMPT_ID = `initial-0-${'ㄹ'.codePointAt(0)}`
+const PROMPT_ID = `initial-5-${'ㄹ'.codePointAt(0)}`
 
 /** Opens the menu that holds the save, open and delete actions on the write page. */
 async function openMenu(page: Page) {
@@ -22,7 +22,7 @@ test('saves the project to a file and restores it after the project is reset', a
 
   await startProject(page)
   const { stroke } = await writingCanvas(page)
-  await stroke(6, 25, 34, 74, 34)
+  await stroke(1, 25, 34, 74, 34)
   await savedProject(page, (saved) => Boolean(saved.drawings[PROMPT_ID]))
 
   await openMenu(page)
@@ -61,7 +61,7 @@ test('shows that the project is autosaved and deletes the saved project on reque
 
   await startProject(page)
   const { stroke } = await writingCanvas(page)
-  await stroke(6, 25, 34, 74, 34)
+  await stroke(1, 25, 34, 74, 34)
   await savedProject(page, (saved) => Boolean(saved.drawings[PROMPT_ID]))
   await expect(page.getByRole('status')).toHaveText('저장됨')
 

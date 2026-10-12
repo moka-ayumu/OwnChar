@@ -71,15 +71,11 @@ function hangulSlots(char: string): CaptureSlot[] {
 // (see `isRequiredPrompt`). Rarer shapes that happen to appear are collected
 // too; the rest are derived during composition.
 const HANGUL_SENTENCES = [
-  '배고픈 너구리가 몰래 부엌에서 닭볶음탕을 끓여 먹었대요',
-  '야, 얘가 퀴즈왕이래! 예쁜 웨딩 케이크를 통째로 뚝딱 만들었대',
-  '곧 옛 친구가 웬일로 쌀 한 포대와 칼국수 육수를 챙겨 왔어',
-  '왜 하필 오늘 햇볕 쬐며 툇마루에 앉아 시를 읊고 싶을까',
-  '뽀얀 타조가 깜짝 놀라 쿵 넘어지자 빵 봉지를 물고 쏙 숨었다',
-  '휴, 바빠서 약속을 또 잊었네, 넷이서 좀 모였다가 쭉 춤추러 가자',
-  '의자 밑 흙 속에 윗집 강아지가 원래 보물을 숨겼대, 용케 찾았지',
-  '꽃밭에서 도토리 밥을 먹고 잠든 토끼, 사랑스러워 참 좋다',
-  '떼쓰던 꼬마가 호호 웃으며 싸 온 초코 파이를 치즈와 쪼개 노나 줬어',
+  '흐린 퇴근길 휴대폰에 육 년 만에 옛 친구의 문자가 왔다',
+  '관람권 사진과 극장 출구 뒤편 벤치에서 십 분만 보자는 얘기였다',
+  '저녁녘 택시가 모퉁이를 도니 스웨터에 코트를 걸친 친구가 왼손으로 노란 꽃을 흔들었다',
+  '예전 그 시절이 꽤 좋았냐고 낮게 묻더니 바로 옆에서 내 표정을 살폈다',
+  '뭐라 답할지 몰라 커피컵을 쥔 채 초콜릿 향만 맡으며 조용히 웃었다',
 ]
 
 const hangulExercises: WritingExercise[] = HANGUL_SENTENCES.map((text, index) => ({
@@ -94,7 +90,7 @@ const hangulExercises: WritingExercise[] = HANGUL_SENTENCES.map((text, index) =>
 function latinExercise(id: string, text: string, group: 'uppercase' | 'lowercase'): WritingExercise {
   return {
     id,
-    title: group === 'uppercase' ? '영문 대문자 문장' : '영문 소문자 문장',
+    title: group === 'uppercase' ? '영문 대문자' : '영문 소문자',
     instruction: '각 칸에서 글자를 시작하면 칸 밖으로 획이 나가도 해당 글자로 저장됩니다.',
     text,
     cells: [...text].map((char) => ({
@@ -120,8 +116,8 @@ const numberSymbolExercise: WritingExercise = {
 
 export const WRITING_EXERCISES: WritingExercise[] = [
   ...hangulExercises,
-  latinExercise('latin-uppercase', 'PACK MY BOX WITH FIVE DOZEN LIQUOR JUGS', 'uppercase'),
-  latinExercise('latin-lowercase', 'pack my box with five dozen liquor jugs', 'lowercase'),
+  latinExercise('latin-uppercase', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'uppercase'),
+  latinExercise('latin-lowercase', 'abcdefghijklmnopqrstuvwxyz', 'lowercase'),
   numberSymbolExercise,
 ]
 
