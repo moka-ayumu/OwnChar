@@ -117,12 +117,13 @@ const STRETCH_REACH = 1.5
 interface TypicalJamo {
   frames: Map<string, { width: number; height: number } | undefined>
   narrowed: Map<NormalizedShape, NormalizedShape>
+  widenings: Map<string, number>
 }
 const typicalJamo = new WeakMap<Map<string, NormalizedShape>, TypicalJamo>()
 
 function typicalOf(shapes: Map<string, NormalizedShape>) {
   let typical = typicalJamo.get(shapes)
-  if (!typical) typicalJamo.set(shapes, typical = { frames: new Map(), narrowed: new Map() })
+  if (!typical) typicalJamo.set(shapes, typical = { frames: new Map(), narrowed: new Map(), widenings: new Map() })
   return typical
 }
 
@@ -137,6 +138,22 @@ function typicalFrame(shapes: Map<string, NormalizedShape>, key: string) {
     frames.set(layout, width > 0 && height > 0 ? { width, height } : undefined)
   }
   return frames.get(layout)
+}
+
+/** How many times wider for its height the writer makes a jamo in the layout of key `to` than in that of key `from`: the median over the jamo written in both, in whole percents. */
+function layoutWidening(shapes: Map<string, NormalizedShape>, from: string, to: string) {
+  const source = from.slice(0, from.lastIndexOf(':') + 1); const target = to.slice(0, to.lastIndexOf(':') + 1)
+  if (!source || source === target) return 1
+  const { widenings } = typicalOf(shapes)
+  let widening = widenings.get(source + target)
+  if (widening === undefined) {
+    const both = [...shapes].flatMap(([key, shape]) => {
+      const other = key.startsWith(source) && !shape.synthesized ? shapes.get(target + key.slice(source.length)) : undefined
+      return other && !other.synthesized ? [other.aspectRatio / shape.aspectRatio] : []
+    })
+    widenings.set(source + target, widening = Math.round(clamp(medianHeight(both, 1), 1 / STRETCH_REACH, STRETCH_REACH) * 100) / 100)
+  }
+  return widening
 }
 
 /** Width and height of the jamo as the writer wrote it, else the median of the nearest layout that has some. */
@@ -249,7 +266,7 @@ function spaces(kind: VowelKind, final: boolean): Record<HangulRole, Zone> {
 }
 
 /** Landmarks only: the compound medial always receives one similarity transform. */
-export function medialSpace(path: opentype.Path): { horizontal: Box; vertical: Box } | undefined {
+export function medialSpace(path: opentype.Path): { horizontal: Box; vertical: Box; rise?: Box } | undefined {
   const body = bounds(path)
   if (!body) return undefined
   const boxes = contourBoxes(path)
@@ -264,8 +281,11 @@ export function medialSpace(path: opentype.Path): { horizontal: Box; vertical: B
     const left = boxes.filter((box) => !stems.includes(box) && cx(box) < vertical.x1)
     const base = [...left].sort((a, b) => (b.x2 - b.x1) - (a.x2 - a.x1))[0]
     if (base) {
-      const horizontal = union(left.filter((box) => box.x2 <= base.x2 + (body.x2 - body.x1) * 0.04))
-      return { horizontal, vertical }
+      const part = left.filter((box) => box.x2 <= base.x2 + (body.x2 - body.x1) * 0.04)
+      const horizontal = union(part)
+      // The short stroke of ㅗ: it stands on the bar, where that of ㅜ hangs from it.
+      const rise = part.find((box) => box !== base && box.y2 - box.y1 > box.x2 - box.x1 && box.y2 - base.y2 > base.y1 - box.y1)
+      return { horizontal, vertical, rise }
     }
   }
   const cutoff = body.x1 + (body.x2 - body.x1) * 0.62
@@ -302,12 +322,15 @@ export function layoutSyllable(input: SyllableLayoutInput) {
     // Unwritten roles reserve neutral space. Donor ink must not determine the
     // placeholder size or become a size reference for a visible guide jamo.
     const selected = isPlaceholder(role) ? undefined : selectJamoSource(input.shapes, role, variants[role], chars[role])
-    const shape = selected?.source
+    // An initial borrowed from another layout takes the width the writer gives a jamo in this one.
+    const widening = role === 'initial' && selected?.match === 'derived' ? layoutWidening(input.shapes, selected.key, sourceKey(role, variants[role], chars[role])) : 1
+    const shape = selected && widening !== 1 ? stretchedBy(selected.source, widening) : selected?.source
     const group = selected?.match === 'exact' && shape && !shape.synthesized && shape.sourceCellId ? shape.sourceCellId : role
     // The initial is the size reference of the other jamo: it is held to the
     // size the typical initial of its layout has when that one fills the zone,
     // so one written flat or narrow is not enlarged past the others.
-    const typical = role === 'initial' && selected ? typicalFrame(input.shapes, selected.key) : undefined
+    const written = role === 'initial' && selected ? typicalFrame(input.shapes, selected.key) : undefined
+    const typical = written && { ...written, width: written.width * widening }
     const sizeLimit = typical ? Math.min(zones[role].width / typical.width, zones[role].height / typical.height) * Math.sqrt(typical.width * typical.height) : Infinity
     const maxAspect = typical ? typical.width / typical.height * INITIAL_ASPECT_REACH : Infinity
     const placeholderFrame = isPlaceholder(role) ? writtenFrame(input.shapes, role, variants[role], chars[role]) : undefined
@@ -475,7 +498,9 @@ export function layoutSyllable(input: SyllableLayoutInput) {
       if (kind === 'vertical') move(initial, m.x1 - i.x2 - Math.max(minimumGap, upperGap), cy(m) - cy(i) - cross)
       else if (kind === 'mixed') {
         const headroom = clamp(((i.y2 - i.y1) / (i.x2 - i.x1) - 0.65) / 0.4, 0, 1)
-        move(initial, anchor.x1 + (anchor.x2 - anchor.x1) * 0.35 - cx(i) - cross, m.y2 - i.y2 + (i.y2 - i.y1) * 0.45 * headroom)
+        // The initial stands over the short stroke of ㅗ, as far as the stem leaves it room.
+        const x = space?.rise ? Math.min(cx(space.rise), anchor.x2 - minimumGap - (i.x2 - i.x1) / 2) : anchor.x1 + (anchor.x2 - anchor.x1) * 0.35
+        move(initial, x - cx(i) - cross, m.y2 - i.y2 + (i.y2 - i.y1) * 0.45 * headroom)
       }
       else move(initial, cx(anchor) - cx(i) - cross, anchor.y2 - i.y1 + Math.max(minimumGap, upperGap))
     }
@@ -493,7 +518,7 @@ export function layoutSyllable(input: SyllableLayoutInput) {
     // Both outlines are prepared once; every candidate position is a shift of the moving one.
     const clear = clearanceProbe(path, movingPath, clearance)
     if (axis === 'corner' && !clear(0, 0)) {
-      const directions = [[-1, 0], [0, 1], [0, -1], [-Math.SQRT1_2, Math.SQRT1_2]]
+      const directions = [[-1, 0], [0, 1], [0, -1], [-Math.SQRT1_2, Math.SQRT1_2], [1, 0]]
       for (let radius = clearance; radius <= 1200; radius += clearance) {
         for (const [x, y] of directions) {
           if (clear(radius * x, radius * y)) { move(moving, radius * x, radius * y); return }
