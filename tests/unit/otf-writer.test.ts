@@ -1,5 +1,5 @@
 import opentype from 'opentype.js'
-import { describe, expect, test } from 'vitest'
+import { afterEach, describe, expect, test, vi } from 'vitest'
 import { GlyphEncoder, NOTDEF, writeOtf } from '@/generation/otf-writer'
 
 const metadata = { familyName: 'Writer', styleName: 'Regular', designer: 'Tester', version: '1.0' }
@@ -38,7 +38,11 @@ function fixture(count: number, compact = false) {
 }
 
 describe('font file', () => {
+  afterEach(() => { vi.useRealTimers() })
+
   test('charstrings written directly give the file opentype.js writes from the outlines', () => {
+    // opentype.js writes the time of the clock into `head`, so both files need the same clock.
+    vi.useFakeTimers({ toFake: ['Date'] })
     // Enough charstring data that the INDEX needs two-byte and then three-byte offsets.
     for (const count of [3, 40, 1200]) {
       const { expected, blocks } = fixture(count)
