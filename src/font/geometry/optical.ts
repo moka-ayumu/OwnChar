@@ -13,7 +13,13 @@ export interface InkBalance {
 }
 
 const BINS = 64
+/** Widest a row may be, in shape widths, to count as part of a thin protrusion. */
+const THIN_ROW = 0.35
+/** Longest protrusion cut in full, and the length from which none is cut, in shape heights. */
+const THIN_FULL = 0.25
+const THIN_NONE = 0.35
 const balances = new WeakMap<NormalizedShape, InkBalance>()
+const anchors = new WeakMap<NormalizedShape, number>()
 
 /**
  * Horizontal ink balance of a shape. Ink is counted as pen-path length times
@@ -58,4 +64,57 @@ export function inkBalance(shape: NormalizedShape): InkBalance {
   }
   balances.set(shape, balance)
   return balance
+}
+
+/**
+ * Offset of the vertical middle of a shape's body from the middle of its pen
+ * paths' extent, in cell fractions, positive downward. A thin protrusion at
+ * either end, such as the tick of ㅎ, is not part of the body.
+ */
+export function verticalAnchor(shape: NormalizedShape): number {
+  const cached = anchors.get(shape)
+  if (cached !== undefined) return cached
+  const segments: Array<[number, number, number, number]> = []
+  for (const { centerline } of shape.strokes) {
+    const { points, cellSize } = centerline
+    if (points.length === 1) segments.push([points[0][0] / cellSize, points[0][1] / cellSize, points[0][0] / cellSize, points[0][1] / cellSize])
+    for (let index = 1; index < points.length; index += 1) {
+      segments.push([points[index - 1][0] / cellSize, points[index - 1][1] / cellSize, points[index][0] / cellSize, points[index][1] / cellSize])
+    }
+  }
+  const ys = segments.flatMap(([, y0, , y1]) => [y0, y1])
+  const xs = segments.flatMap(([x0, , x1]) => [x0, x1])
+  const top = Math.min(...ys)
+  const height = Math.max(...ys) - top
+  const width = Math.max(...xs) - Math.min(...xs)
+  let anchor = 0
+  if (height > 0 && width > 0) {
+    // The horizontal extent of the ink in each row.
+    const left = new Array<number>(BINS).fill(Infinity)
+    const right = new Array<number>(BINS).fill(-Infinity)
+    const row = (y: number) => Math.min(BINS - 1, Math.floor((y - top) / height * BINS))
+    for (const [x0, y0, x1, y1] of segments) {
+      const first = row(Math.min(y0, y1)); const last = row(Math.max(y0, y1))
+      for (let index = first; index <= last; index += 1) {
+        const from = Math.max(top + index / BINS * height, Math.min(y0, y1))
+        const to = Math.min(top + (index + 1) / BINS * height, Math.max(y0, y1))
+        for (const y of [from, to]) {
+          const x = y1 === y0 ? x0 : x0 + (x1 - x0) * (y - y0) / (y1 - y0)
+          left[index] = Math.min(left[index], x, y1 === y0 ? x1 : x)
+          right[index] = Math.max(right[index], x, y1 === y0 ? x1 : x)
+        }
+      }
+    }
+    const thin = (index: number) => right[index] - left[index] < width * THIN_ROW
+    /** Rows of the protrusion that starts at `from`, weighed down to nothing as it grows long. */
+    const cut = (from: number, step: 1 | -1) => {
+      let rows = 0
+      while (rows < BINS && thin(from + step * rows)) rows += 1
+      const share = (THIN_NONE - rows / BINS) / (THIN_NONE - THIN_FULL)
+      return rows * Math.max(0, Math.min(1, share))
+    }
+    anchor = (cut(0, 1) - cut(BINS - 1, -1)) / 2 / BINS
+  }
+  anchors.set(shape, anchor * height)
+  return anchor * height
 }

@@ -3,7 +3,7 @@ import type { WritingSessionRecord } from '@/collection/records'
 import { decomposeHangul, type VowelKind } from '@/font/hangul'
 import { appendShape, CELL_UNITS, normalizeRawStrokes } from '@/font/geometry/shape'
 import { finalGapContext, finalGapPair, gapContext, gapPair, medialGapContext, minimumGap, type GapProfile, type LearnedPlacement } from '@/font/layout/gap-profile'
-import { finalAnchorX, finalTargetX, medialSpace, type PlacedJamo } from '@/font/layout/syllable-layout'
+import { finalAnchorX, finalTargetX, initialBodyDrop, medialSpace, type PlacedJamo } from '@/font/layout/syllable-layout'
 import { penDiameter, strokePolygon, type RawStroke } from '@/font/stroke/outline'
 import { cellMemo, collect, completedHangulCells, trimmedMean, type CompletedHangulCell } from './samples'
 
@@ -70,10 +70,16 @@ function measureCell({ cell, session, assigned, cellX, cellY }: CompletedHangulC
     if (space) medialAnchor = { left: space.x1, right: space.x2, top: session.cellSize - space.y2, bottom: session.cellSize - space.y1 }
   }
   const upperGap = scaledGap(kind === 'vertical' ? medial.left - initial.right : medialAnchor.top - initial.bottom)
+  // Measured against the point the layout aligns the initial by, so the offset holds only what the writer does differently from that rule.
+  const writtenVertical = () => {
+    const shape = normalizeRawStrokes(assigned[0].map((stroke) => ({ ...stroke, x: stroke.x - cellX, y: stroke.y - cellY })), session.cellSize, endpointStabilization)
+    const drop = shape ? initialBodyDrop(shape, session.cellSize / CELL_UNITS) : 0
+    return ((initial.top + initial.bottom - medial.top - medial.bottom) / 2 + drop) * 1000 / session.cellSize
+  }
   const upper: Placement = {
     advanceGap: upperGap,
     crossOffset: kind === 'vertical'
-      ? ((medial.top + medial.bottom) - (initial.top + initial.bottom)) * 500 / session.cellSize
+      ? writtenVertical()
       : ((medialAnchor.left + medialAnchor.right) - (initial.left + initial.right)) * 500 / session.cellSize,
   }
   if (!final) return { char: cell.char, kind, chars, upperGap, upper }

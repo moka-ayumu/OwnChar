@@ -1,7 +1,7 @@
 import opentype from 'opentype.js'
 import { decomposeHangul, DOUBLE_CONSONANTS, HANGUL_ROLES, jamoParts, type HangulRole, type VowelKind } from '@/font/hangul'
 import { clearanceProbe, hasInkClearance, maximizeSafeIntrusion } from '@/font/geometry/collision'
-import { inkBalance } from '@/font/geometry/optical'
+import { inkBalance, verticalAnchor } from '@/font/geometry/optical'
 import { centerX as cx, centerY as cy, clamp, mapPoints, pathBounds as bounds, pathOf, pointsBox, scalePath, splitContours, translatePath, unionBox as union, type Box } from '@/font/geometry/path-ops'
 import { appendShape, CELL_UNITS, combineShapesSideBySide, stretchShapeWidth, type NormalizedShape, type Zone } from '@/font/geometry/shape'
 import { medianHeight } from '@/font/metrics'
@@ -201,7 +201,23 @@ const ANCHOR_REACH = 0.25
 /** Furthest a learned sideways offset may move a final, in upper body widths. */
 const CROSS_OFFSET_REACH = 0.06
 
+/** Share of the distance from the middle of an initial's box to the middle of its body that the initial is aligned by. */
+const BODY_SHARE = 0.6
+
 const inkScale = (jamo: PlacedJamo) => jamo.shape ? CELL_UNITS * (jamo.scale ?? 0) : 0
+
+/**
+ * How far below the middle of its box the body of an initial beside a vertical
+ * vowel sits, in outline units: the part that reads as its vertical centre. A
+ * tick above ㅎ does not pull the body down.
+ */
+export function initialBodyDrop(shape: NormalizedShape, scale: number) {
+  return verticalAnchor(shape) * CELL_UNITS * scale * BODY_SHARE
+}
+
+export function initialAnchorY(initial: PlacedJamo) {
+  return cy(bounds(initial.path)!) - (initial.shape ? initialBodyDrop(initial.shape, initial.scale ?? 0) : 0)
+}
 
 /**
  * The point of a final that reads as its centre: the middle of the bulk of
@@ -497,7 +513,10 @@ export function layoutSyllable(input: SyllableLayoutInput) {
       const space = kind === 'mixed' ? medialSpace(medial.path) : undefined
       const anchor = space ? { ...space.horizontal, x1: m.x1, x2: space.vertical.x1 } : m
       const cross = upperPlacement?.crossOffset ?? 0
-      if (kind === 'vertical') move(initial, m.x1 - i.x2 - Math.max(minimumGap, upperGap), cy(m) - cy(i) - cross)
+      if (kind === 'vertical') {
+        const placedInitial = { path: initial.path, shape: isPlaceholder('initial') ? undefined : initial.shape, scale: geometry.scales.initial }
+        move(initial, m.x1 - i.x2 - Math.max(minimumGap, upperGap), cy(m) - initialAnchorY(placedInitial) - cross)
+      }
       else if (kind === 'mixed') {
         const headroom = clamp(((i.y2 - i.y1) / (i.x2 - i.x1) - 0.65) / 0.4, 0, 1)
         // The initial stands over the short stroke of ㅗ, as far as the stem leaves it room.
