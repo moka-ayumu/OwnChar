@@ -30,6 +30,7 @@ src/
     otf-writer.ts   OTF file output
   project/      Project state and IndexedDB storage
   features/     Screen components (writing, editor, generating, preview)
+    samples/    Example handwriting on the home page: strokes per sentence, and the loader
   routes/       Routes: write, generate, preview, edit, license
   components/   Shared UI
   dev/          Dev-only sample button. Not a product screen

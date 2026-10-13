@@ -41,7 +41,7 @@ Name: OwnChar. Default font name "OwnChar Font". UI voice is polite and gentle K
 
 ## Evidence on Hand
 
-Use-case and page specs in `docs/use-cases` (UC-01–10, PG-01–08). Open-source library credits shown on the help page. No testimonials, user counts, or sample fonts exist; do not fabricate them. A dev-only sample project (`src/dev/sample-project.json`) is for testing, not for the product's public face.
+Use-case and page specs in `docs/use-cases` (UC-01–10, PG-01–08). Open-source library credits shown on the help page. No testimonials, user counts, or sample fonts exist; do not fabricate them. The home page offers one example handwriting ("예시 손글씨", `src/features/samples/example.json`). A program made its strokes; call it an example, never a person's handwriting. A dev-only sample project (`src/dev/sample-project.json`) is for testing, not for the product's public face.
 
 ## Product Principles
 
