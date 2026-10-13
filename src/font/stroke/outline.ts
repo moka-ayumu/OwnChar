@@ -178,7 +178,7 @@ export function outlineStroke(
   if (closedCenterline) {
     // A ring keeps its counter: widen the closed centerline instead of merging a capped stroke.
     const centerline = (memo?.conditioned ?? stabilizeStroke(points, pressures, conditionSize, 'complete', strength)).points.slice(0, -1)
-    return { contours: fromClipper(inflatePaths([toClipper(centerline)], size * CLIPPER_PRECISION / 2, JoinType.Round, EndType.Joined)), smooth: false }
+    return { contours: fromClipper(inflatePaths([toClipper(centerline)], size * CLIPPER_PRECISION, JoinType.Round, EndType.Joined)), smooth: false }
   }
   const outline = polygon()
   if (outline.length < 3) return { contours: outline.length ? [outline] : [], smooth: false }
