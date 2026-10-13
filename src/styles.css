@@ -308,6 +308,9 @@ button.source-chip:hover small { color: var(--color-lime-ink); }
 .combo-tile small { font-size: 12px; color: var(--color-lime-ink); }
 @keyframes combo-pop { from { transform: scale(.9); opacity: .2; } }
 @keyframes combo-roll { from { transform: translateY(70%); opacity: 0; } }
+.home-samples { margin-top: 24px; }
+.home-samples p { margin: 0; color: var(--color-ink-2); font-size: 14px; line-height: 1.6; }
+.home-samples button { margin-top: 10px; }
 .home-steps { display: grid; gap: 14px; margin: 40px 0 0; padding: 24px 0 0; border-top: 1px solid var(--color-ink); list-style: none; }
 .home-steps li { display: grid; grid-template-columns: 132px 1fr; gap: 16px; font-size: 14px; line-height: 1.6; }
 .home-steps strong { font-weight: 700; }

@@ -10,6 +10,7 @@ import { prefersReducedMotion } from '@/lib/flow'
 import { clearPersistedProject } from '@/project/persistence'
 import { projectActions } from '@/project/store'
 import { SampleProjectButton } from '@/dev/sample-project-button'
+import { loadSampleProject } from '@/features/samples/sample-projects'
 
 export const Route = createFileRoute('/')({ component: HomePage })
 
@@ -48,12 +49,24 @@ function HomePage() {
   const state = useProject((project) => project)
   const completed = completedPromptCount(state.drawings)
   const canResume = state.status !== 'empty' && (completed > 0 || state.generatedFont)
+  const [loadingSample, setLoadingSample] = useState(false)
 
   const start = async () => {
     if (canResume && !window.confirm('현재 작업을 지우고 새로 시작할까요?')) return
     await clearPersistedProject()
     projectActions.startProject()
     void navigate({ to: '/write' })
+  }
+
+  const openSample = async () => {
+    if (canResume && !window.confirm('현재 작업을 지우고 예시 손글씨를 불러올까요?')) return
+    setLoadingSample(true)
+    try {
+      await loadSampleProject()
+      void navigate({ to: '/write' })
+    } finally {
+      setLoadingSample(false)
+    }
   }
 
   return (
@@ -75,6 +88,13 @@ function HomePage() {
               이어서 만들기 <ArrowRight className="size-4" />
             </Button>
           )}
+        </div>
+
+        <div className="home-samples">
+          <p>직접 쓰기 전에 먼저 살펴볼 수 있어요.</p>
+          <Button variant="secondary" disabled={loadingSample} onClick={() => void openSample()}>
+            {loadingSample ? '불러오는 중…' : '예시 손글씨'}
+          </Button>
         </div>
 
         {canResume && (
