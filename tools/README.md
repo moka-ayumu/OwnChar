@@ -132,6 +132,7 @@ node tools/project/prof-top.mjs <cpuprofile 폴더>
 | `handwriting.mjs` | 자모와 글자의 뼈대, 음절의 배치, 간격, 펜의 변화입니다. 스타일 값(`STYLES`)도 이 파일에 있습니다. 스크립트가 아닙니다. |
 | `generate.mjs` | 획을 만들고 앱의 저장 경로로 프로젝트를 만듭니다. 쓴 글씨의 시트도 만듭니다. |
 | `compose-sheet.mjs` | 전체 형식의 프로젝트 파일로 글자를 합성하고 시트를 만듭니다. |
+| `home-film.mjs` | 홈의 애니메이션이 그리는 데이터를 만듭니다: 쓴 칸의 획과 문맥형, 그 칸만으로 조합한 음절과 자리, 그 칸만으로 조합할 수 있는 음절의 수와 그중 54개의 자모, 마지막 문장의 글리프. |
 
 홈의 예시 손글씨(`src/features/samples/example.json`)를 다시 만듭니다.
 
@@ -143,6 +144,12 @@ node tools/sample/generate.mjs --style=example --out=tools/out/sample-example.js
 
 ```bash
 node tools/sample/generate.mjs --style=tidy
+```
+
+홈의 애니메이션 데이터(`src/features/samples/home-film.json`)를 다시 만듭니다. 예시 손글씨나 조합 규칙이 바뀌면 실행합니다.
+
+```bash
+node tools/sample/home-film.mjs
 ```
 
 합성한 글리프를 확인합니다.

@@ -29,8 +29,9 @@ src/
     font-builder.ts, *.worker.ts   Font composition and workers
     otf-writer.ts   OTF file output
   project/      Project state and IndexedDB storage
-  features/     Screen components (writing, editor, generating, preview)
-    samples/    Example handwriting on the home page: strokes per sentence, and the loader
+  features/     Screen components (writing, editor, generating, preview, home)
+    home/       The film on the home page: scenes, drawing, and its clock
+    samples/    Example handwriting on the home page: strokes per sentence, the loader, and the data of the home film
   routes/       Routes: write, generate, preview, edit, license
   components/   Shared UI
   dev/          Dev-only sample button. Not a product screen

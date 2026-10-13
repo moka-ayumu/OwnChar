@@ -174,7 +174,7 @@ components:
 
 OwnChar draws like a sequential-pose pictogram: one subject, shown again and again in a new pose, never swapped for something else. The subject is the writer's own handwriting. It is written on a white stage, and from that point on it stays on screen: lifted out of its sentence, steadied, outlined, split into jamo, brought to one size, recombined, multiplied to 11,172 syllables, and finally typed back as a sentence. No page in the flow replaces the handwriting with a spinner or an illustration of progress; the handwriting is the progress.
 
-The palette is three values on a quiet ground: ink, white, and one lime field. Everything is flat. Lime is a surface that frames the work (the flow rail, the editor bar, the home demonstration); white is where the work happens; solid ink marks whatever is selected, live, or primary. Hierarchy comes from weight and from reversing ink and lime, not from more colours or more sizes. Corners are 6px, lines are 1px.
+The palette is three values on a quiet ground: ink, white, and one lime field. Everything is flat. Lime is a surface that frames the work (the flow rail, the editor bar); white is where the work happens; solid ink marks whatever is selected, live, or primary. Hierarchy comes from weight and from reversing ink and lime, not from more colours or more sizes. Corners are 6px, lines are 1px.
 
 The system is dense and tool-like in the stage and calm in the rail. It avoids paper or stationery imitation, the white-and-blue SaaS tool shell, and a dark technical look; those were ruled out by the user when this world was chosen.
 
@@ -194,7 +194,7 @@ Three working values (ink, white, lime) on a neutral ground, with greys only for
 - **Ink** (`ink`, #101114): text, 1px structural lines, and every solid mark of state: primary buttons, the current row in a rail list, the pressed segment, the selected glyph cell, progress and slider fill, the focus outline, the user's strokes. On hover a solid ink button lifts to **Ink Hover** (`ink-hover`, #2c2e34).
 
 ### Secondary
-- **Lime Field** (`lime`, #c6f432): the colour of the surface that frames the work. Full-bleed on the flow rail, the editor top bar, the home demonstration half, and the phone-size notice. Smaller uses are all "this is live": text selection, the characters picked in the preview text, the source-cell highlight on the writing grid (40% tint), the wash of a finished cell (24% tint) and a done jamo in the cell popover (40% tint), the dashed placeholder for a jamo not yet written (22% tint), a source link on hover, the film's live jamo zone, raw-trace line, outline fill, worker fronts and finish box, and the action button on an ink bar.
+- **Lime Field** (`lime`, #c6f432): the colour of the surface that frames the work. Full-bleed on the flow rail, the editor top bar, and the phone-size notice. Smaller uses are all "this is live": text selection, the characters picked in the preview text, the source-cell highlight on the writing grid (40% tint), the wash of a finished cell (24% tint) and a done jamo in the cell popover (40% tint), the dashed placeholder for a jamo not yet written (22% tint), a source link on hover, the film's live jamo zone, the medial tiles, finished cells, raw-trace and outline fill of the home film, raw-trace line, outline fill, worker fronts and finish box, and the action button on an ink bar.
 - **Lime Deep** (`lime-deep`, #b2e016): hover state of a lime button only.
 - **Lime Ink** (`lime-ink`, #3c4a0a): secondary text on lime (labels, notes, counts, steps not yet reached, the rail list's scrollbar). 7.5:1 on lime.
 
@@ -203,7 +203,7 @@ Three working values (ink, white, lime) on a neutral ground, with greys only for
 
 ### Neutral
 - **White** (`white`, #ffffff): the stage, the writing canvas, inputs, cards, dialogs, the specimen tile on lime. Text on solid ink.
-- **Ground** (`ground`, #ecede8): the page behind everything: header, home copy column, the editor's glyph preview well, an inset list inside a dialog, glyph-cell hover.
+- **Ground** (`ground`, #ecede8): the page behind everything: header, the editor's glyph preview well, an inset list inside a dialog, glyph-cell hover.
 - **Rule** (`rule`, #d9dad5): quiet hairlines inside white: writing-grid cell lines, input and card borders at rest, the line over the size dials, toolbar dividers, the film's specimen boxes, trail tiles and unfilled lanes.
 - **Ink 2** (`ink-2`, #4a4c52): secondary text on white and ground (descriptions, field labels).
 - **Ink 3** (`ink-3`, #666970): tertiary text: placeholders, captions, cell characters in the writing grid. 5.5:1 on white, 4.7:1 on ground.
@@ -226,11 +226,11 @@ Translucent ink is used for three things only: hover wash on transparent control
 **Character:** One heavy, tight Korean grotesque doing everything by weight. Headings are 800 and tightly tracked; the interface underneath is 14px at 600. The only expressive letterforms on screen are the writer's own.
 
 ### Hierarchy
-- **Display** (800, clamp(34px, 4vw, 52px), 1.16, -0.035em): the home headline, max 15em wide. The help page title sits at this role's floor (34px, -0.03em).
-- **Headline** (800, 26px, 1.25, -0.03em): the one heading of a rail or a workspace. The sentence being written uses the same size at 700 / 1.3, because it is content to copy, not a title.
+- **Display** (800, clamp(34px, 4vw, 52px), 1.16, -0.035em): the help page title, at this role's floor (34px, -0.03em).
+- **Headline** (800, 26px, 1.25, -0.03em): the one heading of a rail, a workspace, or the home panel. The sentence being written uses the same size at 700 / 1.3, because it is content to copy, not a title.
 - **Figure** (800, 44px, 1, -0.03em, tabular): the single big number in a rail (collected count, percent), with its unit at 14px / 600 in lime-ink.
 - **Title** (700, 18px, -0.02em): dialog titles and section headings on the help page. Panel headings inside the editor drop to 14px / 600–700.
-- **Body** (400, 16px, 28px line): prose on ground or white, in ink-2, max 34em on home and 68ch on help. Dense descriptions use 14px with a 24px line.
+- **Body** (400, 16px, 28px line): prose on ground or white, in ink-2, max 68ch on help. Dense descriptions use 14px with a 24px line.
 - **UI** (600, 14px): buttons, rail rows, navigation (500), inputs (400).
 - **Label** (600, 12px, 1.6 for notes): field labels, rail labels and notes, counts, captions. 12px is the floor.
 
@@ -247,9 +247,9 @@ Translucent ink is used for three things only: hover wash on transparent control
 
 **The rail-and-stage frame.** Write, Generate and Preview share one grid: a lime rail (280px; 244px at ≤1100px; on write 232px, 216px at ≤1100px, closing to a 56px column of icons) with a 1px ink right edge, and a white stage taking the rest. The rail is a column with padding 24 / 22 / 20: at the top, what this step is (a headline with a one-line note, or a figure with its label); in the middle, the step's list or fields; at the bottom, pushed down by auto margin, the actions. The primary action is solid ink at the rail's bottom on all three pages, so it never changes position through the flow. The stage holds only the work: the writing canvas beside its 56px tool rail, the film, or the typed sentence.
 
-**Other pages inherit the same parts in a different arrangement.** Home is two columns (1.05fr / 0.95fr): copy on ground, demonstration on a lime half with an ink left edge. The editor is a 56px lime bar over white panels divided by 1px ink lines (glyph browser / preview well on ground / 280px settings; or examples / 340px controls). Help is a single 68ch column on ground with sections opened by a 1px ink top line.
+**Other pages inherit the same parts in a different arrangement.** Home is one white stage under the header: the home film fills it, and a foot row stands over its bottom edge (see "The home film"). The editor is a 56px lime bar over white panels divided by 1px ink lines (glyph browser / preview well on ground / 280px settings; or examples / 340px controls). Help is a single 68ch column on ground with sections opened by a 1px ink top line.
 
-**Spacing.** An 8px-rooted rhythm: 8 between buttons and rows, 12 between toolbar groups, 16 between cards and fields, 24 inside panels, 28–32 around the stage content, 40–56 around the home columns.
+**Spacing.** An 8px-rooted rhythm: 8 between buttons and rows, 12 between toolbar groups, 16 between cards and fields, 24 inside panels, 28–32 around the stage content, 32 between the home foot and the stage edges.
 
 **Responsive.** At ≤1100px the rail narrows to 244px, toolbar dividers drop, the editor loses its preview well and the example grid goes from three columns to two. At ≤767px the app is replaced by a lime full-height notice ("더 넓은 화면이 필요해요"); writing needs a tablet or desktop. Minimum width is 320px.
 
@@ -259,9 +259,9 @@ Translucent ink is used for three things only: hover wash on transparent control
 - The first sentence of the preview does not travel: generation ends with it standing exactly where the preview shows it, so the stage cross-fade leaves it still.
 - Everything else cross-fades in 200ms.
 
-All of it eases with one curve, `cubic-bezier(.16, 1, .3, 1)`. Entrances are short and one-directional (360–520ms, a rise of 8–14px or a scale from .86–.94); nothing bounces or loops except the typing caret.
+All of it eases with one curve, `cubic-bezier(.16, 1, .3, 1)`. Entrances are short and one-directional (360–520ms, a rise of 8–14px or a scale from .86–.94); nothing bounces or loops except the typing caret and the home film.
 
-**Reduced motion.** With `prefers-reduced-motion`, all transitions and animations collapse to instant and view transitions are disabled. The generation film is not played: the stage shows only the worker lanes filling from real progress, with no skip control, no trail and no hand-over. The home demonstration stops cycling.
+**Reduced motion.** With `prefers-reduced-motion`, all transitions and animations collapse to instant and view transitions are disabled. The generation film is not played: the stage shows only the worker lanes filling from real progress, with no skip control, no trail and no hand-over. The home film is not played: the stage shows one still of the last scene, and a scene row shows the still of its scene.
 
 ### Named Rules
 **The Same Place Rule.** A page in the write → generate → preview flow uses the rail-and-stage frame, puts its primary action at the rail's bottom, and names its rail `rail` and its stage `stage` so the frame holds across the navigation.
@@ -270,7 +270,7 @@ All of it eases with one curve, `cubic-bezier(.16, 1, .3, 1)`. Entrances are sho
 
 ## Elevation & Depth
 
-Flat. There is no elevation: no drop shadows, no blur, no glass. Layers are told apart by field colour (ground → white → lime → ink) and by 1px lines. A dialog sits on a 45% ink scrim with a 1px ink border; the cell popover and the writing settings are white with a 1px ink border, laid over the canvas; none casts a shadow.
+Flat. There is no elevation: no drop shadows, no blur, no glass. The home panel is the one exception (see "The home film"). Layers are told apart by field colour (ground → white → lime → ink) and by 1px lines. A dialog sits on a 45% ink scrim with a 1px ink border; the cell popover and the writing settings are white with a 1px ink border, laid over the canvas; none casts a shadow.
 
 `box-shadow` appears only as a zero-blur line: the 2px ink ring on a focused text input, and a 1px inset outline on an empty tile. `linear-gradient` appears only to draw the half-pixel centre guides of a writing cell. Neither is ever used for tone or lift.
 
@@ -376,6 +376,28 @@ The specimens are up to three syllables the writer wrote whole, of different lay
 - **Progress is real:** each lane's fill is the share of its own range that worker reports; with no child workers there is one lane, filled from the overall progress (3–94% mapped to 0–1). Fills ease toward their target with a 120ms time constant. The percent and message in the rail are the worker's own. Steps 1–10 are a replay, on the specimens, of work the pipeline does in milliseconds; nothing is shown that the pipeline does not do.
 - **Colour in the film** is the system's: ink strokes, rule for empty tracks and boxes, lime for the live part. Step easing is a quartic ease-out.
 - **Failure:** a white panel with a 1px red border replaces the centre of the stage, with a red heading, the message, and a primary retry.
+
+### The home film
+One canvas that fills the home stage, redrawn every frame from a clock. Its strokes come from `src/features/samples/home-film.json`, which `tools/sample/home-film.mjs` makes from the example handwriting with the app's own composer. The film keeps above the foot row.
+
+| # | Scene | Starts at | What the strokes do |
+|---|-------|-----------|---------------------|
+| 1 | 문장 쓰기 | 0s | A row of writing cells holds the start of the first sentence. The pen writes each stroke in order at one speed. Between two strokes the pen leaves a thin line that fades in 0.5s. The cell in work has a 1px ink outline, and a finished cell gets the 24% lime wash. |
+| 2 | 간격 학습 | 5.4s | The row rises and its ink fades to 35%. Three written syllables of different layouts go to three large white boxes under the row: a thin line leaves each cell, and the syllable is written again in its box. In the boxes, in this order: a thin box is drawn around each jamo, a lime block fills the space between the boxes, and a dimension line with end ticks grows at the left of the syllable. Under each box stand "간격" and "높이" with their values as a share of the cell (12px, 700). The same lime blocks and dimension lines then show on every syllable of the row. Last, two dotted lines (1 4) run along the row and through the boxes at the top and bottom most syllables share. |
+| 3 | 획 다듬기 | 10.4s | In the same three boxes the ink fades to 8%. The points of the pen run along the raw path, which stays as a lime trace. The points settle onto the corrected path. The path swells to the width of the pen as a lime shape with an ink contour. Ink then fills the shape the way the pen went. The ink of the row comes back, and the boxes fade. |
+| 4 | 자모 수집 | 15.4s | Each stroke shows its place in the writing order in an ink disc. The row rises, and one tile for each jamo stands under it: outlined for an initial, lime for a medial, dashed for a final. A thin line leaves each written jamo, goes to its tile, and the jamo is written again there. The written jamo fades to 20%. |
+| 5 | 문맥형 | 19.4s | Under each tile, one small square for each context form of the jamo (8 for an initial, 2 for a medial, 1 for a final): ink for a written form, a dashed outline that fills lime for a borrowed one. A key under the squares names the two. |
+| 6 | 글자 조합 | 22.8s | The row of cells fades and the tiles rise. Three white boxes show the zones of syllables that were not written. A thin line leaves the tile of each source jamo, and the jamo is written in its zone. The source tile has a 2px ink outline while its jamo is in work. At 4.3s the three boxes shrink into the first places of a field under a count, and the tiles stay. From then on lines leave the tiles without a stop: every 0.07s one more syllable is composed in the field the same way, several at a time. The places are taken in a scattered order, so the lines cross the field. When the places are full, a new syllable is composed over an earlier one, which fades to 12%. The count runs up to the number of syllables the written cells compose. A line under the count says "쓴 9글자의 자모로 만든 글자". |
+| 7 | 폰트 완성 | 30.4s | The background fades to white in 0.6s. The lines from the tiles and the syllables in the field go on for 1.3s while the count goes on to 11,172, its progress track fills, and the line under it changes to "문장 8개를 다 썼을 때". Then the tiles and the field fade, the first places first. A line goes from the count to the start of a sentence, and the sentence is typed one character at a time behind a caret. It holds about 2s, then fades in 0.4s. |
+
+- **Loop:** the film is 37s long and starts again. Each loop ends on the next of three closing sentences.
+- **Camera:** the film is seen through a camera. It comes closer only in scene 1, and only a little: at most 1.06x, with the whole row in view. It then goes back to 1x in one second and stays there. It is never quite still: a slow sway of a few pixels runs under every scene. With reduced motion the camera does not move.
+- **Steps in words:** scenes 2 and 3 show their steps in one line under the boxes (12px, 600), the step in work in ink on a lime block: "자모의 상자, 자모 사이의 간격, 글자의 높이, 배운 값" and "펜이 지나간 점, 손떨림 보정, 펜 굵기의 윤곽, 잉크". The last step of scene 2 gives the learned height and space.
+- **Background:** the grid of the writing page fills the stage in rule lines at 50%. In every row a faint pen (7% ink, with a dot at its tip) writes the syllables of the example handwriting one cell after the other without a stop; each syllable fades over the next five cells. The background follows 35% of the camera's move, so it stands behind the film. It stops when the film is paused. It is not shown in scene 7, where the finished font stands on white, and comes back when the film starts again.
+- **Nothing is invented:** the measures, the context forms, and the syllables and the count of scene 6 are what the composer makes of the written cells alone, and each line leaves the jamo that the composer chose. The closing sentences are in the font of the whole example handwriting.
+- **Foot row:** 32px from the left, right and bottom edges. At the left, the home panel, 448px wide, with the headline (26px / 800), two lines of description, the primary and secondary actions, the progress of saved work, and the example row above a line of 15% ink. At the right, 288px wide, the scene list: seven rail rows on white in two columns, the live one solid ink with a lime number, one line of note under them, and a ghost icon button that pauses the film. At 880px and narrower the scene list lies in two rows above a full-width panel.
+- **The home panel is glass.** It is the one exception to the Flat Field Rule, made at the user's request: no border, a 58% ground fill, a 14px backdrop blur with 1.5 saturation, a 6px corner, and one soft shadow (0 16px 40px -20px, 28% ink). The background passes behind it.
+- **Controls:** a scene row starts the film at that scene. The pause button stops the clock and keeps the frame.
 
 ### Arrival in the preview
 Arriving from generation, the first sentence is already in place: the film ends with its glyphs standing exactly where the text area shows them, so the stage cross-fade leaves them still. The rows of the dial panel settle in below (520ms each, 60ms apart). Arriving any other way, the page is simply there.
