@@ -14,7 +14,10 @@ export interface CompletedHangulCell {
 
 /**
  * Every fully written syllable of the base Hangul sentences. A partly written
- * syllable must never teach spacing, size or proportion.
+ * syllable must never teach spacing, size or proportion. A jamo is fully
+ * written when it has its usual stroke count, or when the writer declared its
+ * end. With every earlier end declared, the last jamo is fully written once a
+ * later cell has strokes.
  */
 export function completedHangulCells(sessions: Record<string, WritingSessionRecord>): CompletedHangulCell[] {
   const result: CompletedHangulCell[] = []
@@ -23,13 +26,18 @@ export function completedHangulCells(sessions: Record<string, WritingSessionReco
     const session = sessions[exercise.id]
     if (!session) continue
     const strokes = new Map(session.elements.filter((item) => !item.isDeleted).map((item) => [item.id, item]))
+    const lastWritten = session.assignments.reduce((last, assignment) => Math.max(last, assignment.cellIndex), -1)
     exercise.cells.forEach((cell, cellIndex) => {
       if (cell.slots.length < 2) return
       const assigned = cell.slots.map((_, slotIndex) => session.assignments
         .filter((assignment) => assignment.cellIndex === cellIndex && assignment.slotIndex === slotIndex)
         .map((assignment) => strokes.get(assignment.elementId))
         .filter((stroke): stroke is RawStroke => Boolean(stroke)))
-      if (assigned.some((group, index) => group.length < cell.slots[index].expectedStrokes)) return
+      const declared = new Set((session.boundaries[cellIndex] ?? []).map((boundary) => boundary.slotIndex))
+      const last = cell.slots.length - 1
+      const written = (group: RawStroke[], index: number) => group.length >= cell.slots[index].expectedStrokes
+        || (group.length > 0 && (declared.has(index) || (index === last && declared.size === last && cellIndex < lastWritten)))
+      if (!assigned.every(written)) return
       const origin = cellOrigin(cellIndex, session.columns, session.cellSize)
       result.push({ cell, cellIndex, session, assigned, cellX: origin.x, cellY: origin.y })
     })
