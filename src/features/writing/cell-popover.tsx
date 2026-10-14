@@ -52,7 +52,7 @@ export function CellPopover({ cell, cellIndex, grid, slots, current, remaining, 
         <>
           <p className="cell-popover-count" aria-live="polite">
             <span>{slotName(target)}</span>
-            {remaining > 0 ? <strong>남은 획 <b>{remaining}</b></strong> : <strong>다 썼으면 완료해 주세요</strong>}
+            {remaining > 0 ? <strong>남은 획 <b>{remaining}</b></strong> : <strong>작성이 끝났다면 완료하세요</strong>}
           </p>
           <Button className="w-full" size="sm" variant="secondary" disabled={!canFinish} onClick={onFinish}>{target.slot.char} 완료</Button>
         </>

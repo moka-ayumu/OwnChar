@@ -5,7 +5,8 @@ OwnChar is a browser tool that turns handwriting into an OTF font. All processin
 ## Working Rules
 
 - Push only when the user asks.
-- UI copy is Korean, in polite 해요체. Example: "손글씨가 폰트가 되었어요." ("Your handwriting became a font.")
+- UI copy is Korean, in a short, plain formal register (합쇼체 or noun endings). State the fact and stop; no chatty 해요체, no filler. Example: "폰트 생성이 완료되었습니다." ("Font generation is complete.")
+- Before you add or change UI copy, read `docs/decision/0007-ui-copy-rules.md`. No standing explanatory sentences (use a `Hint` tooltip around the whole area it describes), no duplicate lines.
 - Keep the product terms fixed: 수집 (collection), 문맥형 (contextual form), 고정 자모 (fixed jamo), 보정값 (adjustment value), 변경 적용 (apply changes).
 
 ## Tech Stack

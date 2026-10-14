@@ -16,7 +16,6 @@ export const GlyphSheet = memo(function GlyphSheet({ drawings, sessions, fontFam
   return (
     <section className="glyph-sheet" aria-labelledby="glyph-sheet-title" onKeyDown={(event) => { if (event.key === 'Escape') setPicked(null) }}>
       <h2 id="glyph-sheet-title" className="text-sm font-semibold">글자 모음 한 장</h2>
-      <p className="mt-0.5 text-xs text-ink-3">글자를 누르면 원본 필기를 볼 수 있어요</p>
       <div className="glyph-grid">
         {SHEET_CHARS.map((char) => (
           <button key={char} type="button" className="glyph-cell" aria-pressed={picked === char} style={{ fontFamily }} onClick={() => setPicked((previous) => previous === char ? null : char)}>

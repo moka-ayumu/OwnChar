@@ -16,7 +16,7 @@ OwnChar turns handwriting into an installable OTF font, entirely in the browser.
 
 ## Positioning
 
-A handwriting font for Hangul built from a few sentences, not 11,172 hand-drawn glyphs. Jamo are collected and recombined by context-aware composition (초성 8 variants, 중성 2, 종성 1), and nothing leaves the browser: no server, no upload, no account.
+A handwriting font for Hangul built from a few sentences, not 11,172 hand-drawn glyphs. Jamo are collected and recombined by context-aware composition (초성 8 variants, 중성 2, 종성 1). Everything runs in the browser.
 
 ## Operating Context
 
@@ -37,7 +37,7 @@ State is autosaved to IndexedDB (strokes, jamo, settings, generated font, last s
 
 ## Brand Commitments
 
-Name: OwnChar. Default font name "OwnChar Font". UI voice is polite and gentle Korean (해요체), e.g. "손글씨가 폰트가 되었어요."
+Name: OwnChar. Default font name "OwnChar Font". UI voice is plain, concise Korean in a formal register (합쇼체 or noun endings), not friendly or chatty, e.g. "폰트 생성이 완료되었습니다."
 
 ## Evidence on Hand
 
@@ -45,11 +45,11 @@ Use-case and page specs in `docs/use-cases` (UC-01–10, PG-01–08). Open-sourc
 
 ## Product Principles
 
-1. **Privacy is the product.** Everything runs in the browser; say so plainly and never imply uploads or accounts.
-2. **Writing comes first.** The writing surface is the hero; everything else supports getting strokes in without friction.
-3. **Never lose work.** Autosave is invisible, and destructive actions (restart, discard adjustments) always confirm.
-4. **Incomplete is allowed.** Users can generate before collecting everything. Always state what will be omitted or substituted.
-5. **Make the invisible legible.** Progress, collection counts, and "변경됨" state show what the system is doing and what is out of date.
+1. **Writing comes first.** The writing surface is the hero; everything else supports getting strokes in without friction.
+2. **Never lose work.** Autosave is invisible, and destructive actions (restart, discard adjustments) always confirm.
+3. **Incomplete is allowed.** Users can generate before collecting everything. Always state what will be omitted or substituted.
+4. **Make the invisible legible.** Progress, collection counts, and "변경됨" state show what the system is doing and what is out of date.
+5. **No explanatory filler.** If a control is understood without a sentence, show no sentence. Explanation that is needed goes in a tooltip (`Hint`), never as standing text on the page.
 
 ## Accessibility & Inclusion
 

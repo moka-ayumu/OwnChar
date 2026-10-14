@@ -29,7 +29,7 @@ function Source({ source, drawings, sessions }: { source: GlyphSource; drawings:
   const exercise = record && WRITING_EXERCISES.find((item) => item.id === record.capture.exerciseId)
   const label = `${source.symbol ? '기호' : source.role ? ROLE_LABELS[source.role] : '글자'} ${source.char}`
   if (!record || !session || !exercise) {
-    return <div className="source-chip is-missing"><span className="source-cell" /><span><strong>{label}</strong><small>아직 쓰지 않았어요</small></span></div>
+    return <div className="source-chip is-missing"><span className="source-cell" /><span><strong>{label}</strong><small>미작성</small></span></div>
   }
   const note = source.match === 'derived' ? ' · 다른 문맥에서 파생' : source.match === 'compound' ? ' · 자모 합성' : ''
   return (
@@ -54,7 +54,7 @@ export function SourcePopover({ chars, hidden, drawings, sessions, fontFamily, s
   return (
     <div className="source-popover" role="dialog" aria-label="원본 필기" style={style}>
       <div className="flex items-center justify-between gap-4">
-        <h2 className="text-xs font-semibold">원본 필기 <span className="font-normal text-ink-3">· {hidden > 0 && `앞의 ${chars.length}글자만 보여요. `}자모를 누르면 쓴 칸으로 가요</span></h2>
+        <h2 className="text-xs font-semibold">원본 필기 {hidden > 0 && <span className="font-normal text-ink-3">· 앞 {chars.length}글자만</span>}</h2>
         <button type="button" className="source-popover-close" aria-label="닫기" onClick={onClose}><X className="size-3.5" /></button>
       </div>
       {chars.map((char, index) => (

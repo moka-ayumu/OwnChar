@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { ChevronDown, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Hint } from '@/components/hint'
 import { Slider } from '@/components/ui/slider'
 import { DEFAULT_COMPOSITION_SETTINGS, type CompositionSettings } from '@/font/settings'
 import { projectActions } from '@/project/store'
@@ -82,6 +83,7 @@ export function DialPanel({ settings }: { settings: CompositionSettings }) {
 
   return (
     <section className="dial-panel settle" aria-labelledby="dial-title">
+      <Hint className="block" side="top" label={<>100%는 자모 크기와 글자 폭을 평균에 맞춥니다. 더 올리면 평균에서 먼 글자까지 맞춥니다.{mixed && ' 세부 값이 서로 다릅니다. 이 슬라이더를 움직이면 모두 같은 값이 됩니다.'}</>}>
       <div className="flex items-center gap-4">
         <h2 id="dial-title" className="shrink-0 text-sm font-semibold">글자 고르게</h2>
         <div className="flex min-w-0 flex-1 items-center gap-3">
@@ -91,8 +93,8 @@ export function DialPanel({ settings }: { settings: CompositionSettings }) {
         </div>
         <output className="tnum w-11 text-right text-sm font-semibold">{percent(all)}</output>
       </div>
-      <div className="flex items-center justify-between gap-4">
-        <p className="text-xs leading-5 text-ink-2">100%는 자모 크기와 글자 폭을 평균에 맞춰요. 더 올리면 평균에서 먼 글자까지 맞춰요.{mixed && ' 세부 값이 서로 달라요. 이 슬라이더를 움직이면 모두 같은 값이 돼요.'}</p>
+      </Hint>
+      <div className="flex items-center justify-end gap-4">
         <div className="flex shrink-0 gap-1">
           <Button size="sm" variant="ghost" aria-expanded={open} aria-controls="dial-details" onClick={toggle}>
             <ChevronDown className={`size-4 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} /> 세부 조정

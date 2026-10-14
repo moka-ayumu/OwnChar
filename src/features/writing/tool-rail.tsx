@@ -9,9 +9,9 @@ import { Slider } from '@/components/ui/slider'
 export type CanvasTool = 'pen' | 'eraser' | 'pan'
 
 const GUIDE_MODES: Array<{ mode: GuideMode; label: string; hint: string }> = [
-  { mode: 'blank', label: '빈 칸', hint: '모든 칸을 처음부터 써요. 같은 자모를 여러 번 쓰면 가장 잘 쓴 것을 써요.' },
-  { mode: 'collected', label: '고정 자모', hint: '이미 수집한 자모를 회색으로 고정해서 보여줘요.' },
-  { mode: 'placement', label: '자리 안내', hint: '고정 자모와 아직 쓸 자모의 자리를 점선으로 보여줘요.' },
+  { mode: 'blank', label: '빈 칸', hint: '모든 칸을 처음부터 작성합니다.' },
+  { mode: 'collected', label: '고정 자모', hint: '수집한 자모를 회색으로 고정합니다.' },
+  { mode: 'placement', label: '자리 안내', hint: '작성할 자리를 점선으로 표시합니다.' },
 ]
 
 /** The writing tools, as icons in a column that stays beside the canvas while it scrolls. */
@@ -69,7 +69,7 @@ export const ToolRail = memo(function ToolRail({ tool, strokeWidth, endpointStab
           <div className="pen-settings" id="pen-settings" role="group" aria-label="쓰기 설정">
             <div className="pen-setting">
               <div><span>글자 칸 크기</span><output>{cellSize}px</output></div>
-              <Hint className="block" side="bottom" label={cellSizeLocked && '작성한 획의 칸 위치를 보존하기 위해 크기가 고정됐어요.'}>
+              <Hint className="block" side="bottom" label={cellSizeLocked && '작성 후에는 변경할 수 없습니다.'}>
                 <Slider aria-label="글자 칸 크기" min={112} max={184} step={4} disabled={cellSizeLocked} value={[cellSize]} onValueChange={([value]) => onCellSize(value)} />
               </Hint>
             </div>
@@ -84,12 +84,13 @@ export const ToolRail = memo(function ToolRail({ tool, strokeWidth, endpointStab
             <div className="pen-setting">
               <div><span>수집한 자모 보기</span></div>
               <div className="grid grid-cols-3 gap-1" role="group" aria-label="수집한 자모 보기">
-                {GUIDE_MODES.map(({ mode, label }) => (
-                  <Button key={mode} className="px-1 text-[13px]" size="sm" variant={guideMode === mode ? 'default' : 'secondary'} aria-pressed={guideMode === mode} onClick={() => onGuideMode(mode)}>{label}</Button>
+                {GUIDE_MODES.map(({ mode, label, hint }) => (
+                  <Hint key={mode} className="block" side="bottom" label={hint}>
+                    <Button className="w-full px-1 text-[13px]" size="sm" variant={guideMode === mode ? 'default' : 'secondary'} aria-pressed={guideMode === mode} onClick={() => onGuideMode(mode)}>{label}</Button>
+                  </Hint>
                 ))}
               </div>
             </div>
-            <p>{GUIDE_MODES.find(({ mode }) => mode === guideMode)?.hint}</p>
           </div>
         )}
       </div>

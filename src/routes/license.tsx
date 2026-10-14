@@ -10,7 +10,6 @@ function LicensePage() {
     <article className="mx-auto max-w-[68ch] px-8 py-12">
       <Link to="/" className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), '-ml-3')}><ArrowLeft className="size-4" /> 돌아가기</Link>
       <h1 className="mt-8 text-[34px] font-extrabold tracking-[-0.03em]">도움말 및 오픈소스</h1>
-      <p className="mt-4 text-base leading-7 text-ink-2">OwnChar는 모든 글자 데이터와 폰트 생성을 사용자의 브라우저 안에서 처리합니다. 계정이나 서버 업로드가 필요하지 않습니다.</p>
 
       <section className="mt-12 border-t border-rule pt-6">
         <h2 className="text-lg font-bold">작성 방법</h2>

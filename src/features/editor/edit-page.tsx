@@ -5,6 +5,7 @@ import opentype from 'opentype.js'
 import { ArrowLeft, ChevronRight, PenLine, Redo2, RotateCcw, Save, Undo2 } from 'lucide-react'
 import { WRITING_EXERCISES } from '@/collection/exercises'
 import { BASE_CHARACTER_PROMPTS, ROLE_LABELS } from '@/collection/prompts'
+import { Hint } from '@/components/hint'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { HANGUL_BASE, HANGUL_COUNT } from '@/font/hangul'
 import { glyphSources, type GlyphSource } from '@/generation/provenance'
@@ -158,9 +159,9 @@ export function EditPage({ glyph, query }: EditSearch) {
 
         <aside className="editor-settings">
           <div className="border-b border-rule pb-5">
-            <h2 className="text-sm font-semibold">원본 필기</h2>
-            {selected.length !== 1 ? <p className="mt-2 text-xs text-ink-2">글자 하나를 선택하면 출처를 볼 수 있어요.</p>
-              : selectedSources.length === 0 ? <p className="mt-2 text-xs text-ink-2">작성된 원본이 없습니다.</p>
+            <Hint side="bottom" label={selected.length !== 1 ? '글자 하나를 선택하면 출처를 볼 수 있습니다.' : undefined}><h2 className="text-sm font-semibold">원본 필기</h2></Hint>
+            {selected.length !== 1 ? null
+              : selectedSources.length === 0 ? <p className="mt-2 text-xs text-ink-2">원본 없음</p>
                 : <div className="mt-3 space-y-2">{selectedSources.map((source, index) => {
                   const capture = source.capture
                   const label = `${sourceLabel(source)} ${source.char}`

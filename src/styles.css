@@ -200,6 +200,8 @@ button.app-logo-mark:active { transform: scale(.94); }
 .hint { pointer-events: none; position: fixed; z-index: 60; max-width: 208px; border-radius: 4px; background: var(--color-ink); padding: 5px 8px; color: #fff; font-size: 12px; font-weight: 600; line-height: 1.5; font-variant-numeric: tabular-nums; word-break: keep-all; animation: hint-in 140ms var(--ease-out-expo) backwards; }
 .hint[data-side="right"] { translate: 0 -50%; white-space: nowrap; }
 .hint[data-side="bottom"] { width: max-content; translate: -50% 0; text-align: center; }
+.hint[data-side="left"] { translate: -100% 0; }
+.hint[data-side="top"] { width: max-content; translate: -50% -100%; text-align: center; }
 @keyframes hint-in { from { opacity: 0; } }
 
 /* The stage is the tools in a fixed column and the canvas in everything to their right. */
@@ -270,11 +272,12 @@ button.app-logo-mark:active { transform: scale(.94); }
 .film-arrival { pointer-events: none; position: absolute; inset: 0; visibility: hidden; }
 .film-baseline { display: inline-block; width: 0; height: 0; }
 .step-list { min-height: 0; flex: 1; overflow-y: auto; margin: 16px -8px 0; padding: 0; list-style: none; scrollbar-width: thin; scrollbar-color: #3c4a0a transparent; }
-.step-list li { display: grid; grid-template-columns: 22px 1fr; align-items: center; gap: 8px; border-radius: 6px; padding: 5px 8px; font-size: 14px; font-weight: 600; color: var(--color-lime-ink); }
-.step-list li span:first-child { font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.step-list li { display: block; border-radius: 6px; padding: 5px 8px; font-size: 14px; font-weight: 600; color: var(--color-lime-ink); }
+.step-list li .hint-anchor { display: grid; grid-template-columns: 22px 1fr; align-items: center; gap: 8px; }
+.step-list li .hint-anchor > span:first-child { font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .step-list li.done { color: var(--color-ink); }
 .step-list li.now { background: var(--color-ink); color: #fff; }
-.step-list li.now span:first-child { color: var(--color-lime); }
+.step-list li.now .hint-anchor > span:first-child { color: var(--color-lime); }
 .film-error { position: absolute; left: 50%; top: 50%; width: min(440px, calc(100% - 48px)); translate: -50% -50%; border: 1px solid var(--color-danger); border-radius: 6px; background: #fff; padding: 20px; }
 
 /* Preview */

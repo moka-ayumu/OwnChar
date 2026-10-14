@@ -136,20 +136,18 @@ function PreviewPage() {
     <div className="flow preview-flow">
       <aside className="rail">
         <RailBrand />
-        <h1 className="text-[26px] font-extrabold leading-tight tracking-[-0.03em]">손글씨가 폰트가 되었어요.</h1>
-        <p className="rail-note mt-2">문장을 바꿔 보거나 글자를 더 고르게 다듬어 보세요.</p>
+        <h1 className="text-[26px] font-extrabold leading-tight tracking-[-0.03em]">폰트 생성이 완료되었습니다.</h1>
 
         <div className="mt-6 space-y-4">
           <div><label className="input-label" htmlFor="familyName">폰트 이름</label><input id="familyName" className="text-input mt-1.5" value={metadata.familyName} onChange={(event) => projectActions.updateFontMetadata({ familyName: event.target.value })} /></div>
           <div><label className="input-label" htmlFor="designer">제작자</label><input id="designer" className="text-input mt-1.5" value={metadata.designer} placeholder="이름을 입력하세요" onChange={(event) => projectActions.updateFontMetadata({ designer: event.target.value })} /></div>
           <div><label className="input-label" htmlFor="version">버전</label><input id="version" className="text-input mt-1.5" value={metadata.version} onChange={(event) => projectActions.updateFontMetadata({ version: event.target.value })} /></div>
         </div>
-        <p className="rail-note mt-4">폰트는 서버로 전송되지 않으며 이 브라우저에서 생성됩니다.</p>
 
         <div className="mt-auto grid gap-2 pt-6">
           {dirty && (
             <div className="rail-change" role="status">
-              <span>필기 또는 폰트 생성 설정이 변경되었습니다. 변경 적용 후 새 OTF를 받을 수 있습니다.</span>
+              <span>설정이 변경되어 재생성이 필요합니다.</span>
               <Button variant="secondary" className="w-full" onClick={() => void navigate({ to: '/generate', viewTransition: true })}><RefreshCw className="size-3.5" /> 변경 적용</Button>
             </div>
           )}
@@ -163,8 +161,8 @@ function PreviewPage() {
 
       <Dialog open={askApply} onOpenChange={setAskApply}>
         <DialogContent>
-          <DialogTitle>변경 사항이 아직 적용되지 않았어요</DialogTitle>
-          <DialogDescription>필기 또는 폰트 생성 설정이 바뀌어서, 지금 받는 OTF에는 변경 내용이 들어 있지 않아요. 먼저 변경을 적용할까요?</DialogDescription>
+          <DialogTitle>변경 사항을 적용하시겠습니까?</DialogTitle>
+          <DialogDescription>적용하지 않으면 현재 OTF에 변경 내용이 반영되지 않습니다.</DialogDescription>
           <div className="mt-6 flex justify-end gap-2">
             <Button variant="secondary" onClick={() => { setAskApply(false); download() }}>아니요</Button>
             <Button onClick={() => void navigate({ to: '/generate', viewTransition: true })}>네</Button>
@@ -174,7 +172,7 @@ function PreviewPage() {
 
       <section className="stage">
         <div className="preview-stage">
-          <label htmlFor="sample" className="mb-3 block text-sm font-semibold text-ink-2">직접 입력해 보세요</label>
+          <label htmlFor="sample" className="sr-only">직접 입력</label>
 
           <div className="preview-grid">
           <div className="preview-main">

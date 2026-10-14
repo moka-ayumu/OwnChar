@@ -3,6 +3,7 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { Check, FastForward, RotateCcw, X } from 'lucide-react'
 import { RailBrand } from '@/components/rail-brand'
 import { Button } from '@/components/ui/button'
+import { Hint } from '@/components/hint'
 import { Progress } from '@/components/ui/progress'
 import { BIND_LENGTH, BIND_STEP, buildFilm, DONE_STEP, drawFilm, filmLength, filmStep, FILM_NOTES, FILM_STEPS, lanesCue, LANES_STEP, liftLength, type FilmData, type LineTarget } from '@/features/generating/film'
 import { flow, LEAD_SENTENCE, LEAD_SIZE, prefersReducedMotion } from '@/lib/flow'
@@ -200,14 +201,15 @@ function GeneratePage() {
     <div className="flow">
       <aside className="rail">
         <RailBrand />
-        <h1 className="text-[26px] font-extrabold leading-tight tracking-[-0.03em]">{finished ? '폰트가 완성됐어요' : '폰트를 만들고 있어요'}</h1>
-        <p className="rail-note mt-2 min-h-[58px]" aria-live="polite">{FILM_NOTES[step]}</p>
+        <h1 className="text-[26px] font-extrabold leading-tight tracking-[-0.03em]">{finished ? '폰트 생성이 완료되었습니다' : '폰트를 생성하는 중입니다'}</h1>
 
         <ol ref={steps} className="step-list" aria-label="생성 단계">
           {FILM_STEPS.map((name, index) => (
             <li key={name} className={index === step ? 'now' : index < step ? 'done' : undefined} aria-current={index === step ? 'step' : undefined}>
-              <span>{index < step ? <Check className="size-3.5" strokeWidth={3} /> : index + 1}</span>
-              <span>{name}</span>
+              <Hint side="right" className="step-hint" label={FILM_NOTES[index]}>
+                <span>{index < step ? <Check className="size-3.5" strokeWidth={3} /> : index + 1}</span>
+                <span>{name}</span>
+              </Hint>
             </li>
           ))}
         </ol>
@@ -234,7 +236,7 @@ function GeneratePage() {
         </div>
         {generation.error && (
           <div className="film-error" role="alert">
-            <p className="text-base font-bold text-danger">생성 중 문제가 발생했습니다</p>
+            <p className="text-base font-bold text-danger">폰트 생성에 실패했습니다</p>
             <p className="mt-1 text-sm leading-6 text-ink-2">{generation.error}</p>
             <Button className="mt-4" onClick={run}><RotateCcw className="size-4" /> 다시 시도</Button>
           </div>

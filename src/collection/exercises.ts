@@ -81,7 +81,7 @@ const HANGUL_SENTENCES = [
 const hangulExercises: WritingExercise[] = HANGUL_SENTENCES.map((text, index) => ({
   id: `hangul-sentence-${index}`,
   title: `한글 문장 ${index + 1}`,
-  instruction: '문장을 평소 글씨처럼 이어서 써주세요. 한 음절의 획은 초성·중성·종성 순서로 자동 분리됩니다.',
+  instruction: '문장을 평소 글씨처럼 이어서 쓰세요. 한 음절의 획은 초성·중성·종성 순서로 자동 분리됩니다.',
   text,
   cells: [...text].map((char) => ({ char, slots: hangulSlots(char) })),
   group: 'hangul',
@@ -105,7 +105,7 @@ const numberSymbolText = ['0123456789', ...SYMBOLS].join('')
 const numberSymbolExercise: WritingExercise = {
   id: 'numbers-symbols',
   title: '숫자와 기호',
-  instruction: '각 칸의 숫자와 기호를 평소 쓰는 위치와 크기로 적어주세요.',
+  instruction: '각 칸의 숫자와 기호를 평소 쓰는 위치와 크기로 적으세요.',
   text: numberSymbolText,
   cells: [...numberSymbolText].map((char) => ({
     char,

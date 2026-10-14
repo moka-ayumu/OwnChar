@@ -8,10 +8,9 @@ import { projectStore } from '@/project/store'
 import { useProject, useSaveStatus } from '@/project/use-project'
 
 const SAVE_LABEL: Record<SaveStatus, string> = { saved: '자동 저장됨', saving: '저장 중…', failed: '저장 안 됨' }
-const SAVE_NOTE: Record<SaveStatus, string> = {
-  saved: '작업이 바뀔 때마다 이 기기의 브라우저에 저장돼요.',
-  saving: '이 기기의 브라우저에 저장하고 있어요.',
-  failed: '브라우저가 저장을 막고 있어요. 새로고침하면 작업이 사라지니 파일로 저장해 두세요.',
+/** Only a state the label cannot explain on its own gets a note. */
+const SAVE_NOTE: Partial<Record<SaveStatus, string>> = {
+  failed: '저장이 차단되었습니다. 새로고침하면 작업이 사라지므로 파일로 저장하세요.',
 }
 
 /** Whether the project in memory is on this device, as a dot and a short label. Nothing shows for an empty project. */
@@ -36,7 +35,7 @@ function useProjectFile() {
 
   const open = async (file: File | undefined) => {
     if (!file) return
-    if (!window.confirm('현재 작업을 지우고 파일의 작업으로 바꿀까요?')) return
+    if (!window.confirm('현재 작업을 파일의 작업으로 교체하시겠습니까?')) return
     try {
       await loadProjectArchive(file)
       void navigate({ to: projectStore.state.status === 'ready' ? '/preview' : '/write' })
@@ -46,7 +45,7 @@ function useProjectFile() {
   }
 
   const remove = async () => {
-    if (!window.confirm('이 기기에 저장된 작업을 삭제할까요?\n삭제하면 되돌릴 수 없어요. 먼저 파일로 저장해 두면 나중에 불러올 수 있어요.')) return
+    if (!window.confirm('저장된 작업을 삭제하시겠습니까?\n되돌릴 수 없습니다.')) return
     await deletePersistedProject()
     void navigate({ to: '/' })
   }

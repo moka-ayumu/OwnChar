@@ -15,7 +15,7 @@ test('writes a jamo, generates the font, traces a glyph back to its cell, and gu
   await page.getByRole('button', { name: '지금 폰트 만들기' }).click()
   await expect(page.getByRole('dialog')).toContainText('아직 수집하지 않은 글자가 있어요')
   await page.getByRole('button', { name: '그래도 생성하기' }).click()
-  await expect(page.getByRole('heading', { name: '폰트를 만들고 있어요' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '폰트를 생성하는 중입니다' })).toBeVisible()
   await expect(page).toHaveURL(/\/preview$/, { timeout: 150_000 })
 
   const preview = page.getByLabel('직접 입력해 보세요')
@@ -62,6 +62,6 @@ test('writes a jamo, generates the font, traces a glyph back to its cell, and gu
   await savedProject(page, (saved) => saved.sourceDirty)
   await page.getByRole('button', { name: '지금 폰트 만들기' }).click()
   await page.getByRole('button', { name: '그래도 생성하기' }).click()
-  await expect(page.getByRole('dialog')).toContainText('기존 글리프 보정을 어떻게 할까요?')
+  await expect(page.getByRole('dialog')).toContainText('기존 글리프 보정을 어떻게 하시겠습니까?')
   await expect(page.getByRole('dialog')).toContainText('1개 글리프')
 })

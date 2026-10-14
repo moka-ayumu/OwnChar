@@ -938,9 +938,9 @@ export function drawFilm(context: CanvasRenderingContext2D, width: number, heigh
       drawSpecimen(specimen, square, step, span(u, index * 0.05, 0.9 + index * 0.05), false)
     })
     // What the step found, in the writer's own numbers.
-    const caption = step === 1 ? `쓴 글자 ${data.learned.count.toLocaleString()}자에서 높이와 자모 사이 간격을 쟀어요 · 칸 크기 대비 %`
-      : step === 6 ? `자모의 ${Math.round(data.exactShare * 100)}%는 그 자리에서 쓴 것을, 나머지는 가장 닮은 자리의 것을 써요`
-      : step === 8 ? '받침은 상자 가운데가 아니라 잉크가 몰린 곳(라임 띠)의 가운데를 목표점에 맞춰요'
+    const caption = step === 1 ? `쓴 글자 ${data.learned.count.toLocaleString()}자에서 높이와 자모 사이 간격을 측정했습니다 · 칸 크기 대비 %`
+      : step === 6 ? `자모의 ${Math.round(data.exactShare * 100)}%는 그 자리에서 쓴 것을, 나머지는 가장 닮은 자리의 것을 사용합니다`
+      : step === 8 ? '받침은 상자 가운데가 아니라 잉크가 몰린 곳(라임 띠)의 가운데를 목표점에 맞춥니다'
       : undefined
     if (caption) {
       alpha(ease(span(u, 0.2, 0.5)))
@@ -953,13 +953,13 @@ export function drawFilm(context: CanvasRenderingContext2D, width: number, heigh
 
 /** What each step does to the handwriting, in one sentence, in step order; the last is the hand-over to the preview. */
 export const FILM_NOTES = [
-  '칸에 쓴 획을 좌표와 필압 그대로 가져옵니다. 모양이 다른 세 글자로 과정을 보여드려요.',
+  '칸에 쓴 획을 좌표와 필압 그대로 가져옵니다.',
   '온전히 쓴 글자마다 높이와 자모 사이 간격을 재서, 조합할 때의 기준으로 삼습니다.',
   '획의 떨림과 끝의 갈고리를 덜어내고, 모서리는 남깁니다.',
   '펜 굵기와 필압을 입혀 폰트가 저장하는 윤곽선으로 바꿉니다.',
   '획을 시작한 칸과 쓴 순서로 초성·중성·종성을 나눕니다.',
   '쓴 크기가 달라도 자모마다 같은 기준 크기로 맞춥니다.',
-  '같은 자모라도 놓이는 자리마다 모양이 달라요. 그 자리에서 쓴 것을 먼저 고르고, 없으면 가장 닮은 자리의 것을 빌립니다.',
+  '같은 자모도 자리마다 모양이 다릅니다. 그 자리에서 쓴 것을 먼저 고르고, 없으면 가장 닮은 자리의 것을 사용합니다.',
   '모음 모양과 받침 유무에 맞는 자리에 자모를 놓아 글자를 만듭니다.',
   '받침은 상자가 아니라 잉크가 몰린 곳의 가운데를 기준으로, 모음 기둥까지 폭의 60% 지점에 놓습니다. 기둥이 없으면 윗몸 한가운데에 놓습니다.',
   '겹친 획의 윤곽을 글자마다 하나로 합칩니다.',

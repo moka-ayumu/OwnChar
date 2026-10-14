@@ -268,14 +268,14 @@ export function composeSubsetFont(request: GenerationRequest, base: EncodedGlyph
 export async function composeFont(request: GenerationRequest, options: ComposeOptions) {
   const prepared = options.preparedContext ?? prepareCompositionContext(request)
 
-  options.progress('latin', options.encodedHangul ? 94 : 2, '영문과 숫자를 정리하고 있어요')
+  options.progress('latin', options.encodedHangul ? 94 : 2, '영문과 숫자를 정리하는 중')
   const blocks = [encodeBaseBlock(request, prepared)]
 
   if (options.encodedHangul) blocks.push(...options.encodedHangul)
   else {
     // A given source is not composition: it is read through without reporting or pausing.
     const composing = !options.hangulSource
-    if (composing) options.progress('hangul', 3, '한글 음절을 조합하고 있어요')
+    if (composing) options.progress('hangul', 3, '한글 음절을 조합하는 중')
     const source = options.hangulSource ?? hangulComposer(request, prepared)
     for (let index = 0; index < HANGUL_COUNT; index += 112) {
       if (options.cancelled()) throw new DOMException('Generation cancelled', 'AbortError')
@@ -288,7 +288,7 @@ export async function composeFont(request: GenerationRequest, options: ComposeOp
     }
   }
 
-  options.progress('serialize', 96, 'OTF 파일을 마무리하고 있어요')
+  options.progress('serialize', 96, 'OTF 파일을 마무리하는 중')
   const glyphCount = blocks.reduce((sum, block) => sum + block.codePoints.length, 0)
   return { buffer: writeOtf(request.metadata, blocks), glyphCount }
 }

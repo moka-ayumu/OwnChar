@@ -22,7 +22,7 @@ export function SaveFailedNotice() {
   return (
     <div className="save-notice" role="alert">
       <TriangleAlert className="save-notice-icon size-4" aria-hidden="true" />
-      <span><strong>저장 안 됨</strong> 새로고침하면 사라져요</span>
+      <span><strong>저장되지 않음</strong> 새로고침하면 사라집니다</span>
       <button type="button" onClick={() => downloadProjectArchive(projectStore.state)}>파일로 저장</button>
     </div>
   )

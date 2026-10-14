@@ -153,7 +153,7 @@ export const projectActions = {
     update((state) => ({
       ...state,
       status: 'generating',
-      generation: { progress: 0, message: '글자 데이터를 준비하고 있어요', error: null },
+      generation: { progress: 0, message: '글자 데이터를 준비하는 중', error: null },
     }))
   },
 
@@ -171,7 +171,7 @@ export const projectActions = {
       fontDirty: false,
       sourceDirty: false,
       fontRevision: state.fontRevision + 1,
-      generation: { progress: 100, message: '폰트가 완성됐어요', error: null },
+      generation: { progress: 100, message: '폰트 생성이 완료되었습니다', error: null },
     }))
   },
 
@@ -179,7 +179,7 @@ export const projectActions = {
     update((state) => ({
       ...state,
       status: 'error',
-      generation: { ...state.generation, error: message, message: '폰트를 만들지 못했어요' },
+      generation: { ...state.generation, error: message, message: '폰트 생성에 실패했습니다' },
     }))
   },
 

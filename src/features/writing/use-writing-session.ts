@@ -319,7 +319,7 @@ export function useWritingSession(exercise: WritingExercise, viewport: RefObject
     const requestedBoundaries = holdBoundaries(confirmedBoundaries, holdsRef.current, nextStrokes, target, exercise, drawings, fixedRule)
     const assigned = assignStrokes(nextStrokes, target, exercise, drawings, requestedBoundaries, fixedRule)
     if (JSON.stringify(assigned.boundaries) !== JSON.stringify(boundaries)) {
-      if (countBoundaries(assigned.boundaries) < countBoundaries(requestedBoundaries)) setBoundaryWarning('나눠 둔 획이 지워졌어요. 자모가 맞게 나뉘었는지 확인해 주세요.')
+      if (countBoundaries(assigned.boundaries) < countBoundaries(requestedBoundaries)) setBoundaryWarning('나눠 둔 획이 지워졌습니다.')
       boundariesRef.current = assigned.boundaries
       setBoundaries(assigned.boundaries)
     }

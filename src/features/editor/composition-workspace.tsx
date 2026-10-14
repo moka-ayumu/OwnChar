@@ -3,6 +3,7 @@ import opentype from 'opentype.js'
 import { RotateCcw } from 'lucide-react'
 import type { DrawingRecord, WritingSessionRecord } from '@/collection/records'
 import { Button } from '@/components/ui/button'
+import { Hint } from '@/components/hint'
 import { renderCalibratedGlyph } from '@/font/glyphs/calibration'
 import { composeStandaloneJamoPath } from '@/font/glyphs/standalone-jamo'
 import { decomposeHangul } from '@/font/hangul'
@@ -91,9 +92,10 @@ function RangeField({ label, value, display, min = 0, onChange }: { label: strin
 function Section({ title, help, children }: { title: string; help?: string; children: React.ReactNode }) {
   return (
     <div className="mt-6 border-t border-rule pt-5">
-      <h3 className="text-sm font-semibold">{title}</h3>
-      {help && <p className="mt-1 text-xs leading-4 text-ink-3">{help}</p>}
-      {children}
+      <Hint className="block" side="left" label={help}>
+        <h3 className="text-sm font-semibold">{title}</h3>
+        {children}
+      </Hint>
     </div>
   )
 }
@@ -114,17 +116,17 @@ function CompositionControls({ settings }: { settings: CompositionSettings }) {
   const set = projectActions.updateCompositionSettings
   return (
     <div>
-      <h2 className="text-sm font-semibold">한글 조합 설정</h2>
-      <p className="mt-2 text-xs leading-5 text-ink-2">왼쪽 예시는 즉시 갱신됩니다. 실제 OTF에는 상단의 변경 적용을 눌러 재합성할 때 반영됩니다.</p>
+      <Hint className="block" side="left" label="왼쪽 예시는 즉시 갱신됩니다. OTF에는 상단의 변경 적용 후 반영됩니다."><h2 className="text-sm font-semibold">한글 조합 설정</h2></Hint>
       <div className="mt-5 space-y-5">
         {scaleFields.map((field) => (
-          <label key={field.key} className="block">
+          <Hint key={field.key} className="block" side="left" label={field.help}>
+          <label className="block">
             <span className="flex items-center justify-between gap-3">
               <span className="input-label">{field.label}</span>
               <span className="flex items-center gap-1"><input aria-label={field.label} type="number" className="text-input h-8 w-20 py-1 text-right" min={0.5} max={1.2} step={0.05} value={settings[field.key]} onChange={(event) => set({ [field.key]: Number(event.target.value) })} /><span className="w-4 text-xs text-ink-3">×</span></span>
             </span>
-            <span className="mt-1 block text-xs leading-4 text-ink-3">{field.help}</span>
           </label>
+          </Hint>
         ))}
       </div>
       <Section title="손떨림 보정" help="0은 원본 획, 1은 획의 떨림과 시작·끝의 갈고리를 최대로 보정합니다. 모서리는 유지됩니다.">
@@ -183,12 +185,9 @@ export function CompositionWorkspace({ drawings, sessions, settings }: {
     <div className="composition-workspace">
       <main className="composition-preview-area">
         <div className="flex items-end justify-between gap-6">
-          <div>
-            
-            <h1 className="text-[26px] font-extrabold tracking-[-0.03em]">대표 음절로 조합 균형을 확인하세요.</h1>
-            <p className="mt-2 text-sm text-ink-2">전체 폰트를 재생성하지 않고 현재 자모와 설정만 Canvas에 조합합니다.</p>
-          </div>
-          <p className="shrink-0 text-xs text-ink-3">기본형과 입력된 문맥형을 즉시 반영</p>
+          <Hint side="bottom" label="전체 폰트를 다시 생성하지 않고 현재 자모와 설정만 조합합니다.">
+            <h1 className="text-[26px] font-extrabold tracking-[-0.03em]">조합 미리보기</h1>
+          </Hint>
         </div>
         <div className="composition-example-grid">
           {standalone.map(({ char, path }) => <ExampleCard key={char} char={char} path={path} ariaLabel={`${char} 단독 자모 미리보기`} caption={`단독 자모 · 가 기준 ${Math.round(settings.standaloneJamoMaxHeight * 100)}%`} />)}

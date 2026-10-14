@@ -25,14 +25,14 @@ function HomePage() {
   const film = useHomeFilm(canvas, foot)
 
   const start = async () => {
-    if (canResume && !window.confirm('현재 작업을 지우고 새로 시작할까요?')) return
+    if (canResume && !window.confirm('현재 작업을 지우고 새로 시작하시겠습니까?')) return
     await clearPersistedProject()
     projectActions.startProject()
     void navigate({ to: '/write' })
   }
 
   const openSample = async () => {
-    if (canResume && !window.confirm('현재 작업을 지우고 예시 손글씨를 불러올까요?')) return
+    if (canResume && !window.confirm('현재 작업을 지우고 예시 손글씨를 불러오시겠습니까?')) return
     setLoadingSample(true)
     try {
       await loadSampleProject()
@@ -48,8 +48,7 @@ function HomePage() {
       <canvas ref={canvas} className="film" aria-hidden="true" />
       <div ref={foot} className="home-foot">
         <div className="home-panel">
-          <h1>예시 문장을 자연스럽게 쓰고, 나만의 폰트를 완성하세요.</h1>
-          <p>문장 8개만 쓰면 한글 11,172자를 담은 손글씨 폰트가 돼요.<br />쓴 글씨는 이 기기 밖으로 나가지 않아요.</p>
+          <h1>문장 8개로 나만의 손글씨 폰트를 만드세요.</h1>
           <div className="home-actions">
             <Button onClick={start}>
               <PenLine className="size-4" /> 새 폰트 시작하기
@@ -71,7 +70,6 @@ function HomePage() {
           )}
 
           <div className="home-samples">
-            <p>직접 쓰기 전에 먼저 살펴볼 수 있어요.</p>
             <Button variant="secondary" size="sm" disabled={loadingSample} onClick={() => void openSample()}>
               {loadingSample ? '불러오는 중…' : '예시 손글씨'}
             </Button>
