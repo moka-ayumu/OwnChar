@@ -12,7 +12,7 @@ export function DialogContent({ className, children, ...props }: ComponentProps<
     <DialogPrimitive.Portal>
       <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-ink/45" />
       <DialogPrimitive.Content
-        className={cn('fixed left-1/2 top-1/2 z-50 w-[calc(100%-32px)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-md border border-ink bg-white p-6 outline-none', className)}
+        className={cn('fixed left-1/2 top-1/2 z-50 w-[calc(100%-32px)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-md border border-rule bg-white p-6 shadow-[0_16px_40px_-16px_rgb(16_17_20/35%)] outline-none', className)}
         {...props}
       >
         {children}

@@ -282,8 +282,8 @@ Flat. There is no elevation: no drop shadows, no blur, no glass. The home panel 
 One corner: 6px on every control and container (buttons, inputs, rows, cards, dialogs, the canvas frame, tiles). Nested controls step down to 4px (the options inside the segmented control). Full rounding is reserved for things that are tracks or points: progress and slider tracks, the slider thumb, the logo dot, the "modified" dot on a glyph cell. Inside the film, boxes are square-cornered and drawn on half-pixels: they are measurements, not controls.
 
 Lines carry meaning by weight and dash:
-- 1px ink: structure (rail and header edges, panel dividers, the canvas frame, dialog border, secondary buttons, inputs on lime).
-- 1px rule: quiet division inside white.
+- 1px ink: only the cell being written and its popover, and the hover edge of a link row. A field change (lime to white) needs no line.
+- 1px rule: every structural division (header, tool rail, sentence row, editor panels) and the edge of dialogs, menus and popovers, which also carry one soft lift.
 - 2px ink, 2px offset: keyboard focus, everywhere.
 - 3px ink inset: the one cell a glyph's source link points at.
 - Dashed: provisional or not-yet. The placeholder for an unwritten jamo (4 3), the final-consonant zone in the film (4 3), the band guide (1 4).
@@ -303,7 +303,7 @@ Compact, square-shouldered, weight 600. Height 40px with 16px side padding (32px
 - **States:** pressing scales to .97; disabled is 40% opacity with no pointer events; transitions are 150ms on colour, border and transform.
 
 ### Inputs / Fields
-- **Text input:** 38px high, white, 1px rule border, 6px corner, 14px text, 11px side padding. Hover darkens the border to ink-3; focus turns it ink with a 2px ink ring. On lime the border is ink at rest.
+- **Text input:** 38px high, white, 1px rule border, 6px corner, 14px text, 11px side padding. Hover darkens the border to ink-3; focus turns it ink with a 3px 14% ink halo. On lime it has no border at rest. The typed sentence on the preview is a canvas: its caret is the focus mark, with no ring.
 - **Label:** 12px / 600 above the field with 6px between, ink-2 on white and lime-ink on lime.
 - **Slider:** 4px track in 18% ink, ink range, 16px round ink thumb that grows to 1.1 on hover; disabled 40%. Always paired with a tabular readout.
 - **Progress:** 6px rounded track in 15% ink with a solid ink fill, 200ms.

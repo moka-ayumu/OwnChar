@@ -123,7 +123,7 @@ export function EditPage({ glyph, query }: EditSearch) {
 
       {editorMode === 'glyph' ? <div className="editor-body">
         <div className="glyph-browser">
-          <div className="border-b border-ink p-4">
+          <div className="border-b border-rule p-4">
             <input className="text-input" value={search} maxLength={1} placeholder="문자 검색" onChange={(event) => setSearch(event.target.value)} />
             <p className="mt-2 text-xs text-ink-3">{selected.length.toLocaleString()}개 선택됨 · Shift/⌘로 다중 선택</p>
           </div>

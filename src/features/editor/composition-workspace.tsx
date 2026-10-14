@@ -146,7 +146,7 @@ function CompositionControls({ settings }: { settings: CompositionSettings }) {
       </Section>
       <Section title="글자 가로폭">
         <div className="mt-3 grid grid-cols-2 gap-2">
-          {(['proportional', 'fixed'] as const).map((mode) => <button key={mode} type="button" aria-pressed={settings.widthMode === mode} className={`rounded-md border px-3 py-2 text-xs ${settings.widthMode === mode ? 'border-ink bg-ink text-white' : 'border-rule hover:border-ink'}`} onClick={() => set({ widthMode: mode })}>{mode === 'proportional' ? '가변 폭' : '고정 폭'}</button>)}
+          {(['proportional', 'fixed'] as const).map((mode) => <button key={mode} type="button" aria-pressed={settings.widthMode === mode} className={`rounded-md border px-3 py-2 text-xs ${settings.widthMode === mode ? 'border-ink bg-ink text-white' : 'border-rule hover:border-ink/50'}`} onClick={() => set({ widthMode: mode })}>{mode === 'proportional' ? '가변 폭' : '고정 폭'}</button>)}
         </div>
       </Section>
       <Button className="mt-6 w-full" variant="secondary" onClick={() => set(DEFAULT_COMPOSITION_SETTINGS)}><RotateCcw className="size-3.5" /> 조합 기본값 복원</Button>

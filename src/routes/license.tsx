@@ -12,7 +12,7 @@ function LicensePage() {
       <h1 className="mt-8 text-[34px] font-extrabold tracking-[-0.03em]">도움말 및 오픈소스</h1>
       <p className="mt-4 text-base leading-7 text-ink-2">OwnChar는 모든 글자 데이터와 폰트 생성을 사용자의 브라우저 안에서 처리합니다. 계정이나 서버 업로드가 필요하지 않습니다.</p>
 
-      <section className="mt-12 border-t border-ink pt-6">
+      <section className="mt-12 border-t border-rule pt-6">
         <h2 className="text-lg font-bold">작성 방법</h2>
         <ol className="mt-4 list-decimal space-y-2 pl-5 text-base leading-7 text-ink-2 marker:font-bold marker:text-ink">
           <li>기본 자모와 영문·숫자를 작성하고, 실제 배치가 달라지는 8/2/1 문맥별 자모 variant를 필요에 따라 추가합니다.</li>
@@ -22,7 +22,7 @@ function LicensePage() {
         </ol>
       </section>
 
-      <section className="mt-12 border-t border-ink pt-6">
+      <section className="mt-12 border-t border-rule pt-6">
         <h2 className="text-lg font-bold">사용 라이브러리</h2>
         <p className="mt-4 text-base leading-7 text-ink-2">React, Vite, TanStack Router, TanStack Store, Tailwind CSS, shadcn/ui/Radix UI, perfect-freehand, Clipper2, opentype.js, Lucide, Wanted Sans를 사용합니다. 각 라이브러리에는 해당 프로젝트의 오픈소스 라이선스가 적용됩니다.</p>
       </section>
