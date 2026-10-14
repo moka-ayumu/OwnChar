@@ -118,6 +118,9 @@ const FINAL_BODY_SHARE = 0.29
 /** Furthest an initial or a final under a vertical vowel widens, in times its width. */
 const STRETCH_REACH = 1.5
 
+/** Narrowest, in widths per height, a final built from parts is made taller. */
+const COMPOUND_MIN_ASPECT = 2.0
+
 interface TypicalJamo {
   frames: Map<string, { width: number; height: number } | undefined>
   narrowed: Map<NormalizedShape, NormalizedShape>
@@ -591,6 +594,8 @@ export function layoutSyllable(input: SyllableLayoutInput) {
     if (upper.length && f) {
       const body = union(upper.map((slot) => bounds(slot.path)!))
       const limit = (body.x2 - body.x1) * 0.9
+      const m = medial && bounds(medial.path)
+      const height = kind === 'vertical' ? Math.min(final.zone.height, finalRoom(body.y2 - body.y1, m ? m.y2 - m.y1 : body.y2 - body.y1)) : final.zone.height
       const [left, right] = jamoParts(chars.final)!.map((part) => input.shapes.get(sourceKey('final', 0, part)))
       if (f.x2 - f.x1 > limit && left && right) {
         final.shape = { ...combineShapesSideBySide(left, right, limit / (f.y2 - f.y1), chars.final in DOUBLE_CONSONANTS ? input.doubleConsonantGap ?? 0 : 1), sourceRole: 'final' }
@@ -600,6 +605,13 @@ export function layoutSyllable(input: SyllableLayoutInput) {
       for (let pass = 0; pass < 3; pass += 1) {
         const fitted = bounds(final.path)!
         resize(final, Math.min(1, limit / (fitted.x2 - fitted.x1)))
+      }
+      // The width limit shrank the whole final: it is made taller again, its width kept.
+      for (let pass = 0; pass < 3; pass += 1) {
+        const fitted = bounds(final.path)!
+        const width = fitted.x2 - fitted.x1; const current = fitted.y2 - fitted.y1
+        const factor = Math.min(height, width / COMPOUND_MIN_ASPECT) / current
+        if (factor > 1.01) { final.shape = stretchShapeWidth(final.shape, 1 / factor); resize(final, factor) }
       }
     }
   }
