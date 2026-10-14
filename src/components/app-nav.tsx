@@ -1,6 +1,6 @@
-import { useRef } from 'react'
+import { useRef, type ReactNode } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
-import { ChevronDown, CircleHelp, FolderOpen, Save, Trash2 } from 'lucide-react'
+import { ChevronDown, CircleHelp, FolderOpen, Menu, Save, Trash2 } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { ARCHIVE_EXTENSION, downloadProjectArchive, loadProjectArchive } from '@/project/archive'
 import { deletePersistedProject, type SaveStatus } from '@/project/persistence'
@@ -73,19 +73,38 @@ function useProjectFile() {
 }
 
 /** The quiet links every page carries, with the save status and the project file actions folded into one menu. */
-export function AppNav({ showLinks = true }: { showLinks?: boolean }) {
+export function AppNav({ showLinks = true, compactItems, variant = 'save' }: {
+  showLinks?: boolean
+  /** Menu items shown only at phone width, where the header and the rail that hold these actions are gone. */
+  compactItems?: ReactNode
+  /** `menu` opens from a three-bar icon, the way a phone's main menu does; `save` from the save status. */
+  variant?: 'save' | 'menu'
+}) {
   const file = useProjectFile()
   const status = useSaveStatus()
+  const isMenu = variant === 'menu'
 
   return (
     <nav className="app-nav">
       <DropdownMenu>
-        <DropdownMenuTrigger className="save-trigger" aria-label={`작업 저장 메뉴, ${SAVE_LABEL[status]}`} title={SAVE_LABEL[status]}>
-          <SaveIndicator />
-          {file.empty && <Save className="size-4" />}
-          <ChevronDown className="size-3.5" />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent>
+        {isMenu ? (
+          <DropdownMenuTrigger className="save-trigger menu-trigger" aria-label={`메뉴, ${SAVE_LABEL[status]}`}>
+            <Menu className="size-5" />
+          </DropdownMenuTrigger>
+        ) : (
+          <DropdownMenuTrigger className="save-trigger" aria-label={`작업 저장 메뉴, ${SAVE_LABEL[status]}`} title={SAVE_LABEL[status]}>
+            <SaveIndicator />
+            {file.empty && <Save className="size-4" />}
+            <ChevronDown className="size-3.5" />
+          </DropdownMenuTrigger>
+        )}
+        <DropdownMenuContent align={isMenu ? 'start' : undefined}>
+          {compactItems && (
+            <>
+              {compactItems}
+              <DropdownMenuSeparator className="menu-separator compact-only" />
+            </>
+          )}
           {!file.empty && (
             <>
               <DropdownMenuLabel data-status={status}>

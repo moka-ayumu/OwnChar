@@ -30,13 +30,15 @@ export function CellPopover({ cell, cellIndex, grid, slots, current, remaining, 
   const top = Math.floor(cellIndex / grid.columns) * grid.cellSize
   // It opens to the right of the cell; in the last column there is no room, so it opens to the left.
   const flipped = grid.columns > 1 && column === grid.columns - 1
-  const position = flipped ? { right: (grid.columns - column) * grid.cellSize } : { left: (column + 1) * grid.cellSize }
+  // A single column leaves no room at either side, so it opens under the cell.
+  const below = grid.columns === 1
+  const position = below ? { left: 0, top: top + grid.cellSize } : flipped ? { top, right: (grid.columns - column) * grid.cellSize } : { top, left: (column + 1) * grid.cellSize }
   const target = current === null ? undefined : slots[current]
   // A jamo can take over only when every jamo before it has a stroke to end on.
   const reachable = (index: number) => slots.slice(0, index).every((slot) => slot.count > 0)
 
   return (
-    <div className={`cell-popover ${flipped ? 'is-flipped' : ''}`} style={{ top, ...position }} role="group" aria-label={`${cell.char} 칸 자모 수집`} data-testid="cell-popover">
+    <div className={`cell-popover ${below ? 'is-below' : flipped ? 'is-flipped' : ''}`} style={position} role="group" aria-label={`${cell.char} 칸 자모 수집`} data-testid="cell-popover">
       <div className="cell-popover-tabs" role="group" aria-label="수집할 자모">
         {slots.map((slot, index) => (
           <button key={slot.slotIndex} type="button" aria-pressed={index === current} aria-label={slotName(slot)} title={slotName(slot)} disabled={index !== current && !reachable(index)} className={slot.done ? 'is-done' : undefined} onClick={() => onCollect(index)}>

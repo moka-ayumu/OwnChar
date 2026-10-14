@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
+import { Eye, Home, Type } from 'lucide-react'
+import { DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import { exerciseCompletion, WRITING_EXERCISES, type GuideMode } from '@/collection/exercises'
 import { missingPrompts } from '@/collection/prompts'
 import { AppNav } from '@/components/app-nav'
@@ -7,6 +9,7 @@ import { Hint } from '@/components/hint'
 import { ProgressRing } from '@/components/progress-ring'
 import { flow } from '@/lib/flow'
 import { cancelIdle, stopWhenBusy, whenIdle, type IdleHandle, type IdleTime } from '@/lib/idle'
+import { useCompact } from '@/lib/use-compact'
 import { useStableCallback } from '@/lib/use-stable-callback'
 import { projectActions } from '@/project/store'
 import { useProject } from '@/project/use-project'
@@ -77,7 +80,10 @@ function WriteSentence({ currentIndex, exerciseId: sourceExerciseId, cellIndex: 
   const [strokeWidth, setStrokeWidth] = useState(3)
   const [tool, setTool] = useState<CanvasTool>('pen')
   const [generationDialog, setGenerationDialog] = useState<GenerationDialog>(null)
-  const [railCollapsed, setRailCollapsed] = useState(readRailCollapsed)
+  const [railClosed, setRailClosed] = useState(readRailCollapsed)
+  // A narrow screen lays the rail under the canvas as a bar, so it has no closed state there.
+  const compact = useCompact()
+  const railCollapsed = railClosed && !compact
   const surface = useRef<WritingSurfaceHandle>(null)
   const stage = useRef<HTMLElement>(null)
   const frame = useRef<HTMLDivElement>(null)
@@ -122,8 +128,8 @@ function WriteSentence({ currentIndex, exerciseId: sourceExerciseId, cellIndex: 
   const setGuideMode = useStableCallback((mode: GuideMode) => projectActions.setGuideMode(mode))
 
   const toggleRail = useStableCallback(() => {
-    setRailCollapsed(!railCollapsed)
-    writeRailCollapsed(!railCollapsed)
+    setRailClosed(!railClosed)
+    writeRailCollapsed(!railClosed)
   })
 
   const clear = useStableCallback(() => {
@@ -182,6 +188,16 @@ function WriteSentence({ currentIndex, exerciseId: sourceExerciseId, cellIndex: 
         />
         <div className="write-main">
           <div className="sentence-prompt">
+            {/* At phone width the header is gone: the menu stands at the top left, as a phone's main menu does. */}
+            <span className="prompt-menu">
+              <AppNav showLinks={false} variant="menu" compactItems={
+                <>
+                  <DropdownMenuItem className="compact-only" onSelect={() => void navigate({ to: '/' })}><Home className="size-4" /> 처음 화면으로</DropdownMenuItem>
+                  <DropdownMenuItem className="compact-only" onSelect={requestGeneration}><Type className="size-4" /> 지금 폰트 만들기</DropdownMenuItem>
+                  {generatedFont && <DropdownMenuItem className="compact-only" onSelect={openExistingFont}><Eye className="size-4" /> 기존 폰트 미리보기 · 편집</DropdownMenuItem>}
+                </>
+              } />
+            </span>
             <h1>{exercise.text}</h1>
             <div>
               <Hint side="bottom" label={`${exerciseProgress.completed} / ${exerciseProgress.total} 자모`}>

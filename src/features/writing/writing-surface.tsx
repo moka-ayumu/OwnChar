@@ -15,7 +15,7 @@ interface Props {
   height: number
   strokeWidth: number
   endpointStabilization: number
-  tool: 'pen' | 'eraser'
+  tool: 'pen' | 'eraser' | 'pan'
   onChange(strokes: readonly RawStroke[]): void
 }
 
@@ -79,7 +79,7 @@ export const WritingSurface = forwardRef<WritingSurfaceHandle, Props>(function W
   const moveBrush = (event: PointerEvent<SVGSVGElement>) => {
     const rect = event.currentTarget.getBoundingClientRect()
     brush.current?.setAttribute('transform', `translate(${event.clientX - rect.left} ${event.clientY - rect.top})`)
-    brush.current?.setAttribute('visibility', event.pointerType === 'touch' ? 'hidden' : 'visible')
+    brush.current?.setAttribute('visibility', event.pointerType === 'touch' || tool === 'pan' ? 'hidden' : 'visible')
   }
   const hideBrush = () => brush.current?.setAttribute('visibility', 'hidden')
 
@@ -137,7 +137,7 @@ export const WritingSurface = forwardRef<WritingSurfaceHandle, Props>(function W
   }
 
   const onPointerDown = (event: PointerEvent<SVGSVGElement>) => {
-    if (event.button !== 0 || pointer.current) return
+    if (tool === 'pan' || event.button !== 0 || pointer.current) return
     event.preventDefault()
     event.currentTarget.setPointerCapture(event.pointerId)
     const rect = event.currentTarget.getBoundingClientRect()
@@ -176,7 +176,7 @@ export const WritingSurface = forwardRef<WritingSurfaceHandle, Props>(function W
     pointer.current = null
   }
 
-  return <svg className="writing-surface" width={width} height={height} viewBox={`0 0 ${width} ${height}`} aria-label="손글씨 입력 영역" onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerEnd} onPointerCancel={onPointerEnd} onPointerLeave={hideBrush}>
+  return <svg className="writing-surface" data-tool={tool} width={width} height={height} viewBox={`0 0 ${width} ${height}`} aria-label="손글씨 입력 영역" onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerEnd} onPointerCancel={onPointerEnd} onPointerLeave={hideBrush}>
     {strokes.filter((stroke) => !stroke.isDeleted).map((stroke) => <StrokePathView key={stroke.id} stroke={stroke} cellSize={cellSize} endpointStabilization={endpointStabilization} />)}
     <g ref={brush} visibility="hidden" pointerEvents="none" fill="none">
       <circle r={brushRadius + 0.5} stroke="#ffffff" strokeWidth={1} />

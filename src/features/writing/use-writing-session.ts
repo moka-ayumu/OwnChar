@@ -69,6 +69,8 @@ function guideRule(storedGuides: Guides, blank: boolean): FixedRule {
 
 /** Completed syllables after which the learned size is the writer's own, not the default. */
 const SIZE_KNOWN_AFTER = 3
+/** How long the canvas width must hold still before the cells are laid out again. */
+const RESIZE_SETTLE_MS = 120
 
 interface GuideJob {
   inputs: readonly unknown[]
@@ -225,18 +227,28 @@ export function useWritingSession(exercise: WritingExercise, viewport: RefObject
   useEffect(() => {
     const element = viewport.current
     if (!element) return
-    const observer = new ResizeObserver(([entry]) => {
+    const reflow = (width: number) => {
       const { strokes: written, grid: shown, save: persist } = current.current
-      const available = Math.max(cellSize, entry.contentRect.width)
+      const available = Math.max(cellSize, width)
       const next = Math.max(1, Math.min(cellCount, Math.floor(available / cellSize)))
       if (next === shown.columns) return
       setColumns(next)
       if (!written.length) return
       lastRevision.current = ''
       persist(reflowStrokes(written, shown, { cellSize, columns: next }, cellCount), boundariesRef.current, { cellSize, columns: next })
+    }
+    // The first size lays the canvas out at once. While the width keeps changing (a dragged window edge,
+    // a turning phone) the reflow waits for it to settle, so it runs once instead of at every column it crosses.
+    let timer = 0
+    let first = true
+    const observer = new ResizeObserver(([entry]) => {
+      const width = entry.contentRect.width
+      window.clearTimeout(timer)
+      if (first) { first = false; reflow(width); return }
+      timer = window.setTimeout(() => reflow(width), RESIZE_SETTLE_MS)
     })
     observer.observe(element)
-    return () => observer.disconnect()
+    return () => { window.clearTimeout(timer); observer.disconnect() }
   }, [cellSize, cellCount, exercise.id, viewport])
 
   // Learned spacing and calibration stay as they were when the sentence was

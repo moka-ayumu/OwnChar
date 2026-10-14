@@ -100,8 +100,14 @@ function PreviewPage() {
       setAnchor((previous) => previous && previous.left === next.left && previous.top === next.top && previous.width === next.width ? previous : next)
     }
     place()
-    window.addEventListener('resize', place)
-    return () => window.removeEventListener('resize', place)
+    // A resize fires faster than frames; the popover is placed once per frame.
+    let frame = 0
+    const schedule = () => {
+      if (frame) return
+      frame = requestAnimationFrame(() => { frame = 0; place() })
+    }
+    window.addEventListener('resize', schedule)
+    return () => { window.removeEventListener('resize', schedule); cancelAnimationFrame(frame) }
   }, [picked, sample, fontSize, liveFamily, fontReady])
 
   if (!buffer) return null
@@ -115,7 +121,7 @@ function PreviewPage() {
   }
 
   return (
-    <div className="flow">
+    <div className="flow preview-flow">
       <aside className="rail">
         <RailBrand />
         <h1 className="text-[26px] font-extrabold leading-tight tracking-[-0.03em]">손글씨가 폰트가 되었어요.</h1>
@@ -139,9 +145,9 @@ function PreviewPage() {
 
       <section className="stage">
         <div className="preview-stage">
-          <div className="flex h-6 items-center justify-between gap-6">
+          <div className="preview-tools flex h-6 items-center justify-between gap-6">
             <label htmlFor="sample" className="text-sm font-semibold text-ink-2">직접 입력해 보세요</label>
-            <div className="flex w-64 items-center gap-3">
+            <div className="preview-size flex w-64 items-center gap-3">
               <label htmlFor="preview-size" className="shrink-0 text-xs font-semibold text-ink-2">글자 크기</label>
               <Slider id="preview-size" aria-label="미리보기 글자 크기" min={36} max={160} step={2} value={[fontSize]} onValueChange={([value]) => setFontSize(value)} />
               <span className="tnum w-11 text-right text-xs font-semibold">{fontSize}px</span>

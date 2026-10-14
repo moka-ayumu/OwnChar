@@ -9,6 +9,7 @@ import { Button, buttonVariants } from '@/components/ui/button'
 import { HANGUL_BASE, HANGUL_COUNT } from '@/font/hangul'
 import { glyphSources, type GlyphSource } from '@/generation/provenance'
 import { DEFAULT_GLYPH_OVERRIDE, type GlyphOverride } from '@/generation/request'
+import { useCompact } from '@/lib/use-compact'
 import { useFontFace } from '@/lib/use-font-face'
 import { cn } from '@/lib/utils'
 import { projectActions } from '@/project/store'
@@ -22,6 +23,8 @@ export interface EditSearch {
 }
 
 const COLUMNS = 10
+/** Glyphs per row on a phone, where ten would leave each under 30 px wide. */
+const COMPACT_COLUMNS = 6
 
 const allCodePoints = [
   ...BASE_CHARACTER_PROMPTS.map((prompt) => prompt.codePoint),
@@ -50,6 +53,7 @@ export function EditPage({ glyph, query }: EditSearch) {
   const [search, setSearch] = useState(query ?? '')
   const [selected, setSelected] = useState<number[]>(() => [glyph !== undefined && allCodePoints.includes(glyph) ? glyph : HANGUL_BASE])
   const [editorMode, setEditorMode] = useState<'glyph' | 'composition'>('glyph')
+  const columns = useCompact() ? COMPACT_COLUMNS : COLUMNS
   const lastSelected = useRef<number | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -64,7 +68,7 @@ export function EditPage({ glyph, query }: EditSearch) {
   }, [search])
 
   const virtualizer = useVirtualizer({
-    count: Math.ceil(visibleCodePoints.length / COLUMNS),
+    count: Math.ceil(visibleCodePoints.length / columns),
     getScrollElement: () => scrollRef.current,
     estimateSize: () => 62,
     overscan: 6,
@@ -130,8 +134,8 @@ export function EditPage({ glyph, query }: EditSearch) {
           <div ref={scrollRef} className="min-h-0 flex-1 overflow-auto">
             <div style={{ height: virtualizer.getTotalSize(), position: 'relative' }}>
               {virtualizer.getVirtualItems().map((row) => (
-                <div key={row.key} className="grid grid-cols-10 gap-1 px-3" style={{ position: 'absolute', transform: `translateY(${row.start}px)`, width: '100%', height: row.size }}>
-                  {visibleCodePoints.slice(row.index * COLUMNS, row.index * COLUMNS + COLUMNS).map((codePoint) => (
+                <div key={row.key} className="grid gap-1 px-3" style={{ position: 'absolute', transform: `translateY(${row.start}px)`, width: '100%', height: row.size, gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
+                  {visibleCodePoints.slice(row.index * columns, row.index * columns + columns).map((codePoint) => (
                     <button title={overrides[codePoint] ? '고급 편집에서 수정됨' : undefined} key={codePoint} onClick={(event) => selectGlyph(codePoint, event)} className={`glyph-cell ${selected.includes(codePoint) ? 'selected' : ''} ${overrides[codePoint] ? 'modified' : ''}`} style={{ fontFamily: previewFont }}>
                       {String.fromCodePoint(codePoint)}
                     </button>
