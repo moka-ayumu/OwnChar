@@ -32,6 +32,6 @@ export const DEFAULT_COMPOSITION_SETTINGS: CompositionSettings = {
   jamoNormalization: 1,
   standaloneJamoMaxHeight: 1,
   latinNormalization: 0,
-  verticalAlignment: 0.8,
+  verticalAlignment: 1,
   widthMode: 'proportional',
 }

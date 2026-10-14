@@ -52,6 +52,8 @@ export interface SizeNormalization extends Record<HangulRole, number> {
 /** Furthest a size dial at 1 rescales a jamo, and the width dial stretches a syllable, from where the layout left it. A dial at 2 reaches twice as far. */
 const SIZE_REACH = 0.15
 const WIDTH_REACH = 0.1
+/** How much more a jamo the writer made larger than the typical one is drawn larger, in times its written excess. The pen is the same for all and hides part of the difference. */
+const OWN_SIZE_EMPHASIS = 2
 
 const stretched = new WeakMap<NormalizedShape, Map<number, NormalizedShape>>()
 
@@ -677,9 +679,17 @@ export function layoutSyllable(input: SyllableLayoutInput) {
     })
     /** Past 1 a dial does not draw further than the target: it reaches further for it. */
     const toward = (strength: number, ratio: number, reach: number) => strength > 0 ? clamp(1 + Math.min(1, strength) * (ratio - 1), 1 - reach * Math.max(1, strength), 1 + reach * Math.max(1, strength)) : 1
+    /** How large the writer's own jamo is against the typical one of its layout: ㅎ is written larger than ㅇ, and stays so. */
+    const ownSize = (role: HangulRole) => {
+      if (role === 'medial') return 1
+      const own = writtenFrame(input.shapes, role, variants[role], chars[role])
+      const typical = typicalFrame(input.shapes, sourceKey(role, variants[role], chars[role]))
+      return own && typical ? clamp(1 + (Math.sqrt(own.width * own.height / (typical.width * typical.height)) - 1) * OWN_SIZE_EMPHASIS, 1 - SIZE_REACH * 2, 1 + SIZE_REACH * 2) : 1
+    }
     const plans = inked.map((slot, index) => {
       const box = lines[index]
-      const target = dial.targets.roles[context]?.[slot.role]
+      const mean = dial.targets.roles[context]?.[slot.role]
+      const target = mean && mean * ownSize(slot.role)
       const correction = target ? toward(dial[slot.role], target / jamoSize(slot.role, kind, box.x2 - box.x1, box.y2 - box.y1), SIZE_REACH) : 1
       // A jamo grows away from the others: the side of its box that faces them stays where it is.
       const rest = lines.filter((_, other) => other !== index)
