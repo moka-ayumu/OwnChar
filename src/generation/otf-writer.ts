@@ -1,6 +1,7 @@
 import opentype from 'opentype.js'
 import { ByteWriter, writeCharstring } from '@/font/geometry/charstring'
 import { controlPoints } from '@/font/geometry/path-ops'
+import { DESCENDER_LIMIT } from '@/font/glyphs/calibration'
 import type { FontMetadata } from './request'
 
 /**
@@ -102,7 +103,7 @@ function skeletonFont(metadata: FontMetadata, blocks: EncodedGlyphs[]) {
     version: metadata.version,
     unitsPerEm: 1000,
     ascender: 900,
-    descender: -100,
+    descender: DESCENDER_LIMIT,
     glyphs,
   })
   return new Uint8Array(font.toArrayBuffer())

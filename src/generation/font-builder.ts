@@ -4,7 +4,7 @@ import { FINALS, HANGUL_BASE, HANGUL_COUNT, HANGUL_ROLES, INITIALS, MEDIALS, typ
 import { prepareCffPath } from '@/font/geometry/cff'
 import { mapPoints, pathOf, translatePath } from '@/font/geometry/path-ops'
 import { appendShape, scaleZone, type NormalizedShape, type Zone } from '@/font/geometry/shape'
-import { renderCalibratedGlyph, visualCalibrationScale, VISUAL_HANGUL_HEIGHT } from '@/font/glyphs/calibration'
+import { DESCENDER_LIMIT, renderCalibratedGlyph, visualCalibrationScale, VISUAL_HANGUL_HEIGHT } from '@/font/glyphs/calibration'
 import { composeStandaloneJamoPath, type ReferenceEnvelope } from '@/font/glyphs/standalone-jamo'
 import { appendNumeral, appendSymbol, symbolCalibrationAnchor, symbolMaximumHeight } from '@/font/glyphs/symbols'
 import { composeHangulParts, composeHangulPath, learnSizeTargets, type HangulComposeOptions, type HangulParts } from '@/font/layout/compose-syllable'
@@ -38,6 +38,7 @@ export interface PreparedCompositionContext {
 export type HangulCompositionInputs = CompositionProfile & { compositionSettings: CompositionSettings; sizeTargets?: SizeTargets }
 
 const LATIN_ZONE: Zone = { x: 90, y: 80, width: 820, height: 720 }
+const LATIN_BASELINE = LATIN_ZONE.y
 
 function createNotdef() {
   const path = new opentype.Path()
@@ -214,21 +215,54 @@ function encodeBaseGlyphs(out: GlyphEncoder, request: GenerationRequest, shapes:
   const fixedWidth = settings.widthMode === 'fixed'
   const reference = jamoReference(shapes, request, visualScale)
 
-  // Letters of one class are normalized toward the median height and centre of that class.
+  // The calibration scales about the baseline; a letter under this height is not shifted alone by its limit.
+  const capZone: Zone = { ...LATIN_ZONE, height: Math.min(LATIN_ZONE.height, (900 - LATIN_BASELINE) / visualScale) }
+  // Capitals are normalized toward the median height of their class and stand on the baseline.
   const heights = new Map<string, number[]>()
-  const centers = new Map<string, number[]>()
+  // Lowercase keeps its written size: one scale for all, one baseline, descenders hang below it.
+  const written = new Map<string, number[]>()
   for (const prompt of BASE_CHARACTER_PROMPTS) {
     const shape = shapes.get(prompt.char)
-    if (!shape || (prompt.group !== 'uppercase' && prompt.group !== 'lowercase')) continue
-    const path = new opentype.Path()
-    appendShape(path, shape, LATIN_ZONE)
-    const box = path.getBoundingBox()
+    if (!shape) continue
     const group = latinClass(prompt)
+    if (prompt.group === 'lowercase') {
+      written.set(group, [...(written.get(group) ?? []), shape.frame.height])
+      continue
+    }
+    if (prompt.group !== 'uppercase') continue
+    const path = new opentype.Path()
+    appendShape(path, shape, capZone)
+    const box = path.getBoundingBox()
     heights.set(group, [...(heights.get(group) ?? []), box.y2 - box.y1])
-    centers.set(group, [...(centers.get(group) ?? []), (box.y1 + box.y2) / 2])
   }
-  const targetHeight = (prompt: CharacterPrompt) => medianHeight(heights.get(latinClass(prompt)) ?? [], 720)
-  const targetCenter = (prompt: CharacterPrompt) => medianHeight(centers.get(latinClass(prompt)) ?? [], 440)
+  const targetHeight = (prompt: CharacterPrompt) => medianHeight(heights.get(latinClass(prompt)) ?? [], capZone.height)
+  const lowerTall = medianHeight(written.get('lowercase-tall') ?? [...written.values()].flat(), 1)
+  const upright = Math.max(...[...written].filter(([group]) => group !== 'lowercase-descender').flatMap(([, values]) => values), lowerTall)
+  // The calibration scales about the baseline; the tallest letter must stay under the top limit so no glyph is shifted alone.
+  const lowerScale = Math.min(LATIN_ZONE.height / lowerTall, (900 - LATIN_BASELINE) / (visualScale * upright))
+  const maximumDrop = (LATIN_BASELINE - DESCENDER_LIMIT) / visualScale
+  const xHeight = medianHeight(written.get('lowercase-x') ?? [], lowerTall * 0.6) * lowerScale
+  const topLine = (shapes.get('a')?.frame.height ?? 0) * lowerScale || xHeight
+
+  /** Distance from the top of the ink to the top of its body, which leaves out a dot above it. */
+  const bodyTopOffset = (shape: NormalizedShape) => {
+    const bounds = shape.strokes.map((stroke) => {
+      const ys = stroke.contours.flat().map(([, y]) => y)
+      return { top: Math.min(...ys), bottom: Math.max(...ys) }
+    })
+    const body = bounds.filter((bound) => bound.bottom - bound.top >= shape.frame.height * 0.2)
+    return body.length ? Math.min(...body.map((bound) => bound.top)) - shape.frame.y : 0
+  }
+
+  /** Places a lowercase shape at its written size on the baseline; descenders hang so that their body does not rise above `a`. */
+  const appendLowercase = (path: opentype.Path, prompt: CharacterPrompt, shape: NormalizedShape, penScale: number) => {
+    const width = shape.frame.width * lowerScale
+    const height = shape.frame.height * lowerScale
+    const body = height - bodyTopOffset(shape) * lowerScale
+    const drop = latinClass(prompt) === 'lowercase-descender' ? Math.min(maximumDrop, Math.max(0, body - topLine)) : 0
+    const y = LATIN_BASELINE - drop
+    appendShape(path, shape, { x: 500 - width / 2, y, width, height }, false, penScale)
+  }
 
   for (const prompt of BASE_CHARACTER_PROMPTS) {
     const shape = shapes.get(prompt.char)
@@ -243,19 +277,21 @@ function encodeBaseGlyphs(out: GlyphEncoder, request: GenerationRequest, shapes:
       if (prompt.group === 'symbol') appendSymbol(path, prompt.char, shape, penScale)
       else if (prompt.group === 'number') appendNumeral(path, shape, penScale)
       else if (isJamo) return pathOf(composeStandaloneJamoPath(shape, settings, standaloneJamoReference(prompt.char, shapes, request, reference), penScale).commands)
+      else if (prompt.group === 'lowercase') appendLowercase(path, prompt, shape, penScale)
       else {
-        appendShape(path, shape, LATIN_ZONE, false, penScale)
+        appendShape(path, shape, capZone, false, penScale)
         const box = path.getBoundingBox()
-        const factor = normalizationFactor(box.y2 - box.y1, targetHeight(prompt), settings.latinNormalization)
+        const factor = Math.min(normalizationFactor(box.y2 - box.y1, targetHeight(prompt), settings.latinNormalization), capZone.height / Math.max(1, box.y2 - box.y1))
         if (Math.abs(factor - 1) > 0.005) {
           path.commands.length = 0
-          appendShape(path, shape, scaleZone(LATIN_ZONE, factor), false, penScale)
+          appendShape(path, shape, scaleZone(capZone, factor), false, penScale)
         }
-        alignVerticalCenter(path, targetCenter(prompt), settings.verticalAlignment)
+        const placed = path.getBoundingBox()
+        alignVerticalCenter(path, LATIN_BASELINE + (placed.y2 - placed.y1) / 2, settings.verticalAlignment)
       }
       return path
     }
-    const anchor = isMark ? symbolCalibrationAnchor(markChar) : isJamo ? request.hangulTargetCenter : targetCenter(prompt)
+    const anchor = isMark ? symbolCalibrationAnchor(markChar) : isJamo ? request.hangulTargetCenter : LATIN_BASELINE
     const path = renderCalibratedGlyph(render, visualScale, anchor, isJamo ? 450 : anchor, fixedWidth, isMark ? symbolMaximumHeight(markChar) : 950)
     const baseAdvanceWidth = isJamo ? 1000 : prompt.group === 'symbol' ? 500 : 680
     encodeGlyph(out, prompt.codePoint, path, baseAdvanceWidth, request)

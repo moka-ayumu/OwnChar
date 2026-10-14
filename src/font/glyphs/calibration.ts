@@ -9,6 +9,9 @@ import { DEFAULT_COMPOSITION_SETTINGS, type CompositionSettings } from '@/font/s
 
 export const VISUAL_HANGUL_HEIGHT = 800
 
+/** The lowest ink of a glyph, which is also the descender of the font. */
+export const DESCENDER_LIMIT = -250
+
 const fallbackSyllables = ['가', '나', '다', '마', '바', '사', '세', '루', '요']
 
 /** One project-level scale keeps the relative proportions of handwriting samples. */
@@ -43,7 +46,7 @@ function calibrateGlyphPath(path: opentype.Path, factor: number, anchorY: number
   scalePath(path, calibrationFactor(path, factor, fixedWidth, maximumHeight), { x: 500, y: anchorY }, { x: 500, y: targetAnchorY })
   const adjusted = path.getBoundingBox()
   const dx = fixedWidth ? 500 - (adjusted.x1 + adjusted.x2) / 2 : 0
-  const dy = adjusted.y1 < -100 ? -100 - adjusted.y1 : adjusted.y2 > 900 ? 900 - adjusted.y2 : 0
+  const dy = adjusted.y1 < DESCENDER_LIMIT ? DESCENDER_LIMIT - adjusted.y1 : adjusted.y2 > 900 ? 900 - adjusted.y2 : 0
   if (dx || dy) translatePath(path, dx, dy)
 }
 
