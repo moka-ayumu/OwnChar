@@ -70,6 +70,26 @@ function PreviewPage() {
     return () => window.removeEventListener('keydown', close)
   }, [picked, closePopover])
 
+  useEffect(() => {
+    const follow = () => {
+      const area = document.getElementById('sample')
+      if (!(area instanceof HTMLTextAreaElement) || document.activeElement !== area) return
+      const { selectionStart: start, selectionEnd: end } = area
+      setPicked((previous) => start === end ? null : previous?.start === start && previous.end === end ? previous : { start, end })
+    }
+    document.addEventListener('selectionchange', follow)
+    return () => document.removeEventListener('selectionchange', follow)
+  }, [])
+
+  useEffect(() => {
+    if (!picked) return
+    const release = (event: PointerEvent) => {
+      if (!stack.current?.contains(event.target as Node)) setPicked(null)
+    }
+    document.addEventListener('pointerdown', release, true)
+    return () => document.removeEventListener('pointerdown', release, true)
+  }, [picked])
+
   useLayoutEffect(() => {
     const place = () => {
       const first = mark.current?.getClientRects()[0]
