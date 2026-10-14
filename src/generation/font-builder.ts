@@ -1,6 +1,6 @@
 import opentype from 'opentype.js'
 import { BASE_CHARACTER_PROMPTS, type CharacterPrompt } from '@/collection/prompts'
-import { HANGUL_BASE, HANGUL_COUNT, HANGUL_ROLES } from '@/font/hangul'
+import { FINALS, HANGUL_BASE, HANGUL_COUNT, HANGUL_ROLES, INITIALS, MEDIALS, type HangulRole } from '@/font/hangul'
 import { prepareCffPath } from '@/font/geometry/cff'
 import { mapPoints, pathOf, translatePath } from '@/font/geometry/path-ops'
 import { appendShape, scaleZone, type NormalizedShape, type Zone } from '@/font/geometry/shape'
@@ -142,6 +142,19 @@ export function jamoReference(shapes: Map<string, NormalizedShape>, request: Han
   return { width: box.x2 - box.x1, height: box.y2 - box.y1, centerX: (box.x1 + box.x2) / 2, centerY: (box.y1 + box.y2) / 2 }
 }
 
+/** The envelope a standalone jamo is sized against: its own ink size inside syllables, centred as `whole`. */
+export function standaloneJamoReference(char: string, shapes: Map<string, NormalizedShape>, request: HangulCompositionInputs, whole: ReferenceEnvelope): ReferenceEnvelope {
+  const initial = INITIALS.indexOf(char)
+  const medial = MEDIALS.indexOf(char)
+  const final = FINALS.indexOf(char)
+  const [index, role]: [number, HangulRole] = initial >= 0 ? [initial * 588, 'initial'] : medial >= 0 ? [medial * 28, 'medial'] : [final, 'final']
+  if (initial < 0 && medial < 0 && final <= 0) return whole
+  const part = composeHangulParts(HANGUL_BASE + index, shapes, request.compositionSettings, { ...hangulComposeOptions(request), sizeTargets: undefined }).parts[role]
+  if (!part.commands.length) return whole
+  const box = part.getBoundingBox()
+  return { ...whole, width: box.x2 - box.x1, height: box.y2 - box.y1 }
+}
+
 /** A syllable exactly as it is written to the font, before metrics and overrides. */
 export function composedHangulPath(codePoint: number, shapes: Map<string, NormalizedShape>, request: HangulCompositionInputs, visualScale: number) {
   return composedHangulParts(codePoint, shapes, request, visualScale).path
@@ -229,7 +242,7 @@ function encodeBaseGlyphs(out: GlyphEncoder, request: GenerationRequest, shapes:
       if (!shape) return path
       if (prompt.group === 'symbol') appendSymbol(path, prompt.char, shape, penScale)
       else if (prompt.group === 'number') appendNumeral(path, shape, penScale)
-      else if (isJamo) return pathOf(composeStandaloneJamoPath(shape, settings, reference, penScale).commands)
+      else if (isJamo) return pathOf(composeStandaloneJamoPath(shape, settings, standaloneJamoReference(prompt.char, shapes, request, reference), penScale).commands)
       else {
         appendShape(path, shape, LATIN_ZONE, false, penScale)
         const box = path.getBoundingBox()

@@ -8,7 +8,7 @@ import { renderCalibratedGlyph } from '@/font/glyphs/calibration'
 import { composeStandaloneJamoPath } from '@/font/glyphs/standalone-jamo'
 import { decomposeHangul } from '@/font/hangul'
 import { DEFAULT_COMPOSITION_SETTINGS, type CompositionSettings } from '@/font/settings'
-import { composedHangulPath, jamoReference } from '@/generation/font-builder'
+import { composedHangulPath, jamoReference, standaloneJamoReference } from '@/generation/font-builder'
 import { useCompositionContext } from '@/generation/use-composition-context'
 import { projectActions } from '@/project/store'
 
@@ -168,7 +168,7 @@ export function CompositionWorkspace({ drawings, sessions, settings }: {
     const reference = jamoReference(shapes, composition, visualScale)
     return standaloneExamples.map((char) => {
       const shape = shapes.get(char)
-      return { char, path: renderCalibratedGlyph((penScale) => shape ? composeStandaloneJamoPath(shape, settings, reference, penScale) : new opentype.Path(), visualScale, reference.centerY, 450, fixedWidth) }
+      return { char, path: renderCalibratedGlyph((penScale) => shape ? composeStandaloneJamoPath(shape, settings, standaloneJamoReference(char, shapes, composition, reference), penScale) : new opentype.Path(), visualScale, reference.centerY, 450, fixedWidth) }
     })
   }, [shapes, composition, visualScale, settings, fixedWidth])
   const syllables = useMemo(() => examples.map((example) => {
@@ -190,7 +190,7 @@ export function CompositionWorkspace({ drawings, sessions, settings }: {
           </Hint>
         </div>
         <div className="composition-example-grid">
-          {standalone.map(({ char, path }) => <ExampleCard key={char} char={char} path={path} ariaLabel={`${char} 단독 자모 미리보기`} caption={`단독 자모 · 가 기준 ${Math.round(settings.standaloneJamoMaxHeight * 100)}%`} />)}
+          {standalone.map(({ char, path }) => <ExampleCard key={char} char={char} path={path} ariaLabel={`${char} 단독 자모 미리보기`} caption={`단독 자모 · 조합 글자 기준 ${Math.round(settings.standaloneJamoMaxHeight * 100)}%`} />)}
           {syllables.map(({ char, path, label, note }) => <ExampleCard key={char} char={char} path={path} ariaLabel={`${char} 조합 미리보기`} caption={label} note={note} />)}
         </div>
       </main>
