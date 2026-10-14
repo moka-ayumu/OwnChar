@@ -11,6 +11,8 @@ interface OverlapRule {
 
 /** Vowels whose stem reaches down toward the final. */
 const STEM_DOWN_MEDIALS = [...'ㅜㅠㅝㅞㅟ']
+/** Vowels whose vertical stem ends above the final. */
+const STEM_END_MEDIALS = [...'ㅏㅐㅑㅒㅓㅔㅕㅖㅣ']
 /** Finals made of two consonants side by side. */
 const MULTI_FINALS = [...'ㄲㅆ', ...Object.keys(COMPOUND_FINALS)]
 
@@ -23,6 +25,8 @@ const OVERLAP_RULES: readonly OverlapRule[] = [
   { boundary: 'initial-medial', first: [...'ㄱㄲㅅㅆㅈㅉㅊㅋ'], second: ['ㅛ'] },
   // A downward vowel stem entering the open top of the final.
   { boundary: 'medial-final', first: STEM_DOWN_MEDIALS, second: [...'ㄴㅂ'] },
+  // The end of a vertical stem entering the open top or the shoulder of the final.
+  { boundary: 'medial-final', first: STEM_END_MEDIALS, second: [...'ㄴㅅㅊ'] },
 ]
 
 export function allowsOverlap(boundary: OverlapBoundary, first: string, second: string) {

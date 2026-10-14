@@ -336,6 +336,9 @@ export function layoutSyllable(input: SyllableLayoutInput) {
   const { kind, chars, variants, finalIndex } = decomposeHangul(input.codePoint)
   const hasFinal = finalIndex > 0
   const zones = spaces(kind, hasFinal)
+  // A final that interlocks with a vertical vowel gives up the room the vowel then grows into.
+  const grown = hasFinal && kind === 'vertical' && allowsOverlap('medial-final', chars.medial, chars.final) ? minimumGap : 0
+  zones.medial.y -= grown; zones.medial.height += grown
   const gaps = input.gaps ?? DEFAULT_GAPS
   const char = String.fromCodePoint(input.codePoint)
   const ratios = learnedRatios(input.proportions ?? EMPTY_PROPORTIONS, char, proportionPair(chars.initial, chars.medial, chars.final || undefined), proportionContext(kind, hasFinal))
@@ -505,9 +508,12 @@ export function layoutSyllable(input: SyllableLayoutInput) {
       for (let pass = 0; pass < 3; pass += 1) {
         const i = bounds(initial.path)!
         const vowelHeight = m.y2 - m.y1; const upperHeight = Math.max(vowelHeight, i.y2 - i.y1)
-        const height = upperHeight + stackGap(vowelHeight) + Math.min(f.y2 - f.y1, finalRoom(upperHeight, vowelHeight))
+        // The height the vowel gains by interlocking is not a reason to widen the initial.
+        const height = upperHeight + stackGap(vowelHeight) + Math.min(f.y2 - f.y1, finalRoom(upperHeight, vowelHeight)) - grown
         const width = input.targetAspect * height - (m.x2 - m.x1) - Math.max(minimumGap, upperGap)
-        const factor = Math.min(STRETCH_REACH / widened, initial.zone.width / (i.x2 - i.x1), width / (i.x2 - i.x1))
+        // It is not widened past the width the writer gives a typical initial: a tall final would flatten a ㅇ.
+        const typical = initial.maxAspect / INITIAL_ASPECT_REACH * (i.y2 - i.y1)
+        const factor = Math.min(STRETCH_REACH / widened, initial.zone.width / (i.x2 - i.x1), width / (i.x2 - i.x1), typical / (i.x2 - i.x1))
         if (factor > 1.01) { initial.shape = stretchShapeWidth(initial.shape, factor); resize(initial, 1); widened *= factor }
       }
     }
@@ -568,7 +574,36 @@ export function layoutSyllable(input: SyllableLayoutInput) {
       // A pair the writer has sampled already carries its own overlap.
       const notch = !upperPlacement && allowsOverlap('initial-medial', chars.initial, chars.medial) ? 90 : 0
       // Interlocking ink keeps the same gap as jamo that merely sit side by side.
-      separate([initial], medial, kind === 'vertical' ? 'x' : 'y', kind === 'vertical' ? 1 : -1, Math.max(0, minimumGap - upperGap) + notch, minimumGap)
+      const interlock = () => separate([initial], medial, kind === 'vertical' ? 'x' : 'y', kind === 'vertical' ? 1 : -1, Math.max(0, minimumGap - upperGap) + notch, minimumGap)
+      const reach = bounds(medial.path)?.x1 ?? 0
+      interlock()
+      // A second arm sits close above the bottom stroke of the initial and holds the vowel out of the notch: the initial settles where the arms clear it.
+      if (notch && kind === 'vertical' && !isPlaceholder('medial') && bounds(medial.path) && bounds(initial.path)) {
+        const original = { shape: initial.shape, path: initial.path, scale: geometry.scales.initial }
+        const stretchable = Boolean(original.shape) && !isPlaceholder('initial') && groups.get(initial.group)!.length === 1
+        // The initial grows downward, its top kept, and its width and pen are kept too.
+        const lower = (drop: number) => {
+          if (!stretchable) { move(initial, 0, -drop); return }
+          const box = bounds(initial.path)!; const height = box.y2 - box.y1
+          initial.shape = stretchShapeWidth(original.shape!, height / (height + drop)); resize(initial, 1 + drop / height)
+          move(initial, 0, box.y2 - bounds(initial.path)!.y2)
+        }
+        const lift = (drop: number) => {
+          if (!stretchable) { move(initial, 0, drop); return }
+          initial.shape = original.shape; initial.path = original.path; geometry.scales.initial = original.scale
+        }
+        let best = { depth: reach - bounds(medial.path)!.x1, drop: 0 }
+        for (const drop of [minimumGap / 4, minimumGap / 2, minimumGap * 0.75, minimumGap]) {
+          lower(drop); move(medial, reach - bounds(medial.path)!.x1, 0)
+          interlock()
+          const depth = reach - bounds(medial.path)!.x1
+          if (depth > best.depth + 1) best = { depth, drop }
+          lift(drop)
+        }
+        move(medial, reach - bounds(medial.path)!.x1, 0)
+        if (best.drop) lower(best.drop)
+        interlock()
+      }
     }
   }
   // A final under a vertical vowel is flattened, not shrunk, until the upper
@@ -684,6 +719,7 @@ export function layoutSyllable(input: SyllableLayoutInput) {
   if (dial && inked.length) {
     const context = proportionContext(kind, hasFinal)
     const pen = minimumGap / 1.5 * input.penScale
+    const interlocked = Boolean(grown) || (!upperPlacement && kind === 'vertical' && allowsOverlap('initial-medial', chars.initial, chars.medial))
     // Everything is planned on the boxes of the pen centerlines, and each jamo is then outlined once.
     const lines = inked.map((slot): Box => {
       const box = bounds(slot.path)!
@@ -702,7 +738,9 @@ export function layoutSyllable(input: SyllableLayoutInput) {
       const box = lines[index]
       const mean = dial.targets.roles[context]?.[slot.role]
       const target = mean && mean * ownSize(slot.role)
-      const correction = target ? toward(dial[slot.role], target / jamoSize(slot.role, kind, box.x2 - box.x1, box.y2 - box.y1), SIZE_REACH) : 1
+      const pulled = target ? toward(dial[slot.role], target / jamoSize(slot.role, kind, box.x2 - box.x1, box.y2 - box.y1), SIZE_REACH) : 1
+      // A vowel that interlocks is not drawn smaller: that would take back the room the interlock won.
+      const correction = interlocked && slot.role === 'medial' ? Math.max(1, pulled) : pulled
       // A jamo grows away from the others: the side of its box that faces them stays where it is.
       const rest = lines.filter((_, other) => other !== index)
       const facing = rest.length ? union(rest) : box
@@ -731,7 +769,8 @@ export function layoutSyllable(input: SyllableLayoutInput) {
       })
       const body = union(sized.map((plan) => plan.box))
       // Whole percents: a jamo stretched by the same factor in another syllable is stretched once.
-      const stretch = targetWidth ? Math.round((1 + (toward(dial.width, targetWidth / Math.max(1, body.x2 - body.x1), WIDTH_REACH) - 1) * share) * 100) / 100 : 1
+      // Widening the syllable would pull an interlocking pair apart.
+      const stretch = targetWidth && !interlocked ? Math.round((1 + (toward(dial.width, targetWidth / Math.max(1, body.x2 - body.x1), WIDTH_REACH) - 1) * share) * 100) / 100 : 1
       const changed = sized.map((plan) => plan.scale !== 1 || stretch !== 1)
       if (!changed.some(Boolean)) break
       if (dial.draft) {
