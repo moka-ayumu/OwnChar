@@ -4,12 +4,15 @@ import { Download, PenLine, RefreshCw, Settings2 } from 'lucide-react'
 import { BASE_CHARACTER_PROMPTS } from '@/collection/prompts'
 import { RailBrand } from '@/components/rail-brand'
 import { Button, buttonVariants } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { Slider } from '@/components/ui/slider'
 import { DialPanel } from '@/features/preview/dial-panel'
 import { SourcePopover } from '@/features/preview/source-popover'
 import { isHangulSyllable } from '@/font/hangul'
 import { useLiveFont } from '@/generation/use-live-font'
-import { LEAD_SENTENCE, LEAD_SIZE } from '@/lib/flow'
+import { FontSummary } from '@/features/preview/font-summary'
+import { GlyphSheet } from '@/features/preview/glyph-sheet'
+import { LEAD_SENTENCE, LEAD_SIZE, SAMPLE_SENTENCES } from '@/lib/flow'
 import { useFontFace } from '@/lib/use-font-face'
 import { useStableCallback } from '@/lib/use-stable-callback'
 import { useProject } from '@/project/use-project'
@@ -23,6 +26,9 @@ const SOURCE_LIMIT = 4
 /** Widest the popover is; a wider one is not kept inside the stage when the selection is at the right. */
 const POPOVER_WIDTH = 540
 
+/** Sizes the sentence is also set at, from running text to a headline. */
+const LADDER_SIZES = [16, 24, 40]
+
 interface Picked { start: number; end: number }
 
 /** The first two syllables of `text`: selected on arrival, so the writer finds out that a selection shows its sources. */
@@ -30,6 +36,10 @@ function leadingSyllables(text: string): Picked | null {
   const start = text.search(/[가-힣]/)
   if (start < 0) return null
   return { start, end: start + (isHangulSyllable(text.codePointAt(start + 1) ?? 0) ? 2 : 1) }
+}
+
+function formatFileSize(bytes: number) {
+  return bytes < 1024 * 1024 ? `${Math.round(bytes / 1024)}KB` : `${(bytes / 1024 / 1024).toFixed(1)}MB`
 }
 
 function PreviewPage() {
@@ -44,6 +54,7 @@ function PreviewPage() {
   const overrides = useProject((state) => state.glyphOverrides)
   const globalMetrics = useProject((state) => state.globalMetrics)
   const fontReady = useFontFace(buffer, revision)
+  const [askApply, setAskApply] = useState(false)
   const [sample, setSample] = useState(LEAD_SENTENCE)
   // Generation ends on the first sample at this size, standing exactly where it is shown here.
   const [fontSize, setFontSize] = useState(LEAD_SIZE)
@@ -115,6 +126,7 @@ function PreviewPage() {
   const fontFamily = [liveFamily, fontReady && 'OwnCharPreview'].filter(Boolean).join(', ') || 'inherit'
   const textStyle = { fontFamily, fontSize, lineHeight: 1.25 }
   const selected = picked ? [...sample.slice(picked.start, picked.end)].filter((char) => isHangulSyllable(char.codePointAt(0)!) || BASE_CHARACTER_PROMPTS.some((prompt) => prompt.char === char && drawings[prompt.id])) : []
+  const download = () => downloadArrayBuffer(buffer, `${safeFilename(metadata.familyName)}.otf`)
   const readSelection = ({ currentTarget }: SyntheticEvent<HTMLTextAreaElement>) => {
     const { selectionStart: start, selectionEnd: end } = currentTarget
     setPicked((previous) => start === end ? null : previous?.start === start && previous.end === end ? previous : { start, end })
@@ -135,7 +147,13 @@ function PreviewPage() {
         <p className="rail-note mt-4">폰트는 서버로 전송되지 않으며 이 브라우저에서 생성됩니다.</p>
 
         <div className="mt-auto grid gap-2 pt-6">
-          <Button size="lg" onClick={() => downloadArrayBuffer(buffer, `${safeFilename(metadata.familyName)}.otf`)}><Download className="size-4" /> OTF 다운로드</Button>
+          {dirty && (
+            <div className="rail-change" role="status">
+              <span>필기 또는 폰트 생성 설정이 변경되었습니다. 변경 적용 후 새 OTF를 받을 수 있습니다.</span>
+              <Button variant="secondary" className="w-full" onClick={() => void navigate({ to: '/generate', viewTransition: true })}><RefreshCw className="size-3.5" /> 변경 적용</Button>
+            </div>
+          )}
+          <Button size="lg" onClick={() => dirty ? setAskApply(true) : download()}><Download className="size-4" /> OTF 다운로드</Button>
           <div className="grid grid-cols-2 gap-2">
             <Link to="/write" viewTransition className={cn(buttonVariants({ variant: 'secondary' }), 'px-2')}><PenLine className="size-4" /> 글자 다시 쓰기</Link>
             <Link to="/edit" className={cn(buttonVariants({ variant: 'secondary' }), 'px-2')}><Settings2 className="size-4" /> 고급 편집</Link>
@@ -143,10 +161,29 @@ function PreviewPage() {
         </div>
       </aside>
 
+      <Dialog open={askApply} onOpenChange={setAskApply}>
+        <DialogContent>
+          <DialogTitle>변경 사항이 아직 적용되지 않았어요</DialogTitle>
+          <DialogDescription>필기 또는 폰트 생성 설정이 바뀌어서, 지금 받는 OTF에는 변경 내용이 들어 있지 않아요. 먼저 변경을 적용할까요?</DialogDescription>
+          <div className="mt-6 flex justify-end gap-2">
+            <Button variant="secondary" onClick={() => { setAskApply(false); download() }}>아니요</Button>
+            <Button onClick={() => void navigate({ to: '/generate', viewTransition: true })}>네</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <section className="stage">
         <div className="preview-stage">
-          <div className="preview-tools flex h-6 items-center justify-between gap-6">
-            <label htmlFor="sample" className="text-sm font-semibold text-ink-2">직접 입력해 보세요</label>
+          <label htmlFor="sample" className="mb-3 block text-sm font-semibold text-ink-2">직접 입력해 보세요</label>
+
+          <div className="preview-grid">
+          <div className="preview-main">
+          <div className="sample-bar">
+            <div className="sample-chips" role="group" aria-label="예시 문장">
+              {SAMPLE_SENTENCES.map((item) => (
+                <button key={item.label} type="button" className="sample-chip" aria-pressed={sample === item.text} onClick={() => { setSample(item.text); setPicked(leadingSyllables(item.text)) }}>{item.label}</button>
+              ))}
+            </div>
             <div className="preview-size flex w-64 items-center gap-3">
               <label htmlFor="preview-size" className="shrink-0 text-xs font-semibold text-ink-2">글자 크기</label>
               <Slider id="preview-size" aria-label="미리보기 글자 크기" min={36} max={160} step={2} value={[fontSize]} onValueChange={([value]) => setFontSize(value)} />
@@ -180,12 +217,22 @@ function PreviewPage() {
 
           <DialPanel settings={settings} />
 
-          {dirty && (
-            <div className="mt-6 flex max-w-[760px] items-center justify-between gap-4 rounded-md bg-ink px-4 py-3 text-sm text-white" role="status">
-              <span>필기 또는 폰트 생성 설정이 변경되었습니다. 변경 적용 후 새 OTF를 받을 수 있습니다.</span>
-              <Button size="sm" variant="lime" onClick={() => void navigate({ to: '/generate', viewTransition: true })}><RefreshCw className="size-3.5" /> 변경 적용</Button>
-            </div>
-          )}
+          <section className="size-ladder" aria-labelledby="size-ladder-title">
+            <h2 id="size-ladder-title" className="text-sm font-semibold">크기별로 보기</h2>
+            {LADDER_SIZES.map((size) => (
+              <div key={size} className="size-ladder-row">
+                <span className="tnum">{size}px</span>
+                <span style={{ fontFamily, fontSize: size }}>{sample.replace(/\s+/g, ' ').trim() || ' '}</span>
+              </div>
+            ))}
+          </section>
+          </div>
+
+          <aside className="preview-side" aria-label="폰트 살펴보기">
+            <GlyphSheet drawings={drawings} sessions={sessions} fontFamily={fontFamily} />
+            <FontSummary drawings={drawings} size={formatFileSize(buffer.byteLength)} />
+          </aside>
+          </div>
         </div>
       </section>
     </div>

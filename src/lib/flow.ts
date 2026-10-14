@@ -11,6 +11,14 @@ export interface StageOrigin {
 export const LEAD_SENTENCE = '오늘 하루도 좋은 하루 보내세요.'
 export const LEAD_SIZE = 80
 
+/** Sentences the preview offers to try the font on, the lead sentence first. */
+export const SAMPLE_SENTENCES = [
+  { label: '기본', text: LEAD_SENTENCE },
+  { label: '글자 골고루', text: '다람쥐 헌 쳇바퀴에 타고파' },
+  { label: '영문', text: 'The quick brown fox jumps over the lazy dog.' },
+  { label: '숫자와 기호', text: '0123456789 ! ? . , ( ) - + * / =' },
+] as const
+
 let origin: StageOrigin | null = null
 
 /** One-shot hand-off from the writing page to generation, so the film opens on the sentence where it was left. */

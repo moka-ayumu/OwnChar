@@ -1,0 +1,32 @@
+import { memo, useState } from 'react'
+import type { DrawingRecord, WritingSessionRecord } from '@/collection/records'
+import { SourcePopover } from '@/features/preview/source-popover'
+
+/** Syllables that cover every jamo role, so one look at the sheet shows how the composition holds up. */
+const SHEET_CHARS = [...'가고구그각곡굵읽닭낡넘괌뭐계줬꽈깲뢒뢥뇲빛뚫쁨앉젊쐈웨흙많힣']
+
+/** The font on one sheet. Pressing a syllable opens where its handwriting came from, under the sheet. */
+export const GlyphSheet = memo(function GlyphSheet({ drawings, sessions, fontFamily }: {
+  drawings: Record<string, DrawingRecord>
+  sessions: Record<string, WritingSessionRecord>
+  fontFamily: string
+}) {
+  const [picked, setPicked] = useState<string | null>(null)
+
+  return (
+    <section className="glyph-sheet" aria-labelledby="glyph-sheet-title" onKeyDown={(event) => { if (event.key === 'Escape') setPicked(null) }}>
+      <h2 id="glyph-sheet-title" className="text-sm font-semibold">글자 모음 한 장</h2>
+      <p className="mt-0.5 text-xs text-ink-3">글자를 누르면 원본 필기를 볼 수 있어요</p>
+      <div className="glyph-grid">
+        {SHEET_CHARS.map((char) => (
+          <button key={char} type="button" className="glyph-cell" aria-pressed={picked === char} style={{ fontFamily }} onClick={() => setPicked((previous) => previous === char ? null : char)}>
+            {char}
+          </button>
+        ))}
+      </div>
+      {picked && (
+        <SourcePopover chars={[picked]} hidden={0} drawings={drawings} sessions={sessions} fontFamily={fontFamily} style={{ top: '100%', left: 0, marginTop: 8, maxWidth: '100%' }} onClose={() => setPicked(null)} />
+      )}
+    </section>
+  )
+})
