@@ -1,6 +1,7 @@
 import opentype from 'opentype.js'
 import type { HangulRole } from '@/font/hangul'
 import { outlineStroke, penDiameter, type RawStroke, type StrokeMemo, type StrokeOutline } from '@/font/stroke/outline'
+import { stabilizeStroke } from '@/font/stroke/stabilizer'
 import { clamp, simplifyPolygon, type Point } from './path-ops'
 
 export interface Zone {
@@ -88,6 +89,20 @@ const OUTLINE_TOLERANCE = 0.75
 
 const centerlineOutlines = new WeakMap<StrokeCenterline, Map<string, StrokeOutline>>()
 const centerlineMemos = new WeakMap<StrokeCenterline, StrokeMemo>()
+
+/**
+ * `centerline` with its points moved by `map`. The hand-jitter stabilizer works in pixels at the written
+ * scale, so it runs on the centerline as written and its result is moved too: run again on a narrowed
+ * stroke it would smooth away short runs and corners.
+ */
+function remapCenterline(centerline: StrokeCenterline, map: (point: Point) => Point): StrokeCenterline {
+  let memo = centerlineMemos.get(centerline)
+  if (!memo) centerlineMemos.set(centerline, memo = {})
+  const conditioned = memo.conditioned ??= stabilizeStroke(centerline.points, centerline.pressures, centerline.diameter, 'complete', centerline.strength)
+  const moved = { ...centerline, points: centerline.points.map(map) }
+  centerlineMemos.set(moved, { conditioned: { ...conditioned, points: conditioned.points.map(map) } })
+  return moved
+}
 
 /** Outline a captured centerline at `renderDiameter` source pixels, in source-cell fractions. */
 function outlineCenterline(centerline: StrokeCenterline, renderDiameter: number): StrokeOutline {
@@ -182,13 +197,10 @@ export function combineShapesSideBySide(left: NormalizedShape, right: Normalized
       strokes.push({
         contours: stroke.contours.map((contour) => contour.map(map)),
         smooth: stroke.smooth,
-        centerline: {
-          ...centerline,
-          points: centerline.points.map(([x, y]) => {
-            const [mappedX, mappedY] = map([x / centerline.cellSize, y / centerline.cellSize])
-            return [mappedX * centerline.cellSize, mappedY * centerline.cellSize] as Point
-          }),
-        },
+        centerline: remapCenterline(centerline, ([x, y]) => {
+          const [mappedX, mappedY] = map([x / centerline.cellSize, y / centerline.cellSize])
+          return [mappedX * centerline.cellSize, mappedY * centerline.cellSize] as Point
+        }),
       })
     }
     offsetX += natural[index] * stretch + gap
@@ -211,13 +223,10 @@ export function stretchShapeWidth(shape: NormalizedShape, factor: number): Norma
     strokes: shape.strokes.map((stroke) => ({
       ...stroke,
       contours: stroke.contours.map((contour) => contour.map(map)),
-      centerline: {
-        ...stroke.centerline,
-        points: stroke.centerline.points.map(([x, y]) => {
-          const [mappedX] = map([x / stroke.centerline.cellSize, y])
-          return [mappedX * stroke.centerline.cellSize, y] as Point
-        }),
-      },
+      centerline: remapCenterline(stroke.centerline, ([x, y]) => {
+        const [mappedX] = map([x / stroke.centerline.cellSize, y])
+        return [mappedX * stroke.centerline.cellSize, y] as Point
+      }),
     })),
   }
 }

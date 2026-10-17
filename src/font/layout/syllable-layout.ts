@@ -110,6 +110,8 @@ export function verticalStem(path: opentype.Path): Box | undefined {
 
 /** Widest an initial may be for its height, in aspect ratios of the typical jamo of its layout. */
 const INITIAL_ASPECT_REACH = 1.25
+/** The same for a double consonant. */
+const DOUBLE_ASPECT_REACH = 1
 
 /** Share of the height of upper body, gap and final that the upper body holds under a vertical vowel. */
 const UPPER_SHARE = 0.55
@@ -174,6 +176,18 @@ export function writtenFrame(shapes: Map<string, NormalizedShape>, role: HangulR
     if (frame) return frame
   }
   return undefined
+}
+
+/** How large the jamo is written against the typical jamo of the layout it was written in. */
+function writtenSizeRatio(shapes: Map<string, NormalizedShape>, role: HangulRole, variant: number, char: string) {
+  for (const candidate of [variant, ...donors(role, variant)]) {
+    const key = sourceKey(role, candidate, char)
+    const own = shapes.get(key)
+    if (!own || own.synthesized) continue
+    const typical = typicalFrame(shapes, key)
+    return typical ? Math.sqrt(own.frame.width * own.frame.height / (typical.width * typical.height)) : 1
+  }
+  return 1
 }
 
 /** `shape` narrowed to `maxAspect` (width / height), its height kept. */
@@ -358,7 +372,8 @@ export function layoutSyllable(input: SyllableLayoutInput) {
     const written = role === 'initial' && selected ? typicalFrame(input.shapes, selected.key) : undefined
     const typical = written && { ...written, width: written.width * widening }
     const sizeLimit = typical ? Math.min(zones[role].width / typical.width, zones[role].height / typical.height) * Math.sqrt(typical.width * typical.height) : Infinity
-    const maxAspect = typical ? typical.width / typical.height * INITIAL_ASPECT_REACH : Infinity
+    // A double consonant is narrowed to the aspect of a single one: wider, the zone would hold it at a lower height.
+    const maxAspect = typical ? typical.width / typical.height * (role === 'initial' && chars.initial in DOUBLE_CONSONANTS ? DOUBLE_ASPECT_REACH : INITIAL_ASPECT_REACH) : Infinity
     const placeholderFrame = isPlaceholder(role) ? writtenFrame(input.shapes, role, variants[role], chars[role]) : undefined
     return { role, shape, zone: zones[role], scale: input.scales?.[role] ?? 1, sizeLimit, maxAspect, placeholderFrame, group, path: new opentype.Path() }
   })
@@ -729,10 +744,8 @@ export function layoutSyllable(input: SyllableLayoutInput) {
     const toward = (strength: number, ratio: number, reach: number) => strength > 0 ? clamp(1 + Math.min(1, strength) * (ratio - 1), 1 - reach * Math.max(1, strength), 1 + reach * Math.max(1, strength)) : 1
     /** How large the writer's own jamo is against the typical one of its layout: ㅎ is written larger than ㅇ, and stays so. */
     const ownSize = (role: HangulRole) => {
-      if (role === 'medial') return 1
-      const own = writtenFrame(input.shapes, role, variants[role], chars[role])
-      const typical = typicalFrame(input.shapes, sourceKey(role, variants[role], chars[role]))
-      return own && typical ? clamp(1 + (Math.sqrt(own.width * own.height / (typical.width * typical.height)) - 1) * OWN_SIZE_EMPHASIS, 1 - SIZE_REACH * 2, 1 + SIZE_REACH * 2) : 1
+      if (role === 'medial' || chars[role] in DOUBLE_CONSONANTS) return 1
+      return clamp(1 + (writtenSizeRatio(input.shapes, role, variants[role], chars[role]) - 1) * OWN_SIZE_EMPHASIS, 1 - SIZE_REACH * 2, 1 + SIZE_REACH * 2)
     }
     const plans = inked.map((slot, index) => {
       const box = lines[index]

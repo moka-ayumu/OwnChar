@@ -26,7 +26,7 @@ const OVERLAP_RULES: readonly OverlapRule[] = [
   // A downward vowel stem entering the open top of the final.
   { boundary: 'medial-final', first: STEM_DOWN_MEDIALS, second: [...'ㄴㅂ'] },
   // The end of a vertical stem entering the open top or the shoulder of the final.
-  { boundary: 'medial-final', first: STEM_END_MEDIALS, second: [...'ㄴㅅㅊ'] },
+  { boundary: 'medial-final', first: STEM_END_MEDIALS, second: [...'ㄴㅊ'] },
 ]
 
 export function allowsOverlap(boundary: OverlapBoundary, first: string, second: string) {

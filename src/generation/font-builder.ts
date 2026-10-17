@@ -1,14 +1,15 @@
 import opentype from 'opentype.js'
 import { BASE_CHARACTER_PROMPTS, type CharacterPrompt } from '@/collection/prompts'
-import { FINALS, HANGUL_BASE, HANGUL_COUNT, HANGUL_ROLES, INITIALS, MEDIALS, type HangulRole } from '@/font/hangul'
+import { decomposeHangul, DOUBLE_CONSONANTS, FINALS, HANGUL_BASE, HANGUL_COUNT, HANGUL_ROLES, INITIALS, MEDIALS, type HangulRole } from '@/font/hangul'
 import { prepareCffPath } from '@/font/geometry/cff'
 import { mapPoints, pathOf, translatePath } from '@/font/geometry/path-ops'
-import { appendShape, scaleZone, type NormalizedShape, type Zone } from '@/font/geometry/shape'
+import { appendShape, CELL_UNITS, scaleZone, stretchShapeWidth, type NormalizedShape, type Zone } from '@/font/geometry/shape'
 import { DESCENDER_LIMIT, renderCalibratedGlyph, visualCalibrationScale, VISUAL_HANGUL_HEIGHT } from '@/font/glyphs/calibration'
 import { composeStandaloneJamoPath, type ReferenceEnvelope } from '@/font/glyphs/standalone-jamo'
 import { appendNumeral, appendSymbol, symbolCalibrationAnchor, symbolMaximumHeight } from '@/font/glyphs/symbols'
 import { composeHangulParts, composeHangulPath, learnSizeTargets, type HangulComposeOptions, type HangulParts } from '@/font/layout/compose-syllable'
 import type { SizeTargets } from '@/font/layout/syllable-layout'
+import { selectJamoSource } from '@/font/layout/source-selection'
 import { latestOnly } from '@/lib/latest-only'
 import { alignVerticalCenter, medianHeight, normalizationFactor } from '@/font/metrics'
 import type { CompositionSettings } from '@/font/settings'
@@ -161,6 +162,8 @@ export function composedHangulPath(codePoint: number, shapes: Map<string, Normal
   return composedHangulParts(codePoint, shapes, request, visualScale).path
 }
 
+const cachedInitialWidths = latestOnly((_shapes: Map<string, NormalizedShape>, _request: HangulCompositionInputs, _visualScale: number) => new Map<number, number>(), 3)
+
 /** Calibrated role geometry shared by export, previews, and diagnostics. */
 export function composedHangulParts(codePoint: number, shapes: Map<string, NormalizedShape>, request: HangulCompositionInputs, visualScale: number): HangulParts {
   const options = hangulComposeOptions(request)
@@ -186,6 +189,43 @@ export function composedHangulParts(codePoint: number, shapes: Map<string, Norma
       const anchor = anchors[role]
       if (anchor) anchors[role] = { x: anchor.x * scale + dx, y: anchor.y * scale + dy }
       if (scales[role] !== undefined) scales[role]! *= scale
+    }
+  }
+  const { chars, kind, initialIndex, variants } = decomposeHangul(codePoint)
+  const single = DOUBLE_CONSONANTS[chars.initial]
+  const widths = cachedInitialWidths(shapes, request, visualScale)
+  if (!single && result!.parts.initial.commands.length) {
+    const box = result!.parts.initial.getBoundingBox()
+    widths.set(codePoint, box.x2 - box.x1)
+  }
+  if (single && kind === 'vertical' && result!.parts.initial.commands.length) {
+    const reference = codePoint + (INITIALS.indexOf(single) - initialIndex) * MEDIALS.length * FINALS.length
+    if (!widths.has(reference)) composedHangulParts(reference, shapes, request, visualScale)
+    const source = selectJamoSource(shapes, 'initial', variants.initial, chars.initial)?.source
+    const width = widths.get(reference)
+    if (source && width) {
+      const before = result!.parts.initial.getBoundingBox()
+      const height = before.y2 - before.y1
+      let shape = source
+      let scale = height / (source.frame.height * CELL_UNITS)
+      let initial = new opentype.Path()
+      for (let pass = 0; pass < 8; pass += 1) {
+        initial = new opentype.Path()
+        appendShape(initial, shape, { x: 0, y: 0, width: CELL_UNITS * scale, height: CELL_UNITS * scale }, true, visualScale)
+        const box = initial.getBoundingBox()
+        const x = width / (box.x2 - box.x1); const y = height / (box.y2 - box.y1)
+        if (Math.abs(x - 1) < 0.00001 && Math.abs(y - 1) < 0.00001) break
+        shape = stretchShapeWidth(shape, x / y); scale *= y
+      }
+      const box = initial.getBoundingBox()
+      mapPoints(initial.commands, (x, y) => [before.x2 - width + (x - box.x1) * width / (box.x2 - box.x1), before.y1 + (y - box.y1) * height / (box.y2 - box.y1)])
+      result!.parts.initial = initial
+      result!.path = pathOf(Object.values(result!.parts).flatMap((part) => part.commands))
+      result!.geometry.anchors.initial = { x: before.x2 - width / 2, y: (before.y1 + before.y2) / 2 }
+      result!.geometry.scales.initial = scale
+      result!.geometry.groups.initial = 'initial'
+      const zone = result!.geometry.zones.initial
+      if (zone) zone.x1 -= width - (before.x2 - before.x1)
     }
   }
   return result!
