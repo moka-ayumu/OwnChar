@@ -3,7 +3,7 @@ import { hasNonFinite } from '../lib/glyphs.mjs'
 import { loadProject } from '../lib/project.mjs'
 import { startVite } from '../lib/vite.mjs'
 
-const project = loadProject()
+const project = await loadProject()
 const chars = [...(process.argv[2] ?? '계괌꽈깲낡뇲뢒뢥')]
 const server = await startVite()
 try {

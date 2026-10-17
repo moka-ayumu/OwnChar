@@ -7,7 +7,6 @@ import { useProject } from '@/project/use-project'
 import { completedPromptCount, PROMPT_COUNT } from '@/collection/prompts'
 import { clearPersistedProject } from '@/project/persistence'
 import { projectActions } from '@/project/store'
-import { SampleProjectButton } from '@/dev/sample-project-button'
 import { HOME_SCENES } from '@/features/home/home-film'
 import { useHomeFilm } from '@/features/home/use-home-film'
 import { loadSampleProject } from '@/features/samples/sample-projects'
@@ -44,7 +43,6 @@ function HomePage() {
 
   return (
     <section className="home">
-      {import.meta.env.DEV && <SampleProjectButton />}
       <canvas ref={canvas} className="film" aria-hidden="true" />
       <div ref={foot} className="home-foot">
         <div className="home-panel">

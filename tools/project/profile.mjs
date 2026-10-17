@@ -1,13 +1,13 @@
 // 합성 속도·품질 측정 하네스.
 //   node tools/project/profile.mjs [sampleStep] [chars]
-// src/dev/sample-project.json(tools/project/export-project.js로 내보낸 프로젝트)을 읽어
+// 예시 손글씨(src/features/samples/example.json)로 만든 프로젝트를 읽어
 // 음절 합성 시간과 학습 프로필 규모를 출력하고 tools/out/sheet.svg 컨택트 시트를 만든다.
 import { hasNonFinite } from '../lib/glyphs.mjs'
 import { writeOut } from '../lib/out.mjs'
 import { loadProject } from '../lib/project.mjs'
 import { startVite } from '../lib/vite.mjs'
 
-const project = loadProject()
+const project = await loadProject()
 const step = Number(process.argv[2] ?? 1)
 const chars = [...(process.argv[3] ?? '계괌다가각곡고구뭐웨읽닭깲꽈낡나넣뇲뢒뢥')]
 

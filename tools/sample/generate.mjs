@@ -1,4 +1,4 @@
-// node tools/sample/generate.mjs [--style=tidy|example] [--seed=7] [--out=src/dev/sample-project.json] [--strokes=<file>] [--keep-latin=<strokes file>]
+// node tools/sample/generate.mjs [--style=tidy|example] [--seed=7] [--out=tools/out/sample-<style>.json] [--strokes=<file>] [--keep-latin=<strokes file>]
 // Makes the strokes of a sample project from the rules in handwriting.mjs, saves them through the app's own save path,
 // and writes one review sheet per group in tools/out/sample-<style>-*.svg. See tools/README.md and docs/decision/0004.
 import { readFileSync, writeFileSync } from 'node:fs'
@@ -10,7 +10,7 @@ const arg = (name, fallback) => process.argv.find((a) => a.startsWith(`--${name}
 const seed = Number(arg('seed', '7'))
 const styleName = arg('style', 'tidy')
 const style = useStyle(styleName)
-const out = arg('out', 'src/dev/sample-project.json')
+const out = arg('out', `tools/out/sample-${styleName}.json`)
 const strokesOut = arg('strokes', '')
 const keepLatin = arg('keep-latin', '')
 const COLUMNS = 6

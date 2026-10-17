@@ -1,5 +1,5 @@
 // node tools/verify/golden.mjs [--out=golden.json]
-// Composes a fixed sample from src/dev/sample-project.json and writes every
+// Composes a fixed sample from the example handwriting (src/features/samples/example.json) and writes every
 // outline, so a refactor can be checked for byte-identical font output.
 import { createHash } from 'node:crypto'
 import opentype from 'opentype.js'
@@ -9,7 +9,7 @@ import { loadProject } from '../lib/project.mjs'
 import { startVite } from '../lib/vite.mjs'
 
 const out = process.argv.find((a) => a.startsWith('--out='))?.slice(6) ?? 'golden.json'
-const project = loadProject()
+const project = await loadProject()
 const stride = Array.from({ length: 153 }, (_, i) => 0xac00 + i * 73)
 const server = await startVite()
 try {

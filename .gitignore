@@ -16,8 +16,6 @@ tools/out/
 *.otf
 .pnpm-store/
 
-# local sample project: dev sample button and tools/*.mjs read it
-src/dev/sample-project.json
 
 # impeccable-ignore-start
 **/.impeccable/config.local.json

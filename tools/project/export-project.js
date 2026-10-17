@@ -1,6 +1,5 @@
 // 앱(http://127.0.0.1:5173 등)을 연 브라우저 DevTools 콘솔에 붙여넣어 실행하세요.
-// IndexedDB 'ownchar/records'의 프로젝트를 sample-project.json으로 내려받습니다.
-// 받은 파일을 src/dev/sample-project.json 에 두면 tools/ 의 스크립트가 읽습니다.
+// IndexedDB 'ownchar/records'의 프로젝트를 project.json으로 내려받습니다.
 (async () => {
   const database = await new Promise((resolve, reject) => {
     const request = indexedDB.open('ownchar')
@@ -23,6 +22,6 @@
   const blob = new Blob([JSON.stringify(project)], { type: 'application/json' })
   const link = document.createElement('a')
   link.href = URL.createObjectURL(blob)
-  link.download = 'sample-project.json'
+  link.download = 'project.json'
   link.click()
 })()

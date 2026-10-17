@@ -59,7 +59,7 @@ WARNING: 모양을 공유하는 변경을 하기 전에 폰트 골든 해시를 
 - 쓴 칸의 `guides`는 고정 자모가 없어도 빈 가이드 항목을 가진다. 그 칸은 쓸 때의 고정 구성으로 읽는다. 모드(`guideMode`)를 바꿔도 이미 쓴 획의 해석이 바뀌지 않는다.
 - `fontDirty`는 상태를 바꿀 때마다 다시 계산한다(`update`의 `matchesGeneratedFont`). 폰트를 만들 때의 값(`generatedWith`)과 현재 값을 비교한다. 객체가 같으면 필드를 비교하지 않으므로 쓰기 화면의 저장 경로에서는 비용이 없다. 필기가 바뀐 상태(`sourceDirty`)에서는 비교하지 않는다.
 - 새 상태 필드는 `meta`에 들어간다. `meta`는 얕은 비교를 한다. 필드를 제자리에서 바꾸면 저장되지 않는다.
-- 저장 형식(`.ownchar`, 샘플 프로젝트)은 `{ meta, sessions, drawings }`이다. 형식을 바꾸면 `tools/lib/project.mjs`, `tools/project/export-project.js`, `tests/e2e/helpers.ts`를 같이 바꾼다.
+- 저장 형식(`.ownchar`)은 `{ meta, sessions, drawings }`이다. 형식을 바꾸면 `tools/project/export-project.js`, `tests/e2e/helpers.ts`를 같이 바꾼다.
 
 ### 미리보기의 즉시 조합과 크기 다이얼
 

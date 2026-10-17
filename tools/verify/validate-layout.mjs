@@ -8,7 +8,7 @@ const args = process.argv.slice(2)
 const option = (name, fallback) => args.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback
 const revision = option('revision', '')
 const name = option('out', revision ? 'head-audit' : 'layout-audit')
-const project = loadProject()
+const project = await loadProject()
 const server = await startVite({ revision })
 try {
   const composer = await server.ssrLoadModule('/src/generation/font-builder.ts')

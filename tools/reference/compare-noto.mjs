@@ -17,7 +17,7 @@ const worstCount = Number(flag('worst', 60))
 const outName = flag('out', 'sheet.svg')
 
 const noto = loadNoto()
-const project = loadProject()
+const project = await loadProject()
 const revision = flag('revision', '')
 const server = await startVite({ revision })
 

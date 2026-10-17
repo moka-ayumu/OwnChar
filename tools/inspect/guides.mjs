@@ -2,7 +2,7 @@
 import { loadProject } from '../lib/project.mjs'
 import { startVite } from '../lib/vite.mjs'
 
-const project = loadProject()
+const project = await loadProject()
 const chars = new Set([...(process.argv[2] ?? '넘호줬')])
 const server = await startVite()
 try {

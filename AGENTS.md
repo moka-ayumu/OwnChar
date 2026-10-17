@@ -35,7 +35,6 @@ src/
     samples/    Example handwriting on the home page: strokes per sentence, the loader, and the data of the home film
   routes/       Routes: write, generate, preview, edit, license
   components/   Shared UI
-  dev/          Dev-only sample button. Not a product screen
 tests/
   unit/         Vitest. Pure logic
   e2e/          Playwright. Real browser flows
@@ -76,10 +75,6 @@ Dependency direction: `font` ← `collection` ← `generation` ← `project` ←
 - Measure before and after with the same method (see the measuring section of the document). Keep a change only if the number improves. If the font output can change, compare the hash of `tools/verify/golden.mjs`.
 - After a change in this area, update `docs/performance.md`: the table of causes, the rules, the measured values, and the list of rejected tries.
 
-## Files Not in Git
-
-- `src/dev/sample-project.json`: sample project with user data. The dev sample button and the verification scripts read it. If it is missing, ask the user for it. The app works without it.
-
 ## Checks
 
 - Type check: the `typecheck` script.
@@ -94,7 +89,7 @@ Keep tests to a minimum. For glyph changes, use the check in "Verifying Glyph Ch
 When you add or change a feature that affects glyphs, follow these steps.
 
 1. Pick at least 6 representative glyphs. Cover every role you changed (initial, medial, final). The default candidates are the list in `tools/lib/glyphs.mjs`: 괌 낡 넘 뢒 뢥 꽈 깲 뇲 줬 계 뭐 가 고 구 그 각 곡 굵 읽 닭
-2. Use `src/dev/sample-project.json` as the test project. Compare before and after changes on the same glyphs.
+2. Use the example handwriting (`src/features/samples/example.json`) as the test project; the `tools/` scripts build it through `tools/lib/project.mjs`. Compare before and after changes on the same glyphs.
 3. As `tools/verify/golden.mjs` does, load `src/generation/font-builder.ts` through a Vite server to build the real composition. Do not use fake values for the screen.
 4. Write the result as one SVG sheet at `tools/out/<name>.svg`. Use the sheet format in `tools/verify/render-review.mjs` as a reference. Put the before and after versions side by side in each cell.
 5. Convert the SVG to PNG:
@@ -111,4 +106,3 @@ NOTE: If the image shows a problem, fix the rule that causes it. Do not add an e
 ## Prohibited
 
 - Do not add exception values or hard-coded tables for a single glyph.
-- Do not modify `src/dev/sample-project.json`. It contains user data.

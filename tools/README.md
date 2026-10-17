@@ -4,9 +4,7 @@
 
 ## 준비
 
-1. `src/dev/sample-project.json` 파일을 준비합니다. 이 파일은 사용자 데이터를 포함하며 Git에 포함되지 않습니다.
-2. 파일이 없으면 앱을 연 브라우저의 DevTools 콘솔에서 `tools/project/export-project.js`를 실행합니다.
-3. 내려받은 `sample-project.json`을 `src/dev/`에 둡니다.
+스크립트는 홈의 예시 손글씨(`src/features/samples/example.json`)를 앱의 저장 경로에 넣어 프로젝트를 만든 뒤 읽습니다. 따로 준비할 파일은 없습니다.
 
 `tools/reference/`의 스크립트와 `tools/verify/render-review.mjs`는 Noto Sans KR 파일도 필요합니다. 경로는 `Noto_Sans_KR.local/static/NotoSansKR-Regular.ttf`입니다. 앱은 이 폰트를 사용하지 않습니다. 이 폰트는 공간 관계의 참고 자료입니다.
 
@@ -18,7 +16,7 @@
 | `inspect/` | 글자 하나의 내부 값을 출력합니다. |
 | `reference/` | Noto Sans KR와 비교합니다. |
 | `project/` | 프로젝트를 내보내고 속도를 측정합니다. |
-| `sample/` | 샘플 프로젝트의 필기를 만듭니다. |
+| `sample/` | 예시 손글씨의 필기를 만듭니다. |
 | `lib/` | 스크립트가 공유하는 코드입니다. |
 
 ## verify
@@ -119,13 +117,13 @@ node tools/project/profile.mjs 600
 node tools/project/prof-top.mjs <cpuprofile 폴더>
 ```
 
-- `export-project.js`는 브라우저 콘솔에서 실행합니다. IndexedDB의 프로젝트 기록을 모아 `sample-project.json`으로 내려받습니다. 파일은 `{ meta, sessions, drawings }` 형식입니다.
+- `export-project.js`는 브라우저 콘솔에서 실행합니다. IndexedDB의 프로젝트 기록을 모아 `project.json`으로 내려받습니다. 파일은 `{ meta, sessions, drawings }` 형식입니다.
 - `profile.mjs`는 음절 합성 시간과 학습 프로필의 크기를 측정합니다. 첫 번째 인자는 샘플 간격입니다. `sheet.svg`도 만듭니다.
 - `prof-top.mjs`는 `.cpuprofile` 파일에서 self time이 큰 함수 25개를 출력합니다.
 
 ## sample
 
-샘플 프로젝트의 획을 규칙으로 계산합니다. 규칙과 확인 방법은 `docs/decision/0004-sample-project-handwriting.md`에 있습니다.
+예시 손글씨의 획을 규칙으로 계산합니다. 규칙과 확인 방법은 `docs/decision/0004-sample-project-handwriting.md`에 있습니다.
 
 | 파일 | 내용 |
 |---|---|
@@ -138,12 +136,6 @@ node tools/project/prof-top.mjs <cpuprofile 폴더>
 
 ```bash
 node tools/sample/generate.mjs --style=example --out=tools/out/sample-example.json --strokes=src/features/samples/example.json --keep-latin=src/features/samples/example.json
-```
-
-개발용 샘플(`src/dev/sample-project.json`)을 다시 만듭니다.
-
-```bash
-node tools/sample/generate.mjs --style=tidy
 ```
 
 홈의 애니메이션 데이터(`src/features/samples/home-film.json`)를 다시 만듭니다. 예시 손글씨나 조합 규칙이 바뀌면 실행합니다.
@@ -162,14 +154,12 @@ node tools/sample/compose-sheet.mjs --project=tools/out/sample-example.json --na
 |---|---|
 | `--style=<name>` | `handwriting.mjs`의 스타일 이름입니다. 기본값은 `tidy`입니다. |
 | `--seed=<n>` | 난수 시드입니다. 기본값은 7입니다. 같은 시드는 같은 파일을 만듭니다. |
-| `--out=<file>` | 전체 형식(`{ meta, sessions, drawings }`)의 결과 파일입니다. 기본값은 `src/dev/sample-project.json`입니다. |
+| `--out=<file>` | 전체 형식(`{ meta, sessions, drawings }`)의 결과 파일입니다. 기본값은 `tools/out/sample-<style>.json`입니다. |
 | `--strokes=<file>` | 획만 있는 결과 파일입니다. 홈의 예시 손글씨가 이 형식을 읽습니다. |
 | `--keep-latin=<file>` | 영문, 숫자와 기호의 획을 이 파일에서 가져옵니다. 한글 문장만 다시 만듭니다. |
 
 - `generate.mjs`는 시트를 `tools/out/sample-<style>-hangul-1.svg`, `-hangul-2.svg`, `-hangul-3.svg`, `-latin.svg`에 저장합니다. 초성은 파랑, 중성은 자주, 종성은 초록입니다.
 - `generate.mjs`는 완성 표본의 수, 빠진 필수 문맥형, 자모 사이의 최소 거리를 출력합니다.
-
-CAUTION: `--out`의 기본값은 개발용 샘플을 덮어씁니다. 다른 스타일을 만들 때는 `--out`을 지정하십시오.
 
 ## lib
 
