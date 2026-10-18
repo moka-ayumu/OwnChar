@@ -9,6 +9,7 @@ import { Hint } from '@/components/hint'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { HANGUL_BASE, HANGUL_COUNT } from '@/font/hangul'
 import { glyphSources, type GlyphSource } from '@/generation/provenance'
+import { compositionShapes } from '@/generation/use-composition-context'
 import { DEFAULT_GLYPH_OVERRIDE, type GlyphOverride } from '@/generation/request'
 import { useCompact } from '@/lib/use-compact'
 import { useFontFace } from '@/lib/use-font-face'
@@ -76,7 +77,7 @@ export function EditPage({ glyph, query }: EditSearch) {
   })
 
   const current = selected.length === 1 ? (overrides[selected[0]] ?? DEFAULT_GLYPH_OVERRIDE) : null
-  const selectedSources = useMemo(() => selected.length === 1 ? glyphSources(selected[0], drawings) : [], [selected, drawings])
+  const selectedSources = useMemo(() => selected.length === 1 ? glyphSources(selected[0], drawings, compositionShapes(drawings, sessions, compositionSettings)) : [], [selected, drawings, sessions, compositionSettings])
   const overrideCount = Object.keys(overrides).length
   const previewFont = fontReady ? 'OwnCharPreview' : 'inherit'
 

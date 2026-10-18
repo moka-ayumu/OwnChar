@@ -1,14 +1,16 @@
 import { memo, useState } from 'react'
 import type { DrawingRecord, WritingSessionRecord } from '@/collection/records'
+import type { CompositionSettings } from '@/font/settings'
 import { SourcePopover } from '@/features/preview/source-popover'
 
 /** Syllables that cover every jamo role, so one look at the sheet shows how the composition holds up. */
 const SHEET_CHARS = [...'가고구그각곡굵읽닭낡넘괌뭐계줬꽈깲뢒뢥뇲빛뚫쁨앉젊쐈웨흙많힣']
 
 /** The font on one sheet. Pressing a syllable opens where its handwriting came from, under the sheet. */
-export const GlyphSheet = memo(function GlyphSheet({ drawings, sessions, fontFamily }: {
+export const GlyphSheet = memo(function GlyphSheet({ drawings, sessions, settings, fontFamily }: {
   drawings: Record<string, DrawingRecord>
   sessions: Record<string, WritingSessionRecord>
+  settings: CompositionSettings
   fontFamily: string
 }) {
   const [picked, setPicked] = useState<string | null>(null)
@@ -24,7 +26,7 @@ export const GlyphSheet = memo(function GlyphSheet({ drawings, sessions, fontFam
         ))}
       </div>
       {picked && (
-        <SourcePopover chars={[picked]} hidden={0} drawings={drawings} sessions={sessions} fontFamily={fontFamily} style={{ top: '100%', left: 0, marginTop: 8, maxWidth: '100%' }} onClose={() => setPicked(null)} />
+        <SourcePopover chars={[picked]} hidden={0} drawings={drawings} sessions={sessions} settings={settings} fontFamily={fontFamily} style={{ top: '100%', left: 0, marginTop: 8, maxWidth: '100%' }} onClose={() => setPicked(null)} />
       )}
     </section>
   )

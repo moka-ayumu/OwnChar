@@ -65,6 +65,7 @@ export function shapesFromRequestDrawings(drawings: Record<string, RequestDrawin
     const shape = normalizedSource(source, settings.endpointStabilization)
     if (!shape) continue
     shape.sourceCellId = source.sourceCellId
+    shape.originPromptIds = ['sourcePromptId' in drawing ? drawing.sourcePromptId : prompt.id]
     if ('sourcePromptId' in drawing) shape.sourceRole = promptRole(drawing.sourcePromptId)
     shapes.set(shapeKey(prompt), shape)
   }
@@ -95,7 +96,7 @@ export function shapesFromRequestDrawings(drawings: Record<string, RequestDrawin
   const composed = doubles.flatMap(({ prompt, key, part }): Array<[string, NormalizedShape]> => {
     const written = prompt.variantRole ? selectJamoSource(shapes, prompt.variantRole, prompt.variantIndex!, prompt.char) : shapes.get(key)
     if (written || !part) return []
-    return [[key, { ...combineShapesSideBySide(part, part, part.aspectRatio * widening, settings.doubleConsonantGap), sourceRole: prompt.variantRole ?? part.sourceRole, sourceCellId: part.sourceCellId }]]
+    return [[key, { ...combineShapesSideBySide(part, part, part.aspectRatio * widening, settings.doubleConsonantGap), sourceRole: prompt.variantRole ?? part.sourceRole, sourceCellId: part.sourceCellId, originPromptIds: part.originPromptIds }]]
   })
   for (const [key, shape] of composed) shapes.set(key, shape)
   return shapes

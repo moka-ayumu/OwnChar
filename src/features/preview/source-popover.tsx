@@ -4,7 +4,9 @@ import { X } from 'lucide-react'
 import { sessionCaptures, WRITING_EXERCISES } from '@/collection/exercises'
 import type { DrawingRecord, WritingSessionRecord } from '@/collection/records'
 import { ROLE_LABELS } from '@/collection/prompts'
+import type { CompositionSettings } from '@/font/settings'
 import { glyphSources, type GlyphSource } from '@/generation/provenance'
+import { compositionShapes } from '@/generation/use-composition-context'
 
 type Drawings = Record<string, DrawingRecord>
 type Sessions = Record<string, WritingSessionRecord>
@@ -41,16 +43,18 @@ function Source({ source, drawings, sessions }: { source: GlyphSource; drawings:
 }
 
 /** Where the handwriting of the selected characters came from. Each source leads to the cell it was written in. */
-export function SourcePopover({ chars, hidden, drawings, sessions, fontFamily, style, onClose }: {
+export function SourcePopover({ chars, hidden, drawings, sessions, settings, fontFamily, style, onClose }: {
   chars: string[]
   /** Selected characters that are not listed. */
   hidden: number
   drawings: Drawings
   sessions: Sessions
+  settings: CompositionSettings
   fontFamily: string
   style: CSSProperties
   onClose(): void
 }) {
+  const shapes = compositionShapes(drawings, sessions, settings)
   return (
     <div className="source-popover" role="dialog" aria-label="원본 필기" style={style}>
       <div className="flex items-center justify-between gap-4">
@@ -61,7 +65,7 @@ export function SourcePopover({ chars, hidden, drawings, sessions, fontFamily, s
         <div key={`${char}-${index}`} className="source-row">
           <span className="source-glyph" style={{ fontFamily }}>{char}</span>
           <div className="flex flex-wrap gap-1.5">
-            {glyphSources(char.codePointAt(0)!, drawings).map((source, part) => <Source key={part} source={source} drawings={drawings} sessions={sessions} />)}
+            {glyphSources(char.codePointAt(0)!, drawings, shapes).map((source, part) => <Source key={part} source={source} drawings={drawings} sessions={sessions} />)}
           </div>
         </div>
       ))}

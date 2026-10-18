@@ -24,6 +24,11 @@ function cachedComposition(profile: CompositionProfile, settings: CompositionSet
 }
 const cachedProfile = latestOnly((sessions: Sessions, _stabilization: number, settings: CompositionSettings) => learnCompositionProfile(sessions, settings), 2)
 
+/** The shapes the font is composed from, for reading where their ink came from. */
+export function compositionShapes(drawings: Drawings, sessions: Sessions, settings: CompositionSettings) {
+  return cachedShapes(drawings, sessions, settings.endpointStabilization, settings.doubleConsonantGap, settings)
+}
+
 /** Computes ahead of time what the next sentence will ask for, so opening it finds the result ready. */
 export function warmCompositionBase(drawings: Drawings, sessions: Sessions, settings: CompositionSettings) {
   const shapes = cachedShapes(drawings, sessions, settings.endpointStabilization, settings.doubleConsonantGap, settings)

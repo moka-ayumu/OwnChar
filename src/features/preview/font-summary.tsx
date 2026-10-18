@@ -1,6 +1,8 @@
 import { memo, useEffect, useState } from 'react'
-import type { DrawingRecord } from '@/collection/records'
+import type { DrawingRecord, WritingSessionRecord } from '@/collection/records'
+import type { CompositionSettings } from '@/font/settings'
 import { glyphCoverage, type GlyphCoverage } from '@/generation/provenance'
+import { compositionShapes } from '@/generation/use-composition-context'
 import { Hint } from '@/components/hint'
 import { cancelIdle, whenIdle } from '@/lib/idle'
 
@@ -13,13 +15,18 @@ const ROWS = [
 const format = (value: number) => value.toLocaleString('ko-KR')
 
 /** What the 11,172 syllables stand on: the part of the font that is the handwriting itself, and the part that is fitted from it. */
-export const FontSummary = memo(function FontSummary({ drawings, size }: { drawings: Record<string, DrawingRecord>; size: string }) {
+export const FontSummary = memo(function FontSummary({ drawings, sessions, settings, size }: {
+  drawings: Record<string, DrawingRecord>
+  sessions: Record<string, WritingSessionRecord>
+  settings: CompositionSettings
+  size: string
+}) {
   const [coverage, setCoverage] = useState<GlyphCoverage | null>(null)
 
   useEffect(() => {
-    const handle = whenIdle(() => setCoverage(glyphCoverage(drawings)))
+    const handle = whenIdle(() => setCoverage(glyphCoverage(drawings, compositionShapes(drawings, sessions, settings))))
     return () => cancelIdle(handle)
-  }, [drawings])
+  }, [drawings, sessions, settings])
 
   const rows = ROWS.filter((row) => row.key !== 'missing' || (coverage?.missing ?? 0) > 0)
 

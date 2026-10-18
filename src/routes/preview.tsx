@@ -207,7 +207,7 @@ function PreviewPage() {
             {anchor && selected.length > 0 && (
               <SourcePopover
                 chars={selected.slice(0, SOURCE_LIMIT)} hidden={Math.max(0, selected.length - SOURCE_LIMIT)}
-                drawings={drawings} sessions={sessions} fontFamily={fontFamily}
+                drawings={drawings} sessions={sessions} settings={settings} fontFamily={fontFamily}
                 style={{ left: anchor.left, top: anchor.top, maxWidth: anchor.width }} onClose={closePopover}
               />
             )}
@@ -227,8 +227,8 @@ function PreviewPage() {
           </div>
 
           <aside className="preview-side" aria-label="폰트 살펴보기">
-            <GlyphSheet drawings={drawings} sessions={sessions} fontFamily={fontFamily} />
-            <FontSummary drawings={drawings} size={formatFileSize(buffer.byteLength)} />
+            <GlyphSheet drawings={drawings} sessions={sessions} settings={settings} fontFamily={fontFamily} />
+            <FontSummary drawings={drawings} sessions={sessions} settings={settings} size={formatFileSize(buffer.byteLength)} />
           </aside>
           </div>
         </div>

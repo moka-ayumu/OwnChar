@@ -35,6 +35,8 @@ export interface NormalizedShape {
   sourceRole?: HangulRole
   /** Built from other captured jamo rather than written directly. */
   synthesized?: boolean
+  /** The prompts whose handwriting this shape is made of: one when written, one per part when built from parts. */
+  originPromptIds?: string[]
 }
 
 /** Font units per source-cell width: a contextual jamo placed in its own cell frame. */
@@ -206,7 +208,7 @@ export function combineShapesSideBySide(left: NormalizedShape, right: Normalized
     offsetX += natural[index] * stretch + gap
   }
   const width = offsetX - gap
-  return { aspectRatio: width / height, frame: { x: 0, y: 0, width, height }, strokes, synthesized: true }
+  return { aspectRatio: width / height, frame: { x: 0, y: 0, width, height }, strokes, synthesized: true, originPromptIds: [...(left.originPromptIds ?? []), ...(right.originPromptIds ?? [])] }
 }
 
 /**
