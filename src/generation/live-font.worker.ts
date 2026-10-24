@@ -9,7 +9,7 @@ import { buildGenerationInputs, shapesFromRequestDrawings } from './inputs'
 import type { EncodedGlyphs } from './otf-writer'
 import type { GenerationRequest } from './request'
 
-export type LiveFontSource = Pick<GenerationRequest, 'overrides' | 'globalMetrics'> & {
+export type LiveFontSource = Pick<GenerationRequest, 'overrides' | 'globalMetrics' | 'customGlyphs'> & {
   drawings: Record<string, DrawingRecord>
   sessions: Record<string, WritingSessionRecord>
 }
@@ -40,7 +40,7 @@ function compose(settings: CompositionSettings, codePoints: number[]) {
     learned = { stabilization: settings.endpointStabilization, doubleConsonantGap: settings.doubleConsonantGap, inputs, shapes: shapesFromRequestDrawings(inputs.drawings, settings) }
     fixed = composed = undefined
   }
-  const request: GenerationRequest = { type: 'compose-font', ...learned.inputs, metadata, overrides: source.overrides, globalMetrics: source.globalMetrics, compositionSettings: settings }
+  const request: GenerationRequest = { type: 'compose-font', ...learned.inputs, metadata, overrides: source.overrides, globalMetrics: source.globalMetrics, compositionSettings: settings, customGlyphs: source.customGlyphs }
   const { shapes } = learned
   const fixedKey = JSON.stringify({ ...settings, initialNormalization: 0, medialNormalization: 0, finalNormalization: 0, widthNormalization: 0 })
   if (fixed?.key !== fixedKey) fixed = { key: fixedKey, visualScale: visualCalibrationScale(shapes, settings, hangulComposeOptions(request)) }

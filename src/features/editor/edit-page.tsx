@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
 import opentype from 'opentype.js'
-import { Combine, PenLine, Redo2, Save, Type, Undo2 } from 'lucide-react'
+import { Combine, PenLine, PenTool, Redo2, Save, Type, Undo2 } from 'lucide-react'
 import { Hint } from '@/components/hint'
 import { RailBrand } from '@/components/rail-brand'
 import { Button, buttonVariants } from '@/components/ui/button'
@@ -16,6 +16,8 @@ import { cn } from '@/lib/utils'
 import { projectActions } from '@/project/store'
 import { useProject } from '@/project/use-project'
 import { CompositionWorkspace } from './composition-workspace'
+import { CustomGuide } from './custom-guide'
+import { CustomWorkspace } from './custom-glyph-workspace'
 import { CODE_POINTS, NO_FILTER, categoryOf, filterHangul, isFiltering, isGlyph, type GlyphCategory } from './glyph-categories'
 import { GlyphBrowser } from './glyph-browser'
 import { HangulTools, type HangulView } from './glyph-filter'
@@ -26,6 +28,8 @@ export interface EditSearch {
   /** The glyph to select on arrival. */
   glyph?: number
   query?: string
+  /** Opens the glyphs drawn whole, with this one selected; empty opens them with none. */
+  custom?: string
 }
 
 const COLUMNS = 8
@@ -33,9 +37,11 @@ const COLUMNS = 8
 const COMPACT_COLUMNS = 6
 const NO_METRICS = { left: 0, right: 0, y: 0 }
 
-const MODES = [['glyph', '글리프 편집', Type], ['composition', '한글 조합 설정', Combine]] as const
+type EditorMode = 'glyph' | 'composition' | 'custom'
 
-export function EditPage({ glyph, query }: EditSearch) {
+const MODES = [['glyph', '글리프 편집', Type], ['composition', '한글 조합 설정', Combine], ['custom', '직접 쓴 글자', PenTool]] as const
+
+export function EditPage({ glyph, query, custom }: EditSearch) {
   const navigate = useNavigate()
   const buffer = useProject((state) => state.generatedFont)
   const revision = useProject((state) => state.fontRevision)
@@ -46,6 +52,7 @@ export function EditPage({ glyph, query }: EditSearch) {
   const compositionSettings = useProject((state) => state.compositionSettings)
   const drawings = useProject((state) => state.drawings)
   const sessions = useProject((state) => state.writingSessions)
+  const customGlyphs = useProject((state) => state.customGlyphs)
   const fontReady = useFontFace(buffer, revision)
   const initial = glyph !== undefined && isGlyph(glyph) ? glyph : HANGUL_BASE
   const [search, setSearch] = useState(query ?? '')
@@ -53,12 +60,19 @@ export function EditPage({ glyph, query }: EditSearch) {
   const [category, setCategory] = useState<GlyphCategory>(() => categoryOf(initial) ?? 'hangul')
   const [hangulView, setHangulView] = useState<HangulView>('filter')
   const [filter, setFilter] = useState(NO_FILTER)
-  const [editorMode, setEditorMode] = useState<'glyph' | 'composition'>('glyph')
+  const [editorMode, setEditorMode] = useState<EditorMode>(custom !== undefined ? 'custom' : 'glyph')
+  const [guideOpen, setGuideOpen] = useState(false)
   const columns = useCompact() ? COMPACT_COLUMNS : COLUMNS
 
   useEffect(() => {
     if (!buffer) void navigate({ to: '/write' })
   }, [buffer, navigate])
+
+  const [seenCustom, setSeenCustom] = useState(custom)
+  if (custom !== seenCustom) {
+    setSeenCustom(custom)
+    if (custom !== undefined) setEditorMode('custom')
+  }
 
   const font = useMemo(() => buffer ? opentype.parse(buffer.slice(0)) : null, [buffer])
 
@@ -111,7 +125,7 @@ export function EditPage({ glyph, query }: EditSearch) {
             <Link to="/preview" viewTransition className={cn(buttonVariants({ variant: 'secondary' }), 'px-2')}>미리보기</Link>
             <Link to="/write" className={cn(buttonVariants({ variant: 'secondary' }), 'px-2')}><PenLine className="size-4" /> 글자 다시 쓰기</Link>
           </div>
-          <Hint className="block" side="right" label={editorMode === 'composition' ? '예시는 즉시 바뀌고, OTF는 변경 적용 후 바뀝니다.' : undefined}>
+          <Hint className="block" side="right" label={editorMode === 'composition' ? '예시는 즉시 바뀌고, OTF는 변경 적용 후 바뀝니다.' : editorMode === 'custom' ? '직접 쓴 글자는 변경 적용 후 OTF에 반영됩니다.' : undefined}>
             <Button className="w-full" size="lg" onClick={() => void navigate({ to: '/generate', viewTransition: true })}><Save className="size-4" /> 변경 적용</Button>
           </Hint>
         </div>
@@ -141,8 +155,11 @@ export function EditPage({ glyph, query }: EditSearch) {
               onOpenSource={(capture) => void navigate({ to: '/write', search: { exerciseId: capture.exerciseId, cellIndex: capture.cellIndex, returnGlyph: selected[0], returnQuery: search || undefined } })}
             />
           </div>
-        ) : <CompositionWorkspace drawings={drawings} sessions={sessions} settings={compositionSettings} />}
+        ) : editorMode === 'composition' ? <CompositionWorkspace drawings={drawings} sessions={sessions} settings={compositionSettings} /> : (
+          <CustomWorkspace customGlyphs={customGlyphs} fontFamily={previewFont} stabilization={compositionSettings.endpointStabilization} initialText={custom} onOpenGuide={() => setGuideOpen(true)} />
+        )}
       </section>
+      <CustomGuide open={guideOpen} fontFamily={previewFont} onOpenChange={setGuideOpen} onPick={(text) => { setEditorMode('custom'); void navigate({ to: '/edit', search: { custom: text }, replace: true }) }} />
     </div>
   )
 }

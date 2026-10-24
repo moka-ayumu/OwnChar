@@ -1,3 +1,4 @@
+import type { CustomGlyph } from '@/collection/custom-glyphs'
 import type { GapProfile } from '@/font/layout/gap-profile'
 import type { ProportionProfile } from '@/font/layout/proportion-profile'
 import type { CompositionSettings } from '@/font/settings'
@@ -46,6 +47,8 @@ export interface GenerationRequest extends CompositionProfile {
   overrides: Record<number, GlyphOverride>
   globalMetrics: { left: number; right: number; y: number }
   compositionSettings: CompositionSettings
+  /** Glyphs the writer drew whole: they replace composed syllables, add characters, or stand for a run of characters as a ligature. */
+  customGlyphs?: Record<string, CustomGlyph>
 }
 
 export type FontWorkerRequest = GenerationRequest | { type: 'cancel' }

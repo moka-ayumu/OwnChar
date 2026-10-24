@@ -16,10 +16,14 @@ interface Props {
   strokeWidth: number
   endpointStabilization: number
   tool: 'pen' | 'eraser' | 'pan'
+  /** The point of the canvas at the top left of the surface. The default is the surface's own corner. */
+  origin?: Point
   onChange(strokes: readonly RawStroke[]): void
 }
 
 interface Sample { point: Point; pressure: number }
+
+const ORIGIN: Point = [0, 0]
 
 const StrokePathView = memo(function StrokePathView({ stroke, cellSize, endpointStabilization }: { stroke: RawStroke; cellSize: number; endpointStabilization: number }) {
   return <path d={strokeSvgPath(stroke, cellSize, endpointStabilization)} transform={`translate(${stroke.x} ${stroke.y})`} fill="#101114" fillRule="nonzero" />
@@ -64,7 +68,7 @@ function distanceToStroke(stroke: RawStroke, x: number, y: number) {
   return nearest
 }
 
-export const WritingSurface = forwardRef<WritingSurfaceHandle, Props>(function WritingSurface({ initialStrokes, cellSize, width, height, strokeWidth, endpointStabilization, tool, onChange }, ref) {
+export const WritingSurface = forwardRef<WritingSurfaceHandle, Props>(function WritingSurface({ initialStrokes, cellSize, width, height, strokeWidth, endpointStabilization, tool, origin = ORIGIN, onChange }, ref) {
   const [strokes, setStrokes] = useState<RawStroke[]>(() => initialStrokes.map((stroke) => ({ ...stroke })))
   const current = useRef(strokes)
   const past = useRef<RawStroke[][]>([])
@@ -78,7 +82,7 @@ export const WritingSurface = forwardRef<WritingSurfaceHandle, Props>(function W
 
   const moveBrush = (event: PointerEvent<SVGSVGElement>) => {
     const rect = event.currentTarget.getBoundingClientRect()
-    brush.current?.setAttribute('transform', `translate(${event.clientX - rect.left} ${event.clientY - rect.top})`)
+    brush.current?.setAttribute('transform', `translate(${event.clientX - rect.left + origin[0]} ${event.clientY - rect.top + origin[1]})`)
     brush.current?.setAttribute('visibility', event.pointerType === 'touch' || tool === 'pan' ? 'hidden' : 'visible')
   }
   const hideBrush = () => brush.current?.setAttribute('visibility', 'hidden')
@@ -118,7 +122,7 @@ export const WritingSurface = forwardRef<WritingSurfaceHandle, Props>(function W
     const native = event.nativeEvent
     const coalesced = native.getCoalescedEvents?.() ?? []
     return (coalesced.length ? coalesced : [native]).map((sample) => ({
-      point: [sample.clientX - rect.left, sample.clientY - rect.top],
+      point: [sample.clientX - rect.left + origin[0], sample.clientY - rect.top + origin[1]],
       pressure: sample.pointerType === 'pen' ? sample.pressure : 1,
     }))
   }
@@ -141,7 +145,7 @@ export const WritingSurface = forwardRef<WritingSurfaceHandle, Props>(function W
     event.preventDefault()
     event.currentTarget.setPointerCapture(event.pointerId)
     const rect = event.currentTarget.getBoundingClientRect()
-    const point: Point = [event.clientX - rect.left, event.clientY - rect.top]
+    const point: Point = [event.clientX - rect.left + origin[0], event.clientY - rect.top + origin[1]]
     checkpoint()
     if (tool === 'eraser') {
       pointer.current = { id: event.pointerId }
@@ -176,7 +180,7 @@ export const WritingSurface = forwardRef<WritingSurfaceHandle, Props>(function W
     pointer.current = null
   }
 
-  return <svg className="writing-surface" data-tool={tool} width={width} height={height} viewBox={`0 0 ${width} ${height}`} aria-label="손글씨 입력 영역" onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerEnd} onPointerCancel={onPointerEnd} onPointerLeave={hideBrush}>
+  return <svg className="writing-surface" data-tool={tool} width={width} height={height} viewBox={`${origin[0]} ${origin[1]} ${width} ${height}`} aria-label="손글씨 입력 영역" onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerEnd} onPointerCancel={onPointerEnd} onPointerLeave={hideBrush}>
     {strokes.filter((stroke) => !stroke.isDeleted).map((stroke) => <StrokePathView key={stroke.id} stroke={stroke} cellSize={cellSize} endpointStabilization={endpointStabilization} />)}
     <g ref={brush} visibility="hidden" pointerEvents="none" fill="none">
       <circle r={brushRadius + 0.5} stroke="#ffffff" strokeWidth={1} />

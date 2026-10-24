@@ -1,12 +1,15 @@
 import type { CSSProperties } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { X } from 'lucide-react'
+import { customKind, CUSTOM_KIND_LABELS, type CustomGlyph } from '@/collection/custom-glyphs'
 import { sessionCaptures, WRITING_EXERCISES } from '@/collection/exercises'
+import { CustomThumb } from '@/features/editor/custom-thumb'
 import type { DrawingRecord, WritingSessionRecord } from '@/collection/records'
 import { ROLE_LABELS } from '@/collection/prompts'
 import type { CompositionSettings } from '@/font/settings'
 import { glyphSources, type GlyphSource } from '@/generation/provenance'
 import { compositionShapes } from '@/generation/use-composition-context'
+import type { SourceItem } from './source-items'
 
 type Drawings = Record<string, DrawingRecord>
 type Sessions = Record<string, WritingSessionRecord>
@@ -42,10 +45,21 @@ function Source({ source, drawings, sessions }: { source: GlyphSource; drawings:
   )
 }
 
+/** A glyph drawn whole: its strokes, and the way to the canvas it was drawn on. */
+function CustomSource({ glyph, stabilization }: { glyph: CustomGlyph; stabilization: number }) {
+  const navigate = useNavigate()
+  return (
+    <button type="button" className="source-chip" onClick={() => void navigate({ to: '/edit', search: { custom: glyph.text } })}>
+      <CustomThumb glyph={glyph} text={glyph.text} stabilization={stabilization} />
+      <span><strong>직접 쓴 글자 {glyph.text}</strong><small>{CUSTOM_KIND_LABELS[customKind(glyph.text)]}</small></span>
+    </button>
+  )
+}
+
 /** Where the handwriting of the selected characters came from. Each source leads to the cell it was written in. */
-export function SourcePopover({ chars, hidden, drawings, sessions, settings, fontFamily, style, onClose }: {
-  chars: string[]
-  /** Selected characters that are not listed. */
+export function SourcePopover({ items, hidden, drawings, sessions, settings, fontFamily, style, onClose }: {
+  items: SourceItem[]
+  /** Selected items that are not listed. */
   hidden: number
   drawings: Drawings
   sessions: Sessions
@@ -58,14 +72,16 @@ export function SourcePopover({ chars, hidden, drawings, sessions, settings, fon
   return (
     <div className="source-popover" role="dialog" aria-label="원본 필기" style={style}>
       <div className="flex items-center justify-between gap-4">
-        <h2 className="text-xs font-semibold">원본 필기 {hidden > 0 && <span className="font-normal text-ink-3">· 앞 {chars.length}글자만</span>}</h2>
+        <h2 className="text-xs font-semibold">원본 필기 {hidden > 0 && <span className="font-normal text-ink-3">· 앞 {items.length}글자만</span>}</h2>
         <button type="button" className="source-popover-close" aria-label="닫기" onClick={onClose}><X className="size-3.5" /></button>
       </div>
-      {chars.map((char, index) => (
-        <div key={`${char}-${index}`} className="source-row">
-          <span className="source-glyph" style={{ fontFamily }}>{char}</span>
+      {items.map((item, index) => (
+        <div key={`${item.text}-${index}`} className="source-row">
+          <span className="source-glyph" style={{ fontFamily }}>{item.text}</span>
           <div className="flex flex-wrap gap-1.5">
-            {glyphSources(char.codePointAt(0)!, drawings, shapes).map((source, part) => <Source key={part} source={source} drawings={drawings} sessions={sessions} />)}
+            {item.custom
+              ? <CustomSource glyph={item.custom} stabilization={settings.endpointStabilization} />
+              : glyphSources(item.text.codePointAt(0)!, drawings, shapes).map((source, part) => <Source key={part} source={source} drawings={drawings} sessions={sessions} />)}
           </div>
         </div>
       ))}

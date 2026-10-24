@@ -9,7 +9,7 @@ import type { LiveFontEvent, LiveFontRequest, LiveFontSource } from './live-font
  * ready. One request is in work at a time; of those that arrive meanwhile only
  * the latest is composed.
  */
-export function useLiveFont(text: string, settings: CompositionSettings, { drawings, sessions, overrides, globalMetrics }: LiveFontSource) {
+export function useLiveFont(text: string, settings: CompositionSettings, { drawings, sessions, overrides, globalMetrics, customGlyphs }: LiveFontSource) {
   const [family, setFamily] = useState<string | null>(null)
   const worker = useRef<Worker | null>(null)
   const queue = useRef<{ busy: boolean; next?: LiveFontRequest; id: number }>({ busy: false, id: 0 })
@@ -53,8 +53,8 @@ export function useLiveFont(text: string, settings: CompositionSettings, { drawi
   }, [])
 
   useEffect(() => {
-    worker.current?.postMessage({ type: 'source', drawings, sessions, overrides, globalMetrics } satisfies LiveFontRequest)
-  }, [drawings, sessions, overrides, globalMetrics])
+    worker.current?.postMessage({ type: 'source', drawings, sessions, overrides, globalMetrics, customGlyphs } satisfies LiveFontRequest)
+  }, [drawings, sessions, overrides, globalMetrics, customGlyphs])
 
   useEffect(() => {
     const state = queue.current
@@ -65,7 +65,7 @@ export function useLiveFont(text: string, settings: CompositionSettings, { drawi
       state.busy = true
       worker.current?.postMessage(request)
     }
-  }, [settings, codePoints, drawings, sessions, overrides, globalMetrics])
+  }, [settings, codePoints, drawings, sessions, overrides, globalMetrics, customGlyphs])
 
   return family
 }

@@ -2,6 +2,7 @@ import opentype from 'opentype.js'
 import { ByteWriter, writeCharstring } from '@/font/geometry/charstring'
 import { controlPoints } from '@/font/geometry/path-ops'
 import { DESCENDER_LIMIT } from '@/font/glyphs/calibration'
+import type { LigatureRule } from './custom-glyphs'
 import type { FontMetadata } from './request'
 
 /**
@@ -79,7 +80,7 @@ function glyphName(codePoint: number) {
  * tables but `CFF ` depend on a glyph only through its box, width and code
  * point, so opentype.js writes them here exactly as it would for the real font.
  */
-function skeletonFont(metadata: FontMetadata, blocks: EncodedGlyphs[]) {
+function skeletonFont(metadata: FontMetadata, blocks: EncodedGlyphs[], ligatures: LigatureRule[]) {
   const glyphs: opentype.Glyph[] = []
   for (const block of blocks) {
     for (let index = 0; index < block.codePoints.length; index += 1) {
@@ -106,6 +107,19 @@ function skeletonFont(metadata: FontMetadata, blocks: EncodedGlyphs[]) {
     descender: DESCENDER_LIMIT,
     glyphs,
   })
+  const indexOf = new Map(glyphs.flatMap((glyph) => glyph.unicode === undefined ? [] : [[glyph.unicode, glyph.index] as const]))
+  // A run of characters the font does not hold has nothing to replace.
+  const rules = ligatures.flatMap(({ sequence, by }) => {
+    const sub = sequence.map((codePoint) => indexOf.get(codePoint))
+    const ligature = indexOf.get(by)
+    return ligature !== undefined && sub.every((index) => index !== undefined) ? [{ sub: sub as number[], by: ligature }] : []
+  })
+  // Reading the substitution table makes an empty one, so a font without ligatures does not touch it.
+  if (rules.length) {
+    // The installed type declarations predate the substitution table of opentype.js 2.
+    const substitution = font.substitution as unknown as { addLigature(feature: string, ligature: { sub: number[]; by: number }): void }
+    for (const rule of rules) substitution.addLigature('liga', rule)
+  }
   return new Uint8Array(font.toArrayBuffer())
 }
 
@@ -239,7 +253,7 @@ function replaceTable(sfnt: Uint8Array, tag: string, replace: (table: Uint8Array
  * writes every table from the glyphs' metrics; the charstrings, which it
  * would rebuild from millions of path commands, are put in as they are.
  */
-export function writeOtf(metadata: FontMetadata, blocks: EncodedGlyphs[]): ArrayBuffer {
+export function writeOtf(metadata: FontMetadata, blocks: EncodedGlyphs[], ligatures: LigatureRule[] = []): ArrayBuffer {
   const index = charStringsIndex(blocks)
-  return replaceTable(skeletonFont(metadata, blocks), 'CFF ', (cff) => replaceCharStrings(cff, index)).buffer as ArrayBuffer
+  return replaceTable(skeletonFont(metadata, blocks, ligatures),'CFF ', (cff) => replaceCharStrings(cff, index)).buffer as ArrayBuffer
 }

@@ -31,6 +31,7 @@ State is autosaved to IndexedDB (strokes, jamo, settings, generated font, last s
 - Each project shows collected jamo in one of three ways, set in the writing settings: blank cells (the default; every cell is written in full, and of the jamo written more than once the best drawing is used), collected jamo fixed as gray guides, or fixed jamo with dashed boxes for the slots still to be written. Derived collection fills standalone consonants and vowels. Double final consonants are synthesized, not required.
 - Generation is allowed with missing items: missing symbols and base letters are omitted, missing context variants fall back to other contexts of the same jamo. Conflicts with manual glyph adjustments require an explicit keep/discard/cancel choice.
 - Preview: free text in the user's font, size 36–160 px, font name/author/version, `폰트이름.otf` download.
+- Custom glyphs (advanced edit, "직접 쓴 글자"): the user types one to four characters and draws them whole. One character the font already makes is fixed over its composed glyph (대체), one it lacks is added (추가), and two to four become an OpenType `liga` ligature (합자). A three-step guide opens once on the first preview. See `docs/decision/0009-custom-glyphs-and-ligatures.md`.
 - Advanced edit: per-glyph margins, height, scale, rotation; multi-select; global margins; 10 composition settings with instant preview cards; restore defaults.
 - Terminology to keep: 수집, 문맥형, 고정 자모, 보정값, 변경 적용.
 - Spec scope is function and controls only; visual design is undefined in the docs.

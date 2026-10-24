@@ -1,3 +1,4 @@
+import type { CustomGlyph } from '@/collection/custom-glyphs'
 import type { GuideMode } from '@/collection/exercises'
 import type { DrawingRecord, WritingSessionRecord } from '@/collection/records'
 import type { CompositionSettings } from '@/font/settings'
@@ -34,6 +35,10 @@ export interface ProjectState {
   drawings: Record<string, DrawingRecord>
   /** Raw, replayable sentence-canvas input. Kept separately from composed glyph sources. */
   writingSessions: Record<string, WritingSessionRecord>
+  /** Glyphs drawn whole, by the characters they stand for. */
+  customGlyphs: Record<string, CustomGlyph>
+  /** The writer has seen the guide to the glyphs drawn whole. */
+  customGuideSeen: boolean
   metadata: FontMetadata
   globalMetrics: { left: number; right: number; y: number }
   compositionSettings: CompositionSettings
@@ -45,7 +50,7 @@ export interface ProjectState {
   generation: GenerationState
   generatedFont: ArrayBuffer | null
   /** What the generated font was made with, besides the handwriting. Absent in a project whose font was generated before this was kept. */
-  generatedWith?: Pick<ProjectState, 'metadata' | 'globalMetrics' | 'compositionSettings' | 'glyphOverrides'>
+  generatedWith?: Pick<ProjectState, 'metadata' | 'globalMetrics' | 'compositionSettings' | 'glyphOverrides'> & { customGlyphs?: Record<string, number> }
   /** The generated font no longer matches the project. */
   fontDirty: boolean
   /** Handwriting changed since the font was generated. */

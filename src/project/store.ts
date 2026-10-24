@@ -1,4 +1,5 @@
 import { Store } from '@tanstack/react-store'
+import { customStamps, hasCustomInk, type CustomGlyph } from '@/collection/custom-glyphs'
 import { keepIfSame, selectDrawings } from '@/collection/drawing-selection'
 import { sessionCaptures, WRITING_EXERCISES, type GuideMode } from '@/collection/exercises'
 import type { DrawingRecord, WritingSessionRecord } from '@/collection/records'
@@ -24,6 +25,8 @@ const initialProjectState: ProjectState = {
   guideMode: 'blank',
   drawings: {},
   writingSessions: {},
+  customGlyphs: {},
+  customGuideSeen: false,
   metadata: defaultMetadata,
   globalMetrics: { left: 0, right: 0, y: 0 },
   compositionSettings: DEFAULT_COMPOSITION_SETTINGS,
@@ -44,6 +47,7 @@ const sameFields = (a: object, b: object) => a === b || (Object.keys(a).length =
 function matchesGeneratedFont(state: ProjectState, made: NonNullable<ProjectState['generatedWith']>) {
   return !state.sourceDirty
     && sameFields(state.metadata, made.metadata) && sameFields(state.globalMetrics, made.globalMetrics) && sameFields(state.compositionSettings, made.compositionSettings)
+    && sameFields(customStamps(state.customGlyphs), made.customGlyphs ?? {})
     && (state.glyphOverrides === made.glyphOverrides || (Object.keys(state.glyphOverrides).length === Object.keys(made.glyphOverrides).length
       && Object.entries(state.glyphOverrides).every(([codePoint, override]) => made.glyphOverrides[Number(codePoint)] && sameFields(override, made.glyphOverrides[Number(codePoint)]))))
 }
@@ -142,6 +146,28 @@ export const projectActions = {
         sourceDirty: changed || state.sourceDirty,
       }
     })
+  },
+
+  /** Keeps a glyph drawn whole, or drops it when it has no ink left. */
+  saveCustomGlyph(glyph: CustomGlyph) {
+    update((state) => {
+      const { [glyph.text]: previous, ...others } = state.customGlyphs
+      if (!hasCustomInk(glyph.elements)) return previous ? { ...state, customGlyphs: others, fontDirty: true } : state
+      return { ...state, customGlyphs: { ...others, [glyph.text]: glyph }, fontDirty: true }
+    })
+  },
+
+  removeCustomGlyph(text: string) {
+    update((state) => {
+      if (!(text in state.customGlyphs)) return state
+      const { [text]: removed, ...others } = state.customGlyphs
+      void removed
+      return { ...state, customGlyphs: others, fontDirty: true }
+    })
+  },
+
+  markCustomGuideSeen() {
+    update((state) => state.customGuideSeen ? state : { ...state, customGuideSeen: true })
   },
 
   showExercise(index: number) {

@@ -1,13 +1,15 @@
 import { useEffect, useLayoutEffect, useRef, useState, type SyntheticEvent } from 'react'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { Download, PenLine, RefreshCw, Settings2 } from 'lucide-react'
-import { BASE_CHARACTER_PROMPTS } from '@/collection/prompts'
 import { RailBrand } from '@/components/rail-brand'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { Slider } from '@/components/ui/slider'
+import { CustomGuide } from '@/features/editor/custom-guide'
+import { CustomIntro } from '@/features/preview/custom-intro'
 import { DialPanel } from '@/features/preview/dial-panel'
 import { SourcePopover } from '@/features/preview/source-popover'
+import { sourceItems } from '@/features/preview/source-items'
 import { isHangulSyllable } from '@/font/hangul'
 import { useLiveFont } from '@/generation/use-live-font'
 import { FontSummary } from '@/features/preview/font-summary'
@@ -53,14 +55,16 @@ function PreviewPage() {
   const settings = useProject((state) => state.compositionSettings)
   const overrides = useProject((state) => state.glyphOverrides)
   const globalMetrics = useProject((state) => state.globalMetrics)
+  const customGlyphs = useProject((state) => state.customGlyphs)
   const fontReady = useFontFace(buffer, revision)
   const [askApply, setAskApply] = useState(false)
+  const [guideOpen, setGuideOpen] = useState(false)
   const [sample, setSample] = useState(LEAD_SENTENCE)
   // Generation ends on the first sample at this size, standing exactly where it is shown here.
   const [fontSize, setFontSize] = useState(LEAD_SIZE)
   const [picked, setPicked] = useState<Picked | null>(() => leadingSyllables(LEAD_SENTENCE))
   const [anchor, setAnchor] = useState<{ left: number; top: number; width: number } | null>(null)
-  const liveFamily = useLiveFont(sample, settings, { drawings, sessions, overrides, globalMetrics })
+  const liveFamily = useLiveFont(sample, settings, { drawings, sessions, overrides, globalMetrics, customGlyphs })
   const stack = useRef<HTMLDivElement>(null)
   const mark = useRef<HTMLElement>(null)
 
@@ -125,7 +129,7 @@ function PreviewPage() {
   // A syllable the live font does not hold yet is drawn from the generated font until it arrives.
   const fontFamily = [liveFamily, fontReady && 'OwnCharPreview'].filter(Boolean).join(', ') || 'inherit'
   const textStyle = { fontFamily, fontSize, lineHeight: 1.25 }
-  const selected = picked ? [...sample.slice(picked.start, picked.end)].filter((char) => isHangulSyllable(char.codePointAt(0)!) || BASE_CHARACTER_PROMPTS.some((prompt) => prompt.char === char && drawings[prompt.id])) : []
+  const selected = picked ? sourceItems(sample, picked.start, picked.end, customGlyphs, drawings) : []
   const download = () => downloadArrayBuffer(buffer, `${safeFilename(metadata.familyName)}.otf`)
   const readSelection = ({ currentTarget }: SyntheticEvent<HTMLTextAreaElement>) => {
     const { selectionStart: start, selectionEnd: end } = currentTarget
@@ -170,6 +174,8 @@ function PreviewPage() {
         </DialogContent>
       </Dialog>
 
+      <CustomGuide open={guideOpen} fontFamily={fontReady ? 'OwnCharPreview' : 'inherit'} onOpenChange={setGuideOpen} onPick={(text) => void navigate({ to: '/edit', search: { custom: text } })} />
+
       <section className="stage">
         <div className="preview-stage">
           <label htmlFor="sample" className="sr-only">직접 입력</label>
@@ -206,12 +212,20 @@ function PreviewPage() {
             />
             {anchor && selected.length > 0 && (
               <SourcePopover
-                chars={selected.slice(0, SOURCE_LIMIT)} hidden={Math.max(0, selected.length - SOURCE_LIMIT)}
+                items={selected.slice(0, SOURCE_LIMIT)} hidden={Math.max(0, selected.length - SOURCE_LIMIT)}
                 drawings={drawings} sessions={sessions} settings={settings} fontFamily={fontFamily}
                 style={{ left: anchor.left, top: anchor.top, maxWidth: anchor.width }} onClose={closePopover}
               />
             )}
           </div>
+
+          {!Object.keys(customGlyphs).length && (
+            <CustomIntro
+              fontFamily={fontFamily}
+              onGuide={() => setGuideOpen(true)}
+              onTry={() => void navigate({ to: '/edit', search: { custom: '' } })}
+            />
+          )}
 
           <DialPanel settings={settings} />
 

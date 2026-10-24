@@ -28,12 +28,13 @@ export function readProjectArchive(bytes: Uint8Array): ProjectState {
     throw new Error('OwnChar 프로젝트 파일이 아닙니다.')
   }
   if (!entries[PROJECT_ENTRY]) throw new Error('OwnChar 프로젝트 파일이 아닙니다.')
-  const saved = JSON.parse(strFromU8(entries[PROJECT_ENTRY])) as { meta: Omit<SavedProject['meta'], 'hydrated' | 'generation'>; sessions: SavedProject['sessions']; drawings: SavedProject['drawings'] }
+  const saved = JSON.parse(strFromU8(entries[PROJECT_ENTRY])) as { meta: Omit<SavedProject['meta'], 'hydrated' | 'generation'>; sessions: SavedProject['sessions']; drawings: SavedProject['drawings']; customGlyphs?: SavedProject['customGlyphs'] }
   if (saved.meta?.schemaVersion !== SCHEMA_VERSION) throw new Error('지원하지 않는 프로젝트 파일 형식입니다.')
   const font = entries[FONT_ENTRY]
   const { status } = saved.meta
   return joinProject({
     ...saved,
+    customGlyphs: saved.customGlyphs ?? {},
     meta: {
       ...saved.meta,
       hydrated: true,

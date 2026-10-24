@@ -13,6 +13,7 @@ import { selectJamoSource } from '@/font/layout/source-selection'
 import { latestOnly } from '@/lib/latest-only'
 import { alignVerticalCenter, medianHeight, normalizationFactor } from '@/font/metrics'
 import type { CompositionSettings } from '@/font/settings'
+import { customBaseEntries, customGlyph, customSyllables, ligatureRules, syllableAdvance } from './custom-glyphs'
 import { shapesFromRequestDrawings } from './inputs'
 import { GlyphEncoder, NOTDEF, writeOtf, type EncodedGlyphs } from './otf-writer'
 import type { CompositionProfile, GenerationRequest, GlyphOverride } from './request'
@@ -231,18 +232,23 @@ export function composedHangulParts(codePoint: number, shapes: Map<string, Norma
   return result!
 }
 
-/** Composes each syllable from the prepared shapes. */
+/** Composes each syllable from the prepared shapes; a syllable the writer drew whole is that drawing. */
 export function hangulComposer(request: GenerationRequest, prepared: PreparedCompositionContext): HangulSource {
   const inputs = { ...request, sizeTargets: prepared.sizeTargets }
-  return (codePoint) => composedHangulPath(codePoint, prepared.shapes, inputs, prepared.visualScale).commands
+  const fixed = customSyllables(request.customGlyphs)
+  return (codePoint) => {
+    const glyph = fixed.get(codePoint)
+    return glyph ? customGlyph(glyph, request.compositionSettings).path.commands : composedHangulPath(codePoint, prepared.shapes, inputs, prepared.visualScale).commands
+  }
 }
 
 /** The syllables from index `start` up to `end`, encoded as they are written to the font. */
 export function encodeHangulRange(request: GenerationRequest, start: number, end: number, source: HangulSource, progress?: (completed: number) => void): EncodedGlyphs {
   const out = new GlyphEncoder()
+  const fixed = customSyllables(request.customGlyphs)
   for (let index = start; index < end; index += 1) {
     const codePoint = HANGUL_BASE + index
-    encodeGlyph(out, codePoint, pathOf(source(codePoint)), 1000, request)
+    encodeGlyph(out, codePoint, pathOf(source(codePoint)), syllableAdvance(fixed, codePoint, request.compositionSettings), request)
     if ((index - start) % 112 === 0) progress?.(index - start + 1)
   }
   progress?.(end - start)
@@ -252,6 +258,8 @@ export function encodeHangulRange(request: GenerationRequest, start: number, end
 /** Standalone jamo, Latin letters, numerals and the symbols that were written. */
 function encodeBaseGlyphs(out: GlyphEncoder, request: GenerationRequest, shapes: Map<string, NormalizedShape>, visualScale: number) {
   const settings = request.compositionSettings
+  const customEntries = customBaseEntries(request.customGlyphs)
+  const drawn = new Set(customEntries.map((entry) => entry.codePoint))
   const fixedWidth = settings.widthMode === 'fixed'
   const reference = jamoReference(shapes, request, visualScale)
 
@@ -305,6 +313,7 @@ function encodeBaseGlyphs(out: GlyphEncoder, request: GenerationRequest, shapes:
   }
 
   for (const prompt of BASE_CHARACTER_PROMPTS) {
+    if (drawn.has(prompt.codePoint)) continue
     const shape = shapes.get(prompt.char)
     if (prompt.group === 'symbol' && !shape) continue
     const isJamo = prompt.group === 'consonant' || prompt.group === 'vowel'
@@ -336,6 +345,11 @@ function encodeBaseGlyphs(out: GlyphEncoder, request: GenerationRequest, shapes:
     const baseAdvanceWidth = isJamo ? 1000 : prompt.group === 'symbol' ? 500 : 680
     encodeGlyph(out, prompt.codePoint, path, baseAdvanceWidth, request)
   }
+
+  for (const { codePoint, glyph } of customEntries) {
+    const { path, advance } = customGlyph(glyph, settings)
+    encodeGlyph(out, codePoint, path, advance, request)
+  }
 }
 
 /** .notdef, the space, and every glyph that is not a syllable. */
@@ -350,8 +364,9 @@ export function encodeBaseBlock(request: GenerationRequest, prepared: PreparedCo
 /** A font of `base` and only the syllables in `codePoints`, for a preview that follows the settings as they change. */
 export function composeSubsetFont(request: GenerationRequest, base: EncodedGlyphs, codePoints: number[], source: HangulSource): ArrayBuffer {
   const syllables = new GlyphEncoder()
-  for (const codePoint of [...codePoints].sort((a, b) => a - b)) encodeGlyph(syllables, codePoint, pathOf(source(codePoint)), 1000, request)
-  return writeOtf(request.metadata, [base, syllables.finish()])
+  const fixed = customSyllables(request.customGlyphs)
+  for (const codePoint of [...codePoints].sort((a, b) => a - b)) encodeGlyph(syllables, codePoint, pathOf(source(codePoint)), syllableAdvance(fixed, codePoint, request.compositionSettings), request)
+  return writeOtf(request.metadata, [base, syllables.finish()], ligatureRules(request.customGlyphs))
 }
 
 export async function composeFont(request: GenerationRequest, options: ComposeOptions) {
@@ -379,5 +394,5 @@ export async function composeFont(request: GenerationRequest, options: ComposeOp
 
   options.progress('serialize', 96, 'OTF 파일을 마무리하는 중')
   const glyphCount = blocks.reduce((sum, block) => sum + block.codePoints.length, 0)
-  return { buffer: writeOtf(request.metadata, blocks), glyphCount }
+  return { buffer: writeOtf(request.metadata, blocks, ligatureRules(request.customGlyphs)), glyphCount }
 }

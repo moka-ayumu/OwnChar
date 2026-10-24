@@ -11,6 +11,7 @@ const META_KEY = 'meta'
 const FONT_KEY = 'font'
 const SESSION_PREFIX = 'session:'
 const DRAWING_PREFIX = 'drawing:'
+const CUSTOM_PREFIX = 'custom:'
 
 /** Whether the project in memory is on the device: `failed` when the browser blocks IndexedDB. */
 export type SaveStatus = 'saved' | 'saving' | 'failed'
@@ -25,9 +26,10 @@ interface Written {
   font: ArrayBuffer | null
   sessions: SavedProject['sessions']
   drawings: SavedProject['drawings']
+  customGlyphs: SavedProject['customGlyphs']
 }
 
-let written: Written = { meta: undefined, font: null, sessions: {}, drawings: {} }
+let written: Written = { meta: undefined, font: null, sessions: {}, drawings: {}, customGlyphs: {} }
 
 function openDatabase(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -56,7 +58,7 @@ async function readProject(): Promise<ProjectState | null> {
   const database = await openDatabase()
   const store = database.transaction(STORE, 'readonly').objectStore(STORE)
   const [keys, values] = await Promise.all([asPromise(store.getAllKeys()), asPromise(store.getAll())])
-  const saved: SavedProject = { meta: undefined as unknown as SavedMeta, sessions: {}, drawings: {} }
+  const saved: SavedProject = { meta: undefined as unknown as SavedMeta, sessions: {}, drawings: {}, customGlyphs: {} }
   let font: ArrayBuffer | null = null
   keys.forEach((key, index) => {
     const name = String(key)
@@ -64,9 +66,10 @@ async function readProject(): Promise<ProjectState | null> {
     else if (name === FONT_KEY) font = values[index]
     else if (name.startsWith(SESSION_PREFIX)) saved.sessions[name.slice(SESSION_PREFIX.length)] = values[index]
     else if (name.startsWith(DRAWING_PREFIX)) saved.drawings[name.slice(DRAWING_PREFIX.length)] = values[index]
+    else if (name.startsWith(CUSTOM_PREFIX)) saved.customGlyphs[name.slice(CUSTOM_PREFIX.length)] = values[index]
   })
   if (!saved.meta) return null
-  written = { meta: saved.meta, font, sessions: saved.sessions, drawings: saved.drawings }
+  written = { meta: saved.meta, font, sessions: saved.sessions, drawings: saved.drawings, customGlyphs: saved.customGlyphs }
   return joinProject(saved, font)
 }
 
@@ -81,7 +84,7 @@ async function writeProject(project: ProjectState) {
     if (project.generatedFont) puts.push([FONT_KEY, project.generatedFont])
     else deletes.push(FONT_KEY)
   }
-  for (const [prefix, before, after] of [[SESSION_PREFIX, previous.sessions, next.sessions], [DRAWING_PREFIX, previous.drawings, next.drawings]] as const) {
+  for (const [prefix, before, after] of [[SESSION_PREFIX, previous.sessions, next.sessions], [DRAWING_PREFIX, previous.drawings, next.drawings], [CUSTOM_PREFIX, previous.customGlyphs, next.customGlyphs]] as const) {
     for (const [id, record] of Object.entries(after)) if (before[id] !== record) puts.push([prefix + id, record])
     for (const id of Object.keys(before)) if (!(id in after)) deletes.push(prefix + id)
   }
@@ -96,7 +99,7 @@ async function writeProject(project: ProjectState) {
     transaction.onerror = () => reject(transaction.error)
     transaction.onabort = () => reject(transaction.error)
   })
-  written = { meta: next.meta, font: project.generatedFont, sessions: next.sessions, drawings: next.drawings }
+  written = { meta: next.meta, font: project.generatedFont, sessions: next.sessions, drawings: next.drawings, customGlyphs: next.customGlyphs }
 }
 
 export async function clearPersistedProject() {
@@ -108,7 +111,7 @@ export async function clearPersistedProject() {
     transaction.onerror = () => reject(transaction.error)
     transaction.onabort = () => reject(transaction.error)
   })
-  written = { meta: undefined, font: null, sessions: {}, drawings: {} }
+  written = { meta: undefined, font: null, sessions: {}, drawings: {}, customGlyphs: {} }
 }
 
 /** Deletes the saved project from the device and empties the project in memory. */

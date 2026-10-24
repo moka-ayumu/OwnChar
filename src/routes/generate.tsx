@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { Check, FastForward, RotateCcw, X } from 'lucide-react'
+import { customStamps } from '@/collection/custom-glyphs'
 import { RailBrand } from '@/components/rail-brand'
 import { Button } from '@/components/ui/button'
 import { Hint } from '@/components/hint'
@@ -67,7 +68,7 @@ function GeneratePage() {
         projectActions.updateGenerationProgress(message.progress, message.message)
       }
       if (message.type === 'complete') {
-        projectActions.completeGeneration(message.buffer, { metadata: state.metadata, globalMetrics: state.globalMetrics, compositionSettings: state.compositionSettings, glyphOverrides: state.glyphOverrides })
+        projectActions.completeGeneration(message.buffer, { metadata: state.metadata, globalMetrics: state.globalMetrics, compositionSettings: state.compositionSettings, glyphOverrides: state.glyphOverrides, customGlyphs: customStamps(state.customGlyphs) })
         worker.terminate()
         live.current.complete = true
         setComplete(true)
@@ -87,6 +88,7 @@ function GeneratePage() {
       overrides: state.glyphOverrides,
       globalMetrics: state.globalMetrics,
       compositionSettings: state.compositionSettings,
+      customGlyphs: state.customGlyphs,
     }
     worker.postMessage(request)
   }, [navigate])
