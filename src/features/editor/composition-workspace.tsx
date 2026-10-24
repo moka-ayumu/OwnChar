@@ -4,6 +4,8 @@ import { RotateCcw } from 'lucide-react'
 import type { DrawingRecord, WritingSessionRecord } from '@/collection/records'
 import { Button } from '@/components/ui/button'
 import { Hint } from '@/components/hint'
+import { Segmented } from '@/components/segmented'
+import { Slider } from '@/components/ui/slider'
 import { renderCalibratedGlyph } from '@/font/glyphs/calibration'
 import { composeStandaloneJamoPath } from '@/font/glyphs/standalone-jamo'
 import { decomposeHangul } from '@/font/hangul'
@@ -11,6 +13,7 @@ import { DEFAULT_COMPOSITION_SETTINGS, type CompositionSettings } from '@/font/s
 import { composedHangulPath, jamoReference, standaloneJamoReference } from '@/generation/font-builder'
 import { useCompositionContext } from '@/generation/use-composition-context'
 import { projectActions } from '@/project/store'
+import { NumberField } from './number-field'
 
 const examples = [
   { char: '가', label: '세로 모음 · 받침 없음' },
@@ -36,9 +39,12 @@ function drawGlyph(canvas: HTMLCanvasElement, path: opentype.Path) {
   canvas.height = size * dpr
   const context = canvas.getContext('2d')
   if (!context) return
+  const style = getComputedStyle(canvas)
+  const rule = style.getPropertyValue('--color-rule').trim() || '#D9DAD5'
+  const ink = style.getPropertyValue('--color-ink').trim() || '#101114'
   context.setTransform(dpr, 0, 0, dpr, 0, 0)
   context.clearRect(0, 0, size, size)
-  context.strokeStyle = '#D9DAD5'
+  context.strokeStyle = rule
   context.lineWidth = 1
   context.strokeRect(20.5, 20.5, 199, 199)
   context.setLineDash([3, 4])
@@ -51,7 +57,7 @@ function drawGlyph(canvas: HTMLCanvasElement, path: opentype.Path) {
   context.save()
   context.translate(20, 210)
   context.scale(0.2, -0.2)
-  context.fillStyle = '#101114'
+  context.fillStyle = ink
   context.beginPath()
   for (const command of path.commands) {
     if (command.type === 'M') context.moveTo(command.x, command.y)
@@ -70,33 +76,35 @@ function ExampleCard({ char, ariaLabel, path, caption, note }: { char: string; a
     if (canvasRef.current) drawGlyph(canvasRef.current, path)
   }, [path])
   return (
-    <figure className="composition-example-card">
-      <canvas ref={canvasRef} className="w-full" style={{ aspectRatio: '1' }} aria-label={ariaLabel} />
-      <figcaption className="flex items-baseline justify-between gap-3 border-t border-rule px-4 py-3">
-        <div><strong className="text-xl font-semibold">{char}</strong>{note && <p className="mt-1 text-xs text-ink">{note}</p>}</div>
-        <span className="text-right text-xs leading-4 text-ink-3">{caption}</span>
-      </figcaption>
-    </figure>
+    <Hint className="block" side="bottom" label={caption}>
+      <figure className="composition-example-card">
+        <canvas ref={canvasRef} className="w-full" style={{ aspectRatio: '1' }} aria-label={ariaLabel} />
+        <figcaption className="flex items-baseline justify-between gap-2 border-t border-rule px-3 py-2">
+          <strong className="text-lg font-bold">{char}</strong>
+          {note && <span className="tnum text-xs font-semibold text-ink-2">{note}</span>}
+        </figcaption>
+      </figure>
+    </Hint>
   )
 }
 
-function RangeField({ label, value, display, min = 0, onChange }: { label: string; value: number; display: string; min?: number; onChange(value: number): void }) {
-  return (
-    <label className="block">
-      <span className="flex items-center justify-between text-xs"><span>{label}</span><span className="tabular-nums">{display}</span></span>
-      <input aria-label={label} type="range" min={min} max="1" step="0.01" value={value} className="mt-2 w-full accent-ink" onChange={(event) => onChange(Number(event.target.value))} />
-    </label>
-  )
-}
+const percent = (value: number) => `${Math.round(value * 100)}%`
 
-function Section({ title, help, children }: { title: string; help?: string; children: React.ReactNode }) {
+function RangeField({ label, value, min = 0, onChange }: { label: string; value: number; min?: number; onChange(value: number): void }) {
   return (
-    <div className="mt-6 border-t border-rule pt-5">
-      <Hint className="block" side="left" label={help}>
-        <h3 className="text-sm font-semibold">{title}</h3>
-        {children}
-      </Hint>
+    <div>
+      <div className="flex items-center justify-between text-xs font-semibold"><span className="text-ink-2">{label}</span><output className="tnum">{percent(value)}</output></div>
+      <div className="mt-2"><Slider aria-label={label} min={min} max={1} step={0.01} value={[value]} onValueChange={([next]) => onChange(next)} /></div>
     </div>
+  )
+}
+
+function Group({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="control-group">
+      <h2 className="text-sm font-bold">{title}</h2>
+      <div className="mt-4 space-y-5">{children}</div>
+    </section>
   )
 }
 
@@ -112,45 +120,45 @@ const normalizationFields = [
   ['latinNormalization', '영문 정규화'],
 ] as const
 
+
+const WIDTH_MODES = [['proportional', '가변 폭'], ['fixed', '고정 폭']] as const
+
 function CompositionControls({ settings }: { settings: CompositionSettings }) {
   const set = projectActions.updateCompositionSettings
   return (
     <div>
-      <Hint className="block" side="left" label="왼쪽 예시는 즉시 갱신됩니다. OTF에는 상단의 변경 적용 후 반영됩니다."><h2 className="text-sm font-semibold">한글 조합 설정</h2></Hint>
-      <div className="mt-5 space-y-5">
+      <Group title="크기">
         {scaleFields.map((field) => (
           <Hint key={field.key} className="block" side="left" label={field.help}>
-          <label className="block">
-            <span className="flex items-center justify-between gap-3">
-              <span className="input-label">{field.label}</span>
-              <span className="flex items-center gap-1"><input aria-label={field.label} type="number" className="text-input h-8 w-20 py-1 text-right" min={0.5} max={1.2} step={0.05} value={settings[field.key]} onChange={(event) => set({ [field.key]: Number(event.target.value) })} /><span className="w-4 text-xs text-ink-3">×</span></span>
-            </span>
-          </label>
+            <NumberField label={field.label} value={settings[field.key]} step={0.05} min={0.5} onCommit={(value) => set({ [field.key]: Math.min(1.2, value) })} />
           </Hint>
         ))}
-      </div>
-      <Section title="손떨림 보정" help="0은 원본 획, 1은 획의 떨림과 시작·끝의 갈고리를 최대로 보정합니다. 모서리는 유지됩니다.">
-        <div className="mt-4"><RangeField label="손떨림 보정 강도" value={settings.endpointStabilization} display={settings.endpointStabilization.toFixed(2)} onChange={(value) => set({ endpointStabilization: value })} /></div>
-      </Section>
-      <Section title="쌍자음 간격" help="쓰지 않은 쌍자음(ㄲㄸㅃㅆㅉ)은 단자음 둘로 만듭니다. 0은 두 자음을 붙이고, 1은 겹받침과 같은 간격을 둡니다.">
-        <div className="mt-4"><RangeField label="합성 쌍자음 간격" value={settings.doubleConsonantGap} display={settings.doubleConsonantGap.toFixed(2)} onChange={(value) => set({ doubleConsonantGap: value })} /></div>
-      </Section>
-      <Section title="크기 정규화" help="0은 원본 크기, 1은 완성된 필기의 대표 크기에 가장 가깝게 맞춥니다.">
-        <div className="mt-4 space-y-4">
-          {normalizationFields.map(([key, label]) => <RangeField key={key} label={label} value={settings[key]} display={settings[key].toFixed(2)} onChange={(value) => set({ [key]: value })} />)}
+      </Group>
+      <Group title="보정">
+        <Hint className="block" side="left" label="0은 원본 획, 1은 획의 떨림과 시작·끝의 갈고리를 최대로 보정합니다. 모서리는 유지됩니다.">
+          <RangeField label="손떨림 보정 강도" value={settings.endpointStabilization} onChange={(value) => set({ endpointStabilization: value })} />
+        </Hint>
+        <Hint className="block" side="left" label="쓰지 않은 쌍자음(ㄲㄸㅃㅆㅉ)은 단자음 둘로 만듭니다. 0은 두 자음을 붙이고, 1은 겹받침과 같은 간격을 둡니다.">
+          <RangeField label="합성 쌍자음 간격" value={settings.doubleConsonantGap} onChange={(value) => set({ doubleConsonantGap: value })} />
+        </Hint>
+      </Group>
+      <Group title="정렬">
+        <Hint className="block" side="left" label="0은 원본 크기, 1은 완성된 필기의 대표 크기에 가장 가깝게 맞춥니다.">
+          <div className="space-y-5">
+            {normalizationFields.map(([key, label]) => <RangeField key={key} label={label} value={settings[key]} onChange={(value) => set({ [key]: value })} />)}
+          </div>
+        </Hint>
+        <Hint className="block" side="left" label="자음·모음 한 글자를 현재 프로젝트의 ‘가’ 잉크 폭과 높이 안에 같은 비율로 맞춥니다.">
+          <RangeField label="단독 자모 크기" min={0.1} value={settings.standaloneJamoMaxHeight} onChange={(value) => set({ standaloneJamoMaxHeight: value })} />
+        </Hint>
+        <Hint className="block" side="left" label="문자 역할별 기준 높이에 맞춥니다. 기호는 별도 규칙을 사용합니다.">
+          <RangeField label="수직 정렬" value={settings.verticalAlignment} onChange={(value) => set({ verticalAlignment: value })} />
+        </Hint>
+        <div>
+          <span className="input-label">글자 가로폭</span>
+          <Segmented className="mt-1.5 w-full" options={WIDTH_MODES} value={settings.widthMode} onChange={(widthMode) => set({ widthMode })} label="글자 가로폭" />
         </div>
-      </Section>
-      <Section title="단독 자모 크기" help="자음·모음 한 글자를 현재 프로젝트의 ‘가’ 잉크 폭과 높이 안에 같은 비율로 맞춥니다.">
-        <div className="mt-4"><RangeField label="단독 자모 크기 비율" min={0.1} value={settings.standaloneJamoMaxHeight} display={`${Math.round(settings.standaloneJamoMaxHeight * 100)}%`} onChange={(value) => set({ standaloneJamoMaxHeight: value })} /></div>
-      </Section>
-      <Section title="수직 가운데 정렬" help="문자 역할별 기준 높이에 맞춥니다. 기호는 별도 규칙을 사용합니다.">
-        <div className="mt-4"><RangeField label="수직 정렬" value={settings.verticalAlignment} display={settings.verticalAlignment.toFixed(2)} onChange={(value) => set({ verticalAlignment: value })} /></div>
-      </Section>
-      <Section title="글자 가로폭">
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          {(['proportional', 'fixed'] as const).map((mode) => <button key={mode} type="button" aria-pressed={settings.widthMode === mode} className={`rounded-md border px-3 py-2 text-xs ${settings.widthMode === mode ? 'border-ink bg-ink text-white' : 'border-rule hover:border-ink/50'}`} onClick={() => set({ widthMode: mode })}>{mode === 'proportional' ? '가변 폭' : '고정 폭'}</button>)}
-        </div>
-      </Section>
+      </Group>
       <Button className="mt-6 w-full" variant="secondary" onClick={() => set(DEFAULT_COMPOSITION_SETTINGS)}><RotateCcw className="size-3.5" /> 조합 기본값 복원</Button>
     </div>
   )
@@ -184,17 +192,12 @@ export function CompositionWorkspace({ drawings, sessions, settings }: {
   return (
     <div className="composition-workspace">
       <main className="composition-preview-area">
-        <div className="flex items-end justify-between gap-6">
-          <Hint side="bottom" label="전체 폰트를 다시 생성하지 않고 현재 자모와 설정만 조합합니다.">
-            <h1 className="text-[26px] font-extrabold tracking-[-0.03em]">조합 미리보기</h1>
-          </Hint>
-        </div>
         <div className="composition-example-grid">
           {standalone.map(({ char, path }) => <ExampleCard key={char} char={char} path={path} ariaLabel={`${char} 단독 자모 미리보기`} caption={`단독 자모 · 조합 글자 기준 ${Math.round(settings.standaloneJamoMaxHeight * 100)}%`} />)}
           {syllables.map(({ char, path, label, note }) => <ExampleCard key={char} char={char} path={path} ariaLabel={`${char} 조합 미리보기`} caption={label} note={note} />)}
         </div>
       </main>
-      <aside className="composition-control-panel">
+      <aside className="composition-control-panel" aria-label="한글 조합 설정">
         <CompositionControls settings={settings} />
       </aside>
     </div>

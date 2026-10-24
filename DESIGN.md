@@ -174,7 +174,7 @@ components:
 
 OwnChar draws like a sequential-pose pictogram: one subject, shown again and again in a new pose, never swapped for something else. The subject is the writer's own handwriting. It is written on a white stage, and from that point on it stays on screen: lifted out of its sentence, steadied, outlined, split into jamo, brought to one size, recombined, multiplied to 11,172 syllables, and finally typed back as a sentence. No page in the flow replaces the handwriting with a spinner or an illustration of progress; the handwriting is the progress.
 
-The palette is three values on a quiet ground: ink, white, and one lime field. Everything is flat. Lime is a surface that frames the work (the flow rail, the editor bar); white is where the work happens; solid ink marks whatever is selected, live, or primary. Hierarchy comes from weight and from reversing ink and lime, not from more colours or more sizes. Corners are 6px, lines are 1px.
+The palette is three values on a quiet ground: ink, white, and one lime field. Everything is flat. Lime is a surface that frames the work (the flow rail); white is where the work happens; solid ink marks whatever is selected, live, or primary. Hierarchy comes from weight and from reversing ink and lime, not from more colours or more sizes. Corners are 6px, lines are 1px.
 
 The system is dense and tool-like in the stage and calm in the rail. It avoids paper or stationery imitation, the white-and-blue SaaS tool shell, and a dark technical look; those were ruled out by the user when this world was chosen.
 
@@ -194,7 +194,7 @@ Three working values (ink, white, lime) on a neutral ground, with greys only for
 - **Ink** (`ink`, #101114): text, 1px structural lines, and every solid mark of state: primary buttons, the current row in a rail list, the pressed segment, the selected glyph cell, progress and slider fill, the focus outline, the user's strokes. On hover a solid ink button lifts to **Ink Hover** (`ink-hover`, #2c2e34).
 
 ### Secondary
-- **Lime Field** (`lime`, #c6f432): the colour of the surface that frames the work. Full-bleed on the flow rail, the editor top bar, and the phone-size notice. Smaller uses are all "this is live": text selection, the characters picked in the preview text, the source-cell highlight on the writing grid (40% tint), the wash of a finished cell (24% tint) and a done jamo in the cell popover (40% tint), the dashed placeholder for a jamo not yet written (22% tint), a source link on hover, the film's live jamo zone, the medial tiles, finished cells, raw-trace and outline fill of the home film, raw-trace line, outline fill, worker fronts and finish box, and the action button on an ink bar.
+- **Lime Field** (`lime`, #c6f432): the colour of the surface that frames the work. Full-bleed on the flow rail and the phone-size notice. Smaller uses are all "this is live": text selection, the characters picked in the preview text, the source-cell highlight on the writing grid (40% tint), the wash of a finished cell (24% tint) and a done jamo in the cell popover (40% tint), the dashed placeholder for a jamo not yet written (22% tint), a source link on hover, the film's live jamo zone, the medial tiles, finished cells, raw-trace and outline fill of the home film, raw-trace line, outline fill, worker fronts and finish box, and the action button on an ink bar.
 - **Lime Deep** (`lime-deep`, #b2e016): hover state of a lime button only.
 - **Lime Ink** (`lime-ink`, #3c4a0a): secondary text on lime (labels, notes, counts, steps not yet reached, the rail list's scrollbar). 7.5:1 on lime.
 
@@ -247,11 +247,11 @@ Translucent ink is used for three things only: hover wash on transparent control
 
 **The rail-and-stage frame.** Write, Generate and Preview share one grid: a lime rail (280px; 244px at ≤1100px; on write 232px, 216px at ≤1100px, closing to a 56px column of icons) with a 1px ink right edge, and a white stage taking the rest. The rail is a column with padding 24 / 22 / 20: at the top, what this step is (a headline with a one-line note, or a figure with its label); in the middle, the step's list or fields; at the bottom, pushed down by auto margin, the actions. The primary action is solid ink at the rail's bottom on all three pages, so it never changes position through the flow. The stage holds only the work: the writing canvas beside its 56px tool rail, the film, or the typed sentence.
 
-**Other pages inherit the same parts in a different arrangement.** Home is one white stage under the header: the home film fills it, and a foot row stands over its bottom edge (see "The home film"). The editor is a 56px lime bar over white panels divided by 1px ink lines (glyph browser / preview well on ground / 280px settings; or examples / 340px controls). Help is a single 68ch column on ground with sections opened by a 1px ink top line.
+**Other pages inherit the same parts in a different arrangement.** Home is one white stage under the header: the home film fills it, and a foot row stands over its bottom edge (see "The home film"). The editor is a flow page: its rail holds the title, the count of adjusted glyphs, the two modes, undo and redo, and at the bottom the links and the primary 변경 적용; its stage is three panes divided by 1px rule lines (380px glyph browser / specimen well on ground / 288px inspector), or example cards beside 320px controls. Help is a single 68ch column on ground with sections opened by a 1px ink top line.
 
 **Spacing.** An 8px-rooted rhythm: 8 between buttons and rows, 12 between toolbar groups, 16 between cards and fields, 24 inside panels, 28–32 around the stage content, 32 between the home foot and the stage edges.
 
-**Responsive.** At ≤1100px the rail narrows to 244px, toolbar dividers drop, the editor loses its preview well and the example grid goes from three columns to two. At ≤767px the app is replaced by a lime full-height notice ("더 넓은 화면이 필요해요"); writing needs a tablet or desktop. Minimum width is 320px.
+**Responsive.** At ≤1100px the rail narrows to 244px, toolbar dividers drop, and the editor keeps the specimen: the browser narrows to 300px and the specimen lies over the inspector. At ≤767px the app is replaced by a lime full-height notice ("더 넓은 화면이 필요해요"); writing needs a tablet or desktop. Minimum width is 320px.
 
 **Route motion.** Navigations inside the flow use view transitions with two named parts:
 - `rail`: the lime field holds still (the group is painted lime for 420ms); the old contents leave upward 8px over 150ms ease-in, then the new rise 10px into place over 320ms.
@@ -283,7 +283,7 @@ One corner: 6px on every control and container (buttons, inputs, rows, cards, di
 
 Lines carry meaning by weight and dash:
 - 1px ink: only the cell being written and its popover, and the hover edge of a link row. A field change (lime to white) needs no line.
-- 1px rule: every structural division (header, tool rail, sentence row, editor panels) and the edge of dialogs, menus and popovers, which also carry one soft lift.
+- 1px rule: every structural division (header, tool rail, sentence row, editor panes) and the edge of dialogs, menus and popovers, which also carry one soft lift.
 - 2px ink, 2px offset: keyboard focus, everywhere.
 - 3px ink inset: the one cell a glyph's source link points at.
 - Dashed: provisional or not-yet. The placeholder for an unwritten jamo (4 3), the final-consonant zone in the film (4 3), the band guide (1 4).
@@ -315,7 +315,7 @@ A row with a 23px leading column, then the name at 14px / 600. In the step list 
 - **Current:** solid ink, white text, the number, ring arc or check in lime; `aria-current="step"`.
 
 ### Segmented control
-Two or more options inside a 1px ink border with 2px padding and a 6px corner; each option is 14px / 600 with 7px / 16px padding and a 4px corner. The pressed option is solid ink with white text. Centred in the editor bar.
+Two or more options inside a 1px ink border with 2px padding and a 6px corner; each option is 14px / 600 with 6px / 12px padding and a 4px corner. The pressed option is solid ink with white text. Used for the kind of glyph in the browser and the glyph width mode.
 
 ### Dialogs
 White, 1px ink border, 6px corner, 24px padding, max 448px, centred on a 45% ink scrim; a ghost close button at top right. Title 18px / 700, description 14px with a 24px line in ink-2, an optional inset list on ground. Actions sit at the bottom right (secondary, then primary), or stacked full-width when there are three choices (primary, destructive, ghost cancel). A destructive choice is confirmed in one.
@@ -346,6 +346,12 @@ A 148px white panel with a 1px ink border, attached to the right edge of the cel
 - **Example card:** white, 1px rule border, 6px corner; a square canvas over a caption row separated by a rule line. No shadow, no hover lift.
 - **Glyph cell:** 52px high, 22px glyph in the user's font, no border; hover is ground, selected is solid ink with a white glyph, a modified glyph carries a 6px dot at top right (ink, or lime when selected).
 - **Source link:** a full-width row with a rule border and a chevron; on hover the border turns ink and the row fills lime.
+
+### Filter chips (editor)
+In the glyph browser, under the segmented control, the Hangul syllables are narrowed by the jamo they hold. A row per part (초성, 중성, 받침) puts its label in a 30px column and its jamo as 24px-wide, 28px-high chips at 13px / 600 with a 4px corner; a chip that is on is solid ink. A row of the three vowel shapes sits above them, and the result count with a 모두 선택 button sits beside the 조합별 / 전체 보기 switch. The chips scroll inside their own region (at most 252px high), so the glyph list under them keeps its room.
+
+### Glyph specimen (editor)
+One glyph drawn large on a white card over the ground well, at the scale of its font units. The glyph of the current font stands in rule grey; the glyph with the pending adjustments stands over it in ink. A dashed rule line marks the baseline and a legend at the top left names the two glyphs. Three dashed ink-3 lines run edge to edge of the card and are the handles: the left and right margin lines, each 55 units from the ink at a value of 0, and a top line 55 units above the ink (drag sideways: margins; drag up or down: height). There is no frame. A handle under the pointer, or being dragged, turns solid ink at 2px. The values of the three stand in 12px / 600 labels beside their lines. A drag changes a draft; one undoable step is written when the pointer lifts. With several glyphs selected the card shows only their count.
 
 ### The generation film (signature)
 One canvas filling the stage, redrawn every frame from a clock and from the worker's real progress. The rail carries the headline, one sentence explaining the live step, the twelve-step list (it scrolls inside the rail when the rail is short, keeping the live step in view), the percent figure with progress and the worker's message, then skip (secondary) and cancel (ghost).

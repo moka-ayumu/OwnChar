@@ -48,8 +48,8 @@ test('writes a jamo, generates the font, traces a glyph back to its cell, and gu
   // The composition tab previews example syllables live from the handwriting.
   await page.getByRole('button', { name: '한글 조합 설정' }).click()
   await expect(page.locator('.composition-example-card canvas')).toHaveCount(13)
-  await page.getByRole('slider', { name: '수직 정렬' }).fill('0.5')
-  await expect(page.getByText('0.50', { exact: true })).toBeVisible()
+  await page.getByRole('slider', { name: '수직 정렬' }).press('End')
+  await expect(page.getByRole('slider', { name: '수직 정렬' })).toHaveAttribute('aria-valuenow', '1')
   await page.getByRole('button', { name: '글리프 편집' }).click()
 
   // Rewriting after a manual glyph edit asks what to do with the edit.

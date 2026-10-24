@@ -1,22 +1,26 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
-import { useVirtualizer } from '@tanstack/react-virtual'
 import opentype from 'opentype.js'
-import { ArrowLeft, ChevronRight, PenLine, Redo2, RotateCcw, Save, Undo2 } from 'lucide-react'
-import { WRITING_EXERCISES } from '@/collection/exercises'
-import { BASE_CHARACTER_PROMPTS, ROLE_LABELS } from '@/collection/prompts'
+import { Combine, PenLine, Redo2, Save, Type, Undo2 } from 'lucide-react'
 import { Hint } from '@/components/hint'
+import { RailBrand } from '@/components/rail-brand'
 import { Button, buttonVariants } from '@/components/ui/button'
-import { HANGUL_BASE, HANGUL_COUNT } from '@/font/hangul'
-import { glyphSources, type GlyphSource } from '@/generation/provenance'
+import { HANGUL_BASE } from '@/font/hangul'
+import { mergedOverride } from '@/generation/font-builder'
+import { glyphSources } from '@/generation/provenance'
 import { compositionShapes } from '@/generation/use-composition-context'
-import { DEFAULT_GLYPH_OVERRIDE, type GlyphOverride } from '@/generation/request'
+import { DEFAULT_GLYPH_OVERRIDE } from '@/generation/request'
 import { useCompact } from '@/lib/use-compact'
 import { useFontFace } from '@/lib/use-font-face'
 import { cn } from '@/lib/utils'
 import { projectActions } from '@/project/store'
 import { useProject } from '@/project/use-project'
 import { CompositionWorkspace } from './composition-workspace'
+import { CODE_POINTS, NO_FILTER, categoryOf, filterHangul, isFiltering, isGlyph, type GlyphCategory } from './glyph-categories'
+import { GlyphBrowser } from './glyph-browser'
+import { HangulTools, type HangulView } from './glyph-filter'
+import { GlyphInspector } from './glyph-inspector'
+import { GlyphSpecimen } from './glyph-specimen'
 
 export interface EditSearch {
   /** The glyph to select on arrival. */
@@ -24,22 +28,12 @@ export interface EditSearch {
   query?: string
 }
 
-const COLUMNS = 10
-/** Glyphs per row on a phone, where ten would leave each under 30 px wide. */
+const COLUMNS = 8
+/** Glyphs per row on a phone, where eight would leave each under 36 px wide. */
 const COMPACT_COLUMNS = 6
+const NO_METRICS = { left: 0, right: 0, y: 0 }
 
-const allCodePoints = [
-  ...BASE_CHARACTER_PROMPTS.map((prompt) => prompt.codePoint),
-  ...Array.from({ length: HANGUL_COUNT }, (_, index) => HANGUL_BASE + index),
-]
-
-const overrideFields = [['left', '왼쪽 여백'], ['right', '오른쪽 여백'], ['y', '높이'], ['scale', '크기'], ['rotation', '회전']] as const
-const metricFields = [['left', '왼쪽'], ['right', '오른쪽'], ['y', '높이']] as const
-
-function sourceLabel(source: GlyphSource) {
-  const name = source.symbol ? '기호' : source.role ? ROLE_LABELS[source.role] : '글자'
-  return source.match === 'derived' ? `${name} · 다른 문맥에서 파생` : source.match === 'compound' ? `${name} · 자모 합성` : name
-}
+const MODES = [['glyph', '글리프 편집', Type], ['composition', '한글 조합 설정', Combine]] as const
 
 export function EditPage({ glyph, query }: EditSearch) {
   const navigate = useNavigate()
@@ -48,155 +42,107 @@ export function EditPage({ glyph, query }: EditSearch) {
   const overrides = useProject((state) => state.glyphOverrides)
   const history = useProject((state) => state.history)
   const globalMetrics = useProject((state) => state.globalMetrics)
+  const generatedWith = useProject((state) => state.generatedWith)
   const compositionSettings = useProject((state) => state.compositionSettings)
   const drawings = useProject((state) => state.drawings)
   const sessions = useProject((state) => state.writingSessions)
   const fontReady = useFontFace(buffer, revision)
+  const initial = glyph !== undefined && isGlyph(glyph) ? glyph : HANGUL_BASE
   const [search, setSearch] = useState(query ?? '')
-  const [selected, setSelected] = useState<number[]>(() => [glyph !== undefined && allCodePoints.includes(glyph) ? glyph : HANGUL_BASE])
+  const [selected, setSelected] = useState<number[]>([initial])
+  const [category, setCategory] = useState<GlyphCategory>(() => categoryOf(initial) ?? 'hangul')
+  const [hangulView, setHangulView] = useState<HangulView>('filter')
+  const [filter, setFilter] = useState(NO_FILTER)
   const [editorMode, setEditorMode] = useState<'glyph' | 'composition'>('glyph')
   const columns = useCompact() ? COMPACT_COLUMNS : COLUMNS
-  const lastSelected = useRef<number | null>(null)
-  const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!buffer) void navigate({ to: '/write' })
   }, [buffer, navigate])
 
-  const visibleCodePoints = useMemo(() => {
+  const font = useMemo(() => buffer ? opentype.parse(buffer.slice(0)) : null, [buffer])
+
+  const visible = useMemo(() => {
     const codePoint = [...search][0]?.codePointAt(0)
-    if (codePoint === undefined) return allCodePoints
-    return allCodePoints.includes(codePoint) ? [codePoint] : []
-  }, [search])
+    if (codePoint !== undefined) return isGlyph(codePoint) ? [codePoint] : []
+    return category === 'hangul' && hangulView === 'filter' && isFiltering(filter) ? filterHangul(filter) : CODE_POINTS[category]
+  }, [search, category, hangulView, filter])
 
-  const virtualizer = useVirtualizer({
-    count: Math.ceil(visibleCodePoints.length / columns),
-    getScrollElement: () => scrollRef.current,
-    estimateSize: () => 62,
-    overscan: 6,
-  })
-
-  const current = selected.length === 1 ? (overrides[selected[0]] ?? DEFAULT_GLYPH_OVERRIDE) : null
   const selectedSources = useMemo(() => selected.length === 1 ? glyphSources(selected[0], drawings, compositionShapes(drawings, sessions, compositionSettings)) : [], [selected, drawings, sessions, compositionSettings])
   const overrideCount = Object.keys(overrides).length
   const previewFont = fontReady ? 'OwnCharPreview' : 'inherit'
-
-  const selectGlyph = (codePoint: number, event: React.MouseEvent) => {
-    if (event.shiftKey && lastSelected.current !== null) {
-      const from = allCodePoints.indexOf(lastSelected.current)
-      const to = allCodePoints.indexOf(codePoint)
-      setSelected(allCodePoints.slice(Math.min(from, to), Math.max(from, to) + 1))
-    } else if (event.ctrlKey || event.metaKey) {
-      setSelected((value) => value.includes(codePoint) ? value.filter((item) => item !== codePoint) : [...value, codePoint])
-    } else {
-      setSelected([codePoint])
-    }
-    lastSelected.current = codePoint
-  }
+  const madeSource = useMemo(() => ({ overrides: generatedWith?.glyphOverrides ?? {}, globalMetrics: generatedWith?.globalMetrics ?? NO_METRICS }), [generatedWith])
 
   /** Scales every selected glyph to the height of the tallest one. */
   const fitHeight = () => {
-    if (!buffer || !selected.length) return
-    const font = opentype.parse(buffer.slice(0))
+    if (!font || selected.length < 2) return
     const heights = selected.map((codePoint) => {
       const box = font.charToGlyph(String.fromCodePoint(codePoint)).getBoundingBox()
       return Math.max(1, box.y2 - box.y1)
     })
     const max = Math.max(...heights)
-    selected.forEach((codePoint, index) => projectActions.applyGlyphTransform([codePoint], { scale: max / heights[index] }))
+    selected.forEach((codePoint, index) => projectActions.applyGlyphTransform([codePoint], { scale: mergedOverride(madeSource, codePoint).scale * max / heights[index] }))
   }
 
-  if (!buffer) return null
+  if (!buffer || !font) return null
+
+  const single = selected.length === 1 ? selected[0] : null
 
   return (
-    <section className="editor-layout">
-      <div className="editor-topbar">
-        <div className="flex gap-1">
-          <Link to="/preview" viewTransition className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }))}><ArrowLeft className="size-4" /> 미리보기</Link>
-          <Link to="/write" className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }))}><PenLine className="size-4" /> 글자 다시 쓰기</Link>
-        </div>
-        <div className="segmented">
-          {([['glyph', '글리프 편집'], ['composition', '한글 조합 설정']] as const).map(([mode, label]) => (
-            <button key={mode} aria-pressed={editorMode === mode} onClick={() => setEditorMode(mode)}>{label}</button>
+    <div className="flow edit-flow">
+      <aside className="rail">
+        <RailBrand />
+        <h1 className="text-[26px] font-extrabold leading-tight tracking-[-0.03em]">고급 편집</h1>
+        <div className="rail-figure mt-5">{overrideCount.toLocaleString()}<small>개 수정됨</small></div>
+
+        <div className="rail-modes" role="group" aria-label="편집 방식">
+          {MODES.map(([mode, label, Icon]) => (
+            <button key={mode} type="button" aria-pressed={editorMode === mode} onClick={() => setEditorMode(mode)}><Icon className="size-4" aria-hidden="true" />{label}</button>
           ))}
         </div>
-        <div className="flex gap-1">
+
+        <div className="mt-3 flex gap-1">
           <Button size="icon" variant="ghost" aria-label="실행 취소" disabled={!history.past.length} onClick={projectActions.undo}><Undo2 className="size-4" /></Button>
           <Button size="icon" variant="ghost" aria-label="다시 실행" disabled={!history.future.length} onClick={projectActions.redo}><Redo2 className="size-4" /></Button>
-          <Button size="sm" onClick={() => void navigate({ to: '/generate', viewTransition: true })}><Save className="size-3.5" /> 변경 적용</Button>
         </div>
-      </div>
 
-      {editorMode === 'glyph' ? <div className="editor-body">
-        <div className="glyph-browser">
-          <div className="border-b border-rule p-4">
-            <input className="text-input" value={search} maxLength={1} placeholder="문자 검색" onChange={(event) => setSearch(event.target.value)} />
-            <p className="mt-2 text-xs text-ink-3">{selected.length.toLocaleString()}개 선택됨 · Shift/⌘로 다중 선택</p>
+        <div className="mt-auto grid gap-2 pt-6">
+          <div className="grid grid-cols-2 gap-2">
+            <Link to="/preview" viewTransition className={cn(buttonVariants({ variant: 'secondary' }), 'px-2')}>미리보기</Link>
+            <Link to="/write" className={cn(buttonVariants({ variant: 'secondary' }), 'px-2')}><PenLine className="size-4" /> 글자 다시 쓰기</Link>
           </div>
-          <div ref={scrollRef} className="min-h-0 flex-1 overflow-auto">
-            <div style={{ height: virtualizer.getTotalSize(), position: 'relative' }}>
-              {virtualizer.getVirtualItems().map((row) => (
-                <div key={row.key} className="grid gap-1 px-3" style={{ position: 'absolute', transform: `translateY(${row.start}px)`, width: '100%', height: row.size, gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
-                  {visibleCodePoints.slice(row.index * columns, row.index * columns + columns).map((codePoint) => (
-                    <button title={overrides[codePoint] ? '고급 편집에서 수정됨' : undefined} key={codePoint} onClick={(event) => selectGlyph(codePoint, event)} className={`glyph-cell ${selected.includes(codePoint) ? 'selected' : ''} ${overrides[codePoint] ? 'modified' : ''}`} style={{ fontFamily: previewFont }}>
-                      {String.fromCodePoint(codePoint)}
-                    </button>
-                  ))}
-                </div>
-              ))}
+          <Hint className="block" side="right" label={editorMode === 'composition' ? '예시는 즉시 바뀌고, OTF는 변경 적용 후 바뀝니다.' : undefined}>
+            <Button className="w-full" size="lg" onClick={() => void navigate({ to: '/generate', viewTransition: true })}><Save className="size-4" /> 변경 적용</Button>
+          </Hint>
+        </div>
+      </aside>
+
+      <section className="stage">
+        {editorMode === 'glyph' ? (
+          <div className="edit-stage">
+            <GlyphBrowser
+              category={category} onCategory={setCategory} search={search} onSearch={setSearch}
+              tools={category === 'hangul' && <HangulTools view={hangulView} onView={setHangulView} filter={filter} onFilter={setFilter} count={visible.length} onSelectAll={() => setSelected(visible)} />}
+              visible={visible} selected={selected} onSelect={setSelected} overrides={overrides} fontFamily={previewFont} columns={columns}
+            />
+            <div className="edit-specimen">
+              {single !== null ? (
+                <GlyphSpecimen
+                  font={font} codePoint={single} specific={overrides[single] ?? DEFAULT_GLYPH_OVERRIDE} globalMetrics={globalMetrics}
+                  made={mergedOverride(madeSource, single)} proportional={compositionSettings.widthMode === 'proportional'}
+                  onCommit={(patch) => projectActions.applyGlyphTransform([single], patch)}
+                />
+              ) : (
+                <div className="specimen specimen-count"><span className="tnum">{selected.length.toLocaleString()}자 선택</span></div>
+              )}
             </div>
+            <GlyphInspector
+              selected={selected} overrides={overrides} globalMetrics={globalMetrics} sources={selectedSources} onFitHeight={fitHeight}
+              onOpenSource={(capture) => void navigate({ to: '/write', search: { exerciseId: capture.exerciseId, cellIndex: capture.cellIndex, returnGlyph: selected[0], returnQuery: search || undefined } })}
+            />
           </div>
-        </div>
-
-        <div className="glyph-preview">
-          <span className="text-xs font-medium text-ink-3">선택한 글자</span>
-          <div className="preview-baseline">
-            <span style={{
-              fontFamily: previewFont,
-              transform: `translate(${current?.left ?? 0}px, ${-(current?.y ?? 0)}px) scale(${current?.scale ?? 1}) rotate(${current?.rotation ?? 0}deg)`,
-            }}>{selected.length === 1 ? String.fromCodePoint(selected[0]) : `${selected.length}자`}</span>
-          </div>
-        </div>
-
-        <aside className="editor-settings">
-          <div className="border-b border-rule pb-5">
-            <Hint side="bottom" label={selected.length !== 1 ? '글자 하나를 선택하면 출처를 볼 수 있습니다.' : undefined}><h2 className="text-sm font-semibold">원본 필기</h2></Hint>
-            {selected.length !== 1 ? null
-              : selectedSources.length === 0 ? <p className="mt-2 text-xs text-ink-2">원본 없음</p>
-                : <div className="mt-3 space-y-2">{selectedSources.map((source, index) => {
-                  const capture = source.capture
-                  const label = `${sourceLabel(source)} ${source.char}`
-                  return capture && WRITING_EXERCISES.some((item) => item.id === capture.exerciseId)
-                    ? <button key={`${source.originPromptId}-${index}`} className="source-link" onClick={() => void navigate({ to: '/write', search: { exerciseId: capture.exerciseId, cellIndex: capture.cellIndex, returnGlyph: selected[0], returnQuery: search || undefined } })}>
-                      <span>{label}</span><ChevronRight className="size-4" aria-hidden="true" />
-                    </button>
-                    : <div key={`${source.originPromptId}-${index}`} className="rounded-md border border-rule px-3 py-2 text-sm text-ink-2">{label} · 원본 없음</div>
-                })}</div>}
-          </div>
-          <h2 className="mt-5 text-sm font-bold">글리프 설정 {overrideCount ? <span className="font-normal text-ink">· {overrideCount}개 수정됨</span> : null}</h2>
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            {overrideFields.map(([key, label]) => (
-              <label key={key} className={key === 'rotation' ? 'col-span-2' : ''}>
-                <span className="input-label">{label}</span>
-                <input type="number" className="text-input mt-1.5" step={key === 'scale' ? 0.05 : 1} min={key === 'scale' ? 0.1 : undefined} value={current ? current[key] : ''} placeholder={current ? undefined : '다름'} onChange={(event) => event.target.value !== '' && projectActions.applyGlyphTransform(selected, { [key]: Number(event.target.value) } as Partial<GlyphOverride>)} />
-              </label>
-            ))}
-          </div>
-
-          <div className="mt-7 border-t border-rule pt-6">
-            <h3 className="text-sm font-semibold">전체 여백</h3>
-            <div className="mt-4 grid grid-cols-3 gap-2">
-              {metricFields.map(([key, label]) => <label key={key}><span className="input-label">{label}</span><input type="number" className="text-input mt-1.5" value={globalMetrics[key]} onChange={(event) => projectActions.updateGlobalMetrics({ [key]: Number(event.target.value) })} /></label>)}
-            </div>
-          </div>
-
-          <div className="mt-7 space-y-2 border-t border-rule pt-6">
-            <Button className="w-full" variant="secondary" onClick={fitHeight}>선택 높이 맞추기</Button>
-            <Button className="w-full" variant="ghost" onClick={() => projectActions.resetGlyphTransform(selected)}><RotateCcw className="size-3.5" /> 선택 초기화</Button>
-            <Button className="w-full text-danger" variant="ghost" onClick={projectActions.resetAllGlyphTransforms}>모든 글리프 초기화</Button>
-          </div>
-        </aside>
-      </div> : <CompositionWorkspace drawings={drawings} sessions={sessions} settings={compositionSettings} />}
-    </section>
+        ) : <CompositionWorkspace drawings={drawings} sessions={sessions} settings={compositionSettings} />}
+      </section>
+    </div>
   )
 }

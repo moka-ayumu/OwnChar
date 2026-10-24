@@ -376,30 +376,54 @@ button.source-chip:hover small { color: var(--color-lime-ink); }
 }
 
 /* Editor */
-.editor-layout { display: grid; height: calc(100svh - var(--header)); grid-template-rows: 56px minmax(0, 1fr); overflow: hidden; background: #fff; }
-.editor-topbar { position: relative; display: flex; align-items: center; justify-content: space-between; background: var(--color-lime); padding: 0 16px; }
-.segmented { position: absolute; left: 50%; display: grid; translate: -50% 0; grid-template-columns: 1fr 1fr; border: 1px solid rgb(16 17 20 / 25%); border-radius: 6px; padding: 2px; }
-.segmented button { border: 0; border-radius: 4px; background: transparent; padding: 7px 16px; color: var(--color-ink); font-size: 14px; font-weight: 600; }
+.edit-flow .rail { overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--color-lime-ink) transparent; }
+.rail-modes { display: grid; gap: 2px; margin: 24px -8px 0; }
+.rail-modes button { display: flex; height: 40px; align-items: center; gap: 10px; border: 0; border-radius: 6px; background: transparent; padding: 0 8px; color: var(--color-ink); font-size: 14px; font-weight: 600; text-align: left; transition: background-color 150ms; }
+.rail-modes button:hover { background: rgb(16 17 20 / 9%); }
+.rail-modes button[aria-pressed="true"] { background: var(--color-ink); color: #fff; }
+.rail-modes button[aria-pressed="true"] svg { color: var(--color-lime); }
+.segmented { display: inline-grid; grid-auto-flow: column; grid-auto-columns: 1fr; border: 1px solid var(--color-ink); border-radius: 6px; padding: 2px; }
+.segmented button { border: 0; border-radius: 4px; background: transparent; padding: 6px 12px; color: var(--color-ink); font-size: 14px; font-weight: 600; white-space: nowrap; transition: background-color 150ms, color 150ms; }
+.segmented button:hover { background: rgb(16 17 20 / 8%); }
 .segmented button[aria-pressed="true"] { background: var(--color-ink); color: #fff; }
-.composition-workspace { display: grid; min-height: 0; grid-template-columns: minmax(0, 1fr) 340px; background: #fff; }
-.composition-preview-area { min-width: 0; overflow-y: auto; padding: 32px; }
-.composition-example-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 28px; }
-.composition-example-card { overflow: hidden; margin: 0; border: 1px solid var(--color-rule); border-radius: 6px; background: #fff; }
-.composition-control-panel { min-height: 0; overflow-y: auto; border-left: 1px solid var(--color-rule); background: #fff; padding: 28px 24px; }
-.editor-body { display: grid; min-height: 0; grid-template-columns: minmax(460px, 1.25fr) minmax(300px, .75fr) 280px; background: #fff; }
+.edit-stage { display: grid; height: 100%; min-height: 0; grid-template-columns: 380px minmax(0, 1fr) 288px; }
 .glyph-browser { display: flex; min-width: 0; min-height: 0; flex-direction: column; border-right: 1px solid var(--color-rule); background: #fff; }
-.glyph-cell { position: relative; display: grid; height: 52px; place-items: center; border: 0; border-radius: 6px; background: transparent; color: var(--color-ink); font-size: 22px; }
-.glyph-cell:hover { background: var(--color-ground); }
-.glyph-cell.selected { background: var(--color-ink); color: #fff; }
-.glyph-cell.modified::after { content: ''; position: absolute; right: 5px; top: 5px; width: 6px; height: 6px; border-radius: 99px; background: var(--color-ink); }
-.glyph-cell.selected.modified::after { background: var(--color-lime); }
-.glyph-preview { display: flex; min-width: 0; flex-direction: column; background: var(--color-ground); padding: 24px; }
-.preview-baseline { position: relative; display: grid; min-height: 0; flex: 1; place-items: center; overflow: hidden; margin-top: 16px; border-radius: 6px; background: #fff; }
-.preview-baseline::after { position: absolute; right: 10%; bottom: 22%; left: 10%; height: 1px; background: var(--color-rule); content: ''; }
-.preview-baseline span { position: relative; z-index: 1; display: inline-block; transform-origin: center; font-size: clamp(96px, 16vw, 220px); }
-.editor-settings { min-height: 0; overflow-y: auto; border-left: 1px solid var(--color-rule); background: #fff; padding: 24px 20px; }
+.glyph-browser-head { flex: none; border-bottom: 1px solid var(--color-rule); padding: 16px; }
+.glyph-filter { display: grid; max-height: 252px; gap: 8px; overflow-y: auto; margin-top: 12px; scrollbar-width: thin; scrollbar-color: var(--color-ink-3) transparent; }
+.filter-shapes { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; }
+.filter-row { display: grid; grid-template-columns: 30px minmax(0, 1fr); align-items: start; }
+.filter-chips { display: flex; flex-wrap: wrap; gap: 1px; }
+.filter-chip { min-width: 24px; height: 28px; border: 0; border-radius: 4px; background: transparent; padding: 0 4px; color: var(--color-ink); font-size: 13px; font-weight: 600; transition: background-color 150ms, color 150ms; }
+.filter-chip:hover { background: rgb(16 17 20 / 8%); }
+.filter-chip[aria-pressed="true"] { background: var(--color-ink); color: #fff; }
+.glyph-browser-scroll { min-height: 0; flex: 1; overflow: auto; padding-top: 8px; scrollbar-width: thin; scrollbar-color: var(--color-ink-3) transparent; }
+.glyph-pick { position: relative; display: grid; height: 52px; place-items: center; border: 0; border-radius: 6px; background: transparent; color: var(--color-ink); font-size: 22px; transition: background-color 150ms; }
+.glyph-pick:hover { background: var(--color-ground); }
+.glyph-pick[aria-pressed="true"] { background: var(--color-ink); color: #fff; }
+.glyph-pick[data-modified]::after { content: ''; position: absolute; right: 5px; top: 5px; width: 6px; height: 6px; border-radius: 99px; background: var(--color-ink); }
+.glyph-pick[aria-pressed="true"][data-modified]::after { background: var(--color-lime); }
+.edit-specimen { display: flex; min-width: 0; min-height: 0; background: var(--color-ground); padding: 24px; }
+.specimen { position: relative; min-width: 0; min-height: 0; flex: 1; overflow: hidden; border-radius: 6px; background: #fff; }
+.specimen-svg { position: absolute; inset: 0; touch-action: none; user-select: none; }
+.specimen-count { display: grid; place-items: center; font-size: 44px; font-weight: 800; letter-spacing: -.03em; }
+.specimen-baseline { stroke: var(--color-rule); stroke-width: 1; stroke-dasharray: 3 4; }
+.specimen-ghost { fill: var(--color-rule); }
+.specimen-ink { fill: var(--color-ink); }
+.specimen-grip-hit { stroke: transparent; stroke-width: 24; pointer-events: stroke; }
+.specimen-grip-line { stroke: var(--color-ink-3); stroke-width: 1; stroke-dasharray: 4 3; pointer-events: none; }
+.specimen-grip:hover .specimen-grip-line, .specimen-grip[data-active] .specimen-grip-line { stroke: var(--color-ink); stroke-width: 2; stroke-dasharray: none; }
+.specimen-label { fill: var(--color-ink-2); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; pointer-events: none; }
+.specimen-legend text { fill: var(--color-ink-2); font-size: 12px; font-weight: 600; }
+.edit-inspector { min-height: 0; overflow-y: auto; border-left: 1px solid var(--color-rule); background: #fff; padding: 24px 20px; scrollbar-width: thin; scrollbar-color: var(--color-ink-3) transparent; }
+.edit-group { margin-top: 20px; border-top: 1px solid var(--color-rule); padding-top: 20px; }
 .source-link { display: flex; width: 100%; align-items: center; justify-content: space-between; border: 1px solid var(--color-rule); border-radius: 6px; background: #fff; padding: 9px 12px; color: var(--color-ink); font-size: 14px; font-weight: 600; text-align: left; }
 .source-link:hover { border-color: var(--color-ink); background: var(--color-lime); }
+.composition-workspace { display: grid; height: 100%; min-height: 0; grid-template-columns: minmax(0, 1fr) 320px; background: #fff; }
+.composition-preview-area { min-width: 0; overflow-y: auto; padding: 24px; scrollbar-width: thin; scrollbar-color: var(--color-ink-3) transparent; }
+.composition-example-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 12px; }
+.composition-example-card { overflow: hidden; margin: 0; border: 1px solid var(--color-rule); border-radius: 6px; background: #fff; }
+.composition-control-panel { min-height: 0; overflow-y: auto; border-left: 1px solid var(--color-rule); background: #fff; padding: 24px; scrollbar-width: thin; scrollbar-color: var(--color-ink-3) transparent; }
+.control-group + .control-group { margin-top: 24px; border-top: 1px solid var(--color-rule); padding-top: 20px; }
 
 /* Route changes keep the rail and the stage in place and cross-fade what is inside them. */
 /* The lime field holds while the rail changes what it says: the old contents leave before the new arrive. */
@@ -418,10 +442,10 @@ button.source-chip:hover small { color: var(--color-lime-ink); }
   .rail { padding-inline: 18px; }
   .sentence-prompt { padding-left: 20px; }
   .write-flow { --rail: 216px; }
-  .editor-body { grid-template-columns: minmax(400px, 1fr) 280px; }
-  .composition-workspace { grid-template-columns: minmax(0, 1fr) 300px; }
-  .composition-example-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .glyph-preview { display: none; }
+  .edit-stage { grid-template-columns: 300px minmax(0, 1fr); grid-template-rows: minmax(0, 5fr) minmax(0, 6fr); }
+  .edit-stage .glyph-browser { grid-row: 1 / 3; }
+  .edit-inspector { border-top: 1px solid var(--color-rule); }
+  .composition-workspace { grid-template-columns: minmax(0, 1fr) 288px; }
 }
 
 /*
@@ -481,15 +505,13 @@ button.source-chip:hover small { color: var(--color-lime-ink); }
   .preview-flow .preview-stage { height: auto; overflow: visible; }
   .preview-size { width: 100%; }
   .dial-details { column-gap: 20px; }
-  /* Editor: topbar wraps, the three panes stack, the page scrolls. */
-  .editor-layout { height: auto; min-height: calc(100svh - var(--header)); grid-template-rows: auto auto; overflow: visible; }
-  .editor-topbar { flex-wrap: wrap; justify-content: space-between; gap: 6px 8px; padding: 8px 12px; }
-  .segmented { position: static; order: 3; translate: none; width: 100%; }
-  .segmented button { padding-inline: 8px; }
-  .editor-body { display: flex; flex-direction: column; }
-  .glyph-browser { height: min(440px, 62svh); border-right: 0; border-bottom: 1px solid var(--color-rule); }
-  .editor-settings { overflow: visible; border-left: 0; padding: 20px 16px 32px; }
-  .composition-workspace { grid-template-columns: minmax(0, 1fr); }
+  /* Editor: the stage scrolls as one column and its panes stack. */
+  .edit-flow .stage { overflow-y: auto; }
+  .edit-stage { display: flex; height: auto; flex-direction: column; }
+  .edit-stage .glyph-browser { height: min(440px, 62svh); flex: none; border-right: 0; border-bottom: 1px solid var(--color-rule); }
+  .edit-specimen { height: 320px; flex: none; }
+  .edit-inspector { overflow: visible; border-left: 0; padding: 20px 16px 32px; }
+  .composition-workspace { height: auto; grid-template-columns: minmax(0, 1fr); }
   .composition-preview-area { overflow: visible; padding: 20px 16px; }
   .composition-control-panel { overflow: visible; border-top: 1px solid var(--color-rule); border-left: 0; padding: 20px 16px 32px; }
 

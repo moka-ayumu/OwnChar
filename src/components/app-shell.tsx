@@ -7,7 +7,7 @@ import { AppNav } from './app-nav'
 import { SaveFailedNotice } from './save-failed-notice'
 
 /** Pages whose rail carries the logo, so they run without the header. */
-const FLOW_PATHS = ['/write', '/generate', '/preview']
+const FLOW_PATHS = ['/write', '/generate', '/preview', '/edit']
 
 export function AppShell() {
   const hydrated = useProject((state) => state.hydrated)
