@@ -1,4 +1,5 @@
 import { Store } from '@tanstack/react-store'
+import { reportError } from '@/lib/telemetry'
 import { joinProject, splitProject, type SavedMeta, type SavedProject } from './saved-format'
 import { projectActions, projectStore } from './store'
 import type { ProjectState } from './types'
@@ -136,7 +137,8 @@ export async function initializePersistence() {
       try {
         await writeProject(projectStore.state)
         saveStatusStore.setState(() => 'saved')
-      } catch {
+      } catch (error) {
+        reportError('PROJECT_SAVE_FAILED', error)
         // The app remains usable in-memory when private browsing blocks IndexedDB.
         saveStatusStore.setState(() => 'failed')
       }
@@ -144,7 +146,8 @@ export async function initializePersistence() {
   })
   try {
     projectActions.restoreProject(await readProject())
-  } catch {
+  } catch (error) {
+    reportError('PROJECT_LOAD_FAILED', error)
     projectActions.restoreProject(null)
   }
 }

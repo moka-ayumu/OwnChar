@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Hint } from '@/components/hint'
 import { Progress } from '@/components/ui/progress'
 import { BIND_LENGTH, BIND_STEP, buildFilm, DONE_STEP, drawFilm, filmLength, filmStep, FILM_NOTES, FILM_STEPS, lanesCue, LANES_STEP, liftLength, type FilmData, type LineTarget } from '@/features/generating/film'
+import { reportError, trackEvent } from '@/lib/telemetry'
 import { flow, LEAD_SENTENCE, LEAD_SIZE, prefersReducedMotion } from '@/lib/flow'
 import { useFontFace } from '@/lib/use-font-face'
 import { useProject } from '@/project/use-project'
@@ -58,6 +59,7 @@ function GeneratePage() {
     const worker = new Worker(new URL('../generation/font.worker.ts', import.meta.url), { type: 'module' })
     workerRef.current = worker
     projectActions.startGeneration()
+    trackEvent('generation_started', { drawings: Object.keys(state.drawings).length, sessions: Object.keys(state.writingSessions).length })
     setComplete(false)
     live.current = { ...live.current, complete: false, lanes: undefined }
 
@@ -70,16 +72,26 @@ function GeneratePage() {
       if (message.type === 'complete') {
         projectActions.completeGeneration(message.buffer, { metadata: state.metadata, globalMetrics: state.globalMetrics, compositionSettings: state.compositionSettings, glyphOverrides: state.glyphOverrides, customGlyphs: customStamps(state.customGlyphs) })
         worker.terminate()
+        trackEvent('generation_completed')
         live.current.complete = true
         setComplete(true)
       }
-      if (message.type === 'error') projectActions.failGeneration(message.message)
+      if (message.type === 'error') {
+        reportError('FONT_BUILD_FAILED', new Error(message.message), { drawings: Object.keys(state.drawings).length, sessions: Object.keys(state.writingSessions).length })
+        trackEvent('generation_failed')
+        projectActions.failGeneration(message.message)
+      }
       if (message.type === 'cancelled') {
+        trackEvent('generation_cancelled')
         projectActions.cancelGeneration()
         void navigate({ to: '/write', viewTransition: true })
       }
     }
-    worker.onerror = (event) => projectActions.failGeneration(event.message || '폰트 생성 worker를 실행하지 못했습니다.')
+    worker.onerror = (event) => {
+      reportError('FONT_WORKER_CRASHED', new Error(event.message))
+      trackEvent('generation_failed')
+      projectActions.failGeneration(event.message || '폰트 생성 worker를 실행하지 못했습니다.')
+    }
 
     const request: GenerationRequest = {
       type: 'compose-font',

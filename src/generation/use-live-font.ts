@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { isHangulSyllable } from '@/font/hangul'
+import { reportError } from '@/lib/telemetry'
 import type { CompositionSettings } from '@/font/settings'
 import type { LiveFontEvent, LiveFontRequest, LiveFontSource } from './live-font.worker'
 
@@ -29,7 +30,7 @@ export function useLiveFont(text: string, settings: CompositionSettings, { drawi
       state.next = undefined
     }
     instance.onmessage = ({ data }: MessageEvent<LiveFontEvent>) => {
-      if (data.type === 'error') { finish(); return }
+      if (data.type === 'error') { reportError('LIVE_FONT_FAILED', new Error(data.type)); finish(); return }
       const next = new FontFace(`OwnCharLive${data.id}`, data.buffer)
       void next.load().then(() => {
         if (disposed) return
@@ -40,7 +41,7 @@ export function useLiveFont(text: string, settings: CompositionSettings, { drawi
         if (faces.length > 2) document.fonts.delete(faces.shift()!)
       }).catch(() => undefined).finally(finish)
     }
-    instance.onerror = finish
+    instance.onerror = (event) => { reportError('LIVE_FONT_WORKER_CRASHED', new Error(event.message)); finish() }
     worker.current = instance
     return () => {
       disposed = true

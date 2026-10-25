@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
+import { trackEvent } from './telemetry'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -11,6 +12,7 @@ export function downloadArrayBuffer(buffer: ArrayBuffer, filename: string) {
   anchor.href = url
   anchor.download = filename
   anchor.click()
+  trackEvent('font_downloaded')
   window.setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
