@@ -42,7 +42,8 @@ export function initializeTelemetry() {
 		dataCollection: { userInfo: false },
 		ignoreErrors: ['ResizeObserver loop'],
 		beforeSend: (event) => (isTelemetryOptedOut() ? null : event),
-		beforeBreadcrumb: (breadcrumb) => (isTelemetryOptedOut() ? null : breadcrumb)
+		beforeBreadcrumb: (breadcrumb) => (isTelemetryOptedOut() ? null : breadcrumb),
+		beforeSendMetric: (metric) => (isTelemetryOptedOut() ? null : metric)
 	});
 }
 
@@ -57,6 +58,25 @@ export function setView(name: string) {
 /** A step of the visitor's way through the app, kept for the errors that follow. */
 export function trackEvent(name: string, attributes?: Record<string, string | number>) {
 	Sentry.addBreadcrumb({ category: 'app', message: name, data: attributes, level: 'info' });
+}
+
+const FIRST_GENERATION_KEY = 'ownchar:first-generation-sent';
+
+/** Whether this browser tab has already counted a first generation. */
+let firstGenerationCounted = false;
+
+/** Counts a finished font generation, and the first one of this tab's session apart. */
+export function recordGenerationCompleted() {
+	Sentry.metrics.count('font_generated', 1);
+	if (firstGenerationCounted) return;
+	firstGenerationCounted = true;
+	try {
+		if (window.sessionStorage.getItem(FIRST_GENERATION_KEY)) return;
+		window.sessionStorage.setItem(FIRST_GENERATION_KEY, '1');
+	} catch {
+		// Without storage the first generation is counted once per page load.
+	}
+	Sentry.metrics.count('font_first_generated', 1);
 }
 
 const reported = new Set<string>();

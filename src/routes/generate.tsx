@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Hint } from '@/components/hint';
 import { Progress } from '@/components/ui/progress';
 import { BIND_LENGTH, BIND_STEP, buildFilm, DONE_STEP, drawFilm, filmLength, filmStep, FILM_NOTES, FILM_STEPS, lanesCue, LANES_STEP, liftLength, type FilmData, type LineTarget } from '@/features/generating/film';
-import { reportError, trackEvent } from '@/lib/telemetry';
+import { recordGenerationCompleted, reportError, trackEvent } from '@/lib/telemetry';
 import { flow, LEAD_SENTENCE, LEAD_SIZE, prefersReducedMotion } from '@/lib/flow';
 import { useFontFace } from '@/lib/use-font-face';
 import { useProject } from '@/project/use-project';
@@ -79,6 +79,7 @@ function GeneratePage() {
 				});
 				worker.terminate();
 				trackEvent('generation_completed');
+				recordGenerationCompleted();
 				live.current.complete = true;
 				setComplete(true);
 			}
