@@ -1,6 +1,6 @@
 import { useRef, type ReactNode } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
-import { ChevronDown, CircleHelp, FolderOpen, Menu, Save, Trash2 } from 'lucide-react'
+import { ChevronDown, CircleHelp, ExternalLink, FolderOpen, Menu, Save, ShieldCheck, Trash2 } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { ARCHIVE_EXTENSION, downloadProjectArchive, loadProjectArchive } from '@/project/archive'
 import { deletePersistedProject, type SaveStatus } from '@/project/persistence'
@@ -121,10 +121,14 @@ export function AppNav({ showLinks = true, compactItems, variant = 'save' }: {
       </DropdownMenu>
       {file.fileInput}
       {showLinks && (
-        <>
-          <Link to="/license" aria-label="도움말"><CircleHelp className="size-4" /><span className="nav-label">도움말</span></Link>
-          <a href="https://github.com/moka-ayumu/OwnChar" target="_blank" rel="noreferrer">GitHub</a>
-        </>
+        <DropdownMenu>
+          <DropdownMenuTrigger aria-label="더보기"><CircleHelp className="size-4" /><span className="nav-label">더보기</span></DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem asChild><Link to="/license"><CircleHelp className="size-4" /> 도움말</Link></DropdownMenuItem>
+            <DropdownMenuItem asChild><Link to="/privacy"><ShieldCheck className="size-4" /> 개인정보처리방침</Link></DropdownMenuItem>
+            <DropdownMenuItem asChild><a href="https://github.com/moka-ayumu/OwnChar" target="_blank" rel="noreferrer"><ExternalLink className="size-4" /> GitHub</a></DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       )}
     </nav>
   )

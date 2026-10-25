@@ -14,6 +14,7 @@ import { Route as EditRouteImport } from './routes/edit'
 import { Route as GenerateRouteImport } from './routes/generate'
 import { Route as LicenseRouteImport } from './routes/license'
 import { Route as PreviewRouteImport } from './routes/preview'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as WriteRouteImport } from './routes/write'
 
 const IndexRoute = IndexRouteImport.update({
@@ -41,6 +42,11 @@ const PreviewRoute = PreviewRouteImport.update({
   path: '/preview',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const WriteRoute = WriteRouteImport.update({
   id: '/write',
   path: '/write',
@@ -53,6 +59,7 @@ export interface FileRoutesByFullPath {
   '/generate': typeof GenerateRoute
   '/license': typeof LicenseRoute
   '/preview': typeof PreviewRoute
+  '/privacy': typeof PrivacyRoute
   '/write': typeof WriteRoute
 }
 export interface FileRoutesByTo {
@@ -61,6 +68,7 @@ export interface FileRoutesByTo {
   '/generate': typeof GenerateRoute
   '/license': typeof LicenseRoute
   '/preview': typeof PreviewRoute
+  '/privacy': typeof PrivacyRoute
   '/write': typeof WriteRoute
 }
 export interface FileRoutesById {
@@ -70,13 +78,28 @@ export interface FileRoutesById {
   '/generate': typeof GenerateRoute
   '/license': typeof LicenseRoute
   '/preview': typeof PreviewRoute
+  '/privacy': typeof PrivacyRoute
   '/write': typeof WriteRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/edit' | '/generate' | '/license' | '/preview' | '/write'
+  fullPaths:
+    | '/'
+    | '/edit'
+    | '/generate'
+    | '/license'
+    | '/preview'
+    | '/privacy'
+    | '/write'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/edit' | '/generate' | '/license' | '/preview' | '/write'
+  to:
+    | '/'
+    | '/edit'
+    | '/generate'
+    | '/license'
+    | '/preview'
+    | '/privacy'
+    | '/write'
   id:
     | '__root__'
     | '/'
@@ -84,6 +107,7 @@ export interface FileRouteTypes {
     | '/generate'
     | '/license'
     | '/preview'
+    | '/privacy'
     | '/write'
   fileRoutesById: FileRoutesById
 }
@@ -93,6 +117,7 @@ export interface RootRouteChildren {
   GenerateRoute: typeof GenerateRoute
   LicenseRoute: typeof LicenseRoute
   PreviewRoute: typeof PreviewRoute
+  PrivacyRoute: typeof PrivacyRoute
   WriteRoute: typeof WriteRoute
 }
 
@@ -133,6 +158,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PreviewRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/write': {
       id: '/write'
       path: '/write'
@@ -149,6 +181,7 @@ const rootRouteChildren: RootRouteChildren = {
   GenerateRoute: GenerateRoute,
   LicenseRoute: LicenseRoute,
   PreviewRoute: PreviewRoute,
+  PrivacyRoute: PrivacyRoute,
   WriteRoute: WriteRoute,
 }
 export const routeTree = rootRouteImport

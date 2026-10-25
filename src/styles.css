@@ -59,6 +59,7 @@ button, a { touch-action: manipulation; }
 .app-nav a, .app-nav button { display: inline-flex; align-items: center; gap: 6px; border-radius: 6px; padding: 7px 10px; }
 .app-nav a:hover, .app-nav button:hover { background: rgb(16 17 20 / 8%); }
 .app-nav button:disabled { opacity: .4; pointer-events: none; }
+.app-nav button[data-state="open"] { background: rgb(16 17 20 / 8%); }
 .save-indicator { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; padding-inline: 8px; font-size: 13px; font-weight: 600; color: var(--color-ink-2); }
 .save-indicator i { width: 7px; height: 7px; flex: none; border-radius: 99px; background: var(--color-ink); transition: background-color 200ms; }
 .save-indicator[data-status="saving"] i { background: var(--color-ink-3); animation: save-pulse 900ms ease-in-out infinite alternate; }
@@ -100,7 +101,6 @@ button, a { touch-action: manipulation; }
 .rail-brand .app-nav .nav-label { display: none; }
 .rail-brand .app-logo { flex: none; white-space: nowrap; }
 .rail-brand .save-indicator { padding-inline: 4px 0; }
-.rail-brand .app-nav a[target] { display: none; }
 .rail-brand .hint-anchor { display: flex; }
 .write-rail .rail-brand { justify-content: flex-start; margin: 0 0 21px -1.5px; min-height: 26px; }
 button.app-logo-mark { flex: none; border: 0; padding: 0; transition: background-color 150ms, transform 150ms; }
@@ -573,7 +573,7 @@ button.source-chip:hover small { color: var(--color-lime-ink); }
 }
 
 @media (max-width: 479px) {
-  .app-nav a[target], .app-nav .nav-label { display: none; }
+  .app-nav .nav-label { display: none; }
   .dial-details { grid-template-columns: minmax(0, 1fr); }
 }
 
