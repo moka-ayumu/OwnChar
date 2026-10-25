@@ -2,168 +2,168 @@
 name: OwnChar
 description: 손글씨가 폰트가 되는 과정을 한 번도 끊지 않고 보여주는, 잉크·흰색·라임 한 면의 연속 동작 시스템
 colors:
-  ink: "#101114"
-  ink-hover: "#2c2e34"
-  ink-2: "#4a4c52"
-  ink-3: "#666970"
-  rule: "#d9dad5"
-  ground: "#ecede8"
-  white: "#ffffff"
-  lime: "#c6f432"
-  lime-deep: "#b2e016"
-  lime-ink: "#3c4a0a"
-  danger: "#c2261a"
+  ink: '#101114'
+  ink-hover: '#2c2e34'
+  ink-2: '#4a4c52'
+  ink-3: '#666970'
+  rule: '#d9dad5'
+  ground: '#ecede8'
+  white: '#ffffff'
+  lime: '#c6f432'
+  lime-deep: '#b2e016'
+  lime-ink: '#3c4a0a'
+  danger: '#c2261a'
 typography:
   display:
-    fontFamily: "Wanted Sans Variable, Wanted Sans, -apple-system, BlinkMacSystemFont, Apple SD Gothic Neo, Malgun Gothic, Segoe UI, sans-serif"
-    fontSize: "clamp(34px, 4vw, 52px)"
+    fontFamily: 'Wanted Sans Variable, Wanted Sans, -apple-system, BlinkMacSystemFont, Apple SD Gothic Neo, Malgun Gothic, Segoe UI, sans-serif'
+    fontSize: 'clamp(34px, 4vw, 52px)'
     fontWeight: 800
     lineHeight: 1.16
-    letterSpacing: "-0.035em"
+    letterSpacing: '-0.035em'
   headline:
-    fontFamily: "Wanted Sans Variable, Wanted Sans, -apple-system, BlinkMacSystemFont, Apple SD Gothic Neo, Malgun Gothic, Segoe UI, sans-serif"
-    fontSize: "26px"
+    fontFamily: 'Wanted Sans Variable, Wanted Sans, -apple-system, BlinkMacSystemFont, Apple SD Gothic Neo, Malgun Gothic, Segoe UI, sans-serif'
+    fontSize: '26px'
     fontWeight: 800
     lineHeight: 1.25
-    letterSpacing: "-0.03em"
+    letterSpacing: '-0.03em'
   figure:
-    fontFamily: "Wanted Sans Variable, Wanted Sans, -apple-system, BlinkMacSystemFont, Apple SD Gothic Neo, Malgun Gothic, Segoe UI, sans-serif"
-    fontSize: "44px"
+    fontFamily: 'Wanted Sans Variable, Wanted Sans, -apple-system, BlinkMacSystemFont, Apple SD Gothic Neo, Malgun Gothic, Segoe UI, sans-serif'
+    fontSize: '44px'
     fontWeight: 800
     lineHeight: 1
-    letterSpacing: "-0.03em"
-    fontFeature: "tnum"
+    letterSpacing: '-0.03em'
+    fontFeature: 'tnum'
   title:
-    fontFamily: "Wanted Sans Variable, Wanted Sans, -apple-system, BlinkMacSystemFont, Apple SD Gothic Neo, Malgun Gothic, Segoe UI, sans-serif"
-    fontSize: "18px"
+    fontFamily: 'Wanted Sans Variable, Wanted Sans, -apple-system, BlinkMacSystemFont, Apple SD Gothic Neo, Malgun Gothic, Segoe UI, sans-serif'
+    fontSize: '18px'
     fontWeight: 700
     lineHeight: 1.55
-    letterSpacing: "-0.02em"
+    letterSpacing: '-0.02em'
   body:
-    fontFamily: "Wanted Sans Variable, Wanted Sans, -apple-system, BlinkMacSystemFont, Apple SD Gothic Neo, Malgun Gothic, Segoe UI, sans-serif"
-    fontSize: "16px"
+    fontFamily: 'Wanted Sans Variable, Wanted Sans, -apple-system, BlinkMacSystemFont, Apple SD Gothic Neo, Malgun Gothic, Segoe UI, sans-serif'
+    fontSize: '16px'
     fontWeight: 400
     lineHeight: 1.75
-    letterSpacing: "normal"
+    letterSpacing: 'normal'
   ui:
-    fontFamily: "Wanted Sans Variable, Wanted Sans, -apple-system, BlinkMacSystemFont, Apple SD Gothic Neo, Malgun Gothic, Segoe UI, sans-serif"
-    fontSize: "14px"
+    fontFamily: 'Wanted Sans Variable, Wanted Sans, -apple-system, BlinkMacSystemFont, Apple SD Gothic Neo, Malgun Gothic, Segoe UI, sans-serif'
+    fontSize: '14px'
     fontWeight: 600
     lineHeight: 1.43
-    letterSpacing: "normal"
+    letterSpacing: 'normal'
   label:
-    fontFamily: "Wanted Sans Variable, Wanted Sans, -apple-system, BlinkMacSystemFont, Apple SD Gothic Neo, Malgun Gothic, Segoe UI, sans-serif"
-    fontSize: "12px"
+    fontFamily: 'Wanted Sans Variable, Wanted Sans, -apple-system, BlinkMacSystemFont, Apple SD Gothic Neo, Malgun Gothic, Segoe UI, sans-serif'
+    fontSize: '12px'
     fontWeight: 600
     lineHeight: 1.6
-    letterSpacing: "normal"
+    letterSpacing: 'normal'
 rounded:
-  sm: "4px"
-  md: "6px"
-  full: "9999px"
+  sm: '4px'
+  md: '6px'
+  full: '9999px'
 spacing:
-  xs: "8px"
-  sm: "12px"
-  md: "16px"
-  lg: "24px"
-  xl: "32px"
-  header: "56px"
-  rail: "280px"
-  rail-compact: "244px"
+  xs: '8px'
+  sm: '12px'
+  md: '16px'
+  lg: '24px'
+  xl: '32px'
+  header: '56px'
+  rail: '280px'
+  rail-compact: '244px'
 components:
   button-primary:
-    backgroundColor: "{colors.ink}"
-    textColor: "{colors.white}"
-    typography: "{typography.ui}"
-    rounded: "{rounded.md}"
-    padding: "0 16px"
-    height: "40px"
+    backgroundColor: '{colors.ink}'
+    textColor: '{colors.white}'
+    typography: '{typography.ui}'
+    rounded: '{rounded.md}'
+    padding: '0 16px'
+    height: '40px'
   button-primary-hover:
-    backgroundColor: "{colors.ink-hover}"
-    textColor: "{colors.white}"
+    backgroundColor: '{colors.ink-hover}'
+    textColor: '{colors.white}'
   button-secondary:
-    backgroundColor: "transparent"
-    textColor: "{colors.ink}"
-    typography: "{typography.ui}"
-    rounded: "{rounded.md}"
-    padding: "0 16px"
-    height: "40px"
+    backgroundColor: 'transparent'
+    textColor: '{colors.ink}'
+    typography: '{typography.ui}'
+    rounded: '{rounded.md}'
+    padding: '0 16px'
+    height: '40px'
   button-ghost:
-    backgroundColor: "transparent"
-    textColor: "{colors.ink}"
-    typography: "{typography.ui}"
-    rounded: "{rounded.md}"
-    padding: "0 16px"
-    height: "40px"
+    backgroundColor: 'transparent'
+    textColor: '{colors.ink}'
+    typography: '{typography.ui}'
+    rounded: '{rounded.md}'
+    padding: '0 16px'
+    height: '40px'
   button-lime:
-    backgroundColor: "{colors.lime}"
-    textColor: "{colors.ink}"
-    typography: "{typography.ui}"
-    rounded: "{rounded.md}"
-    padding: "0 16px"
-    height: "40px"
+    backgroundColor: '{colors.lime}'
+    textColor: '{colors.ink}'
+    typography: '{typography.ui}'
+    rounded: '{rounded.md}'
+    padding: '0 16px'
+    height: '40px'
   button-lime-hover:
-    backgroundColor: "{colors.lime-deep}"
-    textColor: "{colors.ink}"
+    backgroundColor: '{colors.lime-deep}'
+    textColor: '{colors.ink}'
   button-inverse:
-    backgroundColor: "transparent"
-    textColor: "{colors.white}"
-    typography: "{typography.ui}"
-    rounded: "{rounded.md}"
-    padding: "0 16px"
-    height: "40px"
+    backgroundColor: 'transparent'
+    textColor: '{colors.white}'
+    typography: '{typography.ui}'
+    rounded: '{rounded.md}'
+    padding: '0 16px'
+    height: '40px'
   button-destructive:
-    backgroundColor: "transparent"
-    textColor: "{colors.danger}"
-    typography: "{typography.ui}"
-    rounded: "{rounded.md}"
-    padding: "0 16px"
-    height: "40px"
+    backgroundColor: 'transparent'
+    textColor: '{colors.danger}'
+    typography: '{typography.ui}'
+    rounded: '{rounded.md}'
+    padding: '0 16px'
+    height: '40px'
   button-destructive-hover:
-    backgroundColor: "{colors.danger}"
-    textColor: "{colors.white}"
+    backgroundColor: '{colors.danger}'
+    textColor: '{colors.white}'
   text-input:
-    backgroundColor: "{colors.white}"
-    textColor: "{colors.ink}"
-    rounded: "{rounded.md}"
-    padding: "0 11px"
-    height: "38px"
+    backgroundColor: '{colors.white}'
+    textColor: '{colors.ink}'
+    rounded: '{rounded.md}'
+    padding: '0 11px'
+    height: '38px'
   rail:
-    backgroundColor: "{colors.lime}"
-    textColor: "{colors.ink}"
-    padding: "24px 22px 20px"
-    width: "{spacing.rail}"
+    backgroundColor: '{colors.lime}'
+    textColor: '{colors.ink}'
+    padding: '24px 22px 20px'
+    width: '{spacing.rail}'
   stage:
-    backgroundColor: "{colors.white}"
-    textColor: "{colors.ink}"
+    backgroundColor: '{colors.white}'
+    textColor: '{colors.ink}'
   rail-row:
-    backgroundColor: "transparent"
-    textColor: "{colors.ink}"
-    typography: "{typography.ui}"
-    rounded: "{rounded.md}"
-    padding: "8px"
+    backgroundColor: 'transparent'
+    textColor: '{colors.ink}'
+    typography: '{typography.ui}'
+    rounded: '{rounded.md}'
+    padding: '8px'
   rail-row-current:
-    backgroundColor: "{colors.ink}"
-    textColor: "{colors.white}"
-    rounded: "{rounded.md}"
-    padding: "8px"
+    backgroundColor: '{colors.ink}'
+    textColor: '{colors.white}'
+    rounded: '{rounded.md}'
+    padding: '8px'
   segmented-option-pressed:
-    backgroundColor: "{colors.ink}"
-    textColor: "{colors.white}"
-    typography: "{typography.ui}"
-    rounded: "{rounded.sm}"
-    padding: "7px 16px"
+    backgroundColor: '{colors.ink}'
+    textColor: '{colors.white}'
+    typography: '{typography.ui}'
+    rounded: '{rounded.sm}'
+    padding: '7px 16px'
   dialog:
-    backgroundColor: "{colors.white}"
-    textColor: "{colors.ink}"
-    rounded: "{rounded.md}"
-    padding: "24px"
-    width: "448px"
+    backgroundColor: '{colors.white}'
+    textColor: '{colors.ink}'
+    rounded: '{rounded.md}'
+    padding: '24px'
+    width: '448px'
   ink-bar:
-    backgroundColor: "{colors.ink}"
-    textColor: "{colors.white}"
-    rounded: "{rounded.md}"
-    padding: "11px 12px 11px 14px"
+    backgroundColor: '{colors.ink}'
+    textColor: '{colors.white}'
+    rounded: '{rounded.md}'
+    padding: '11px 12px 11px 14px'
 ---
 
 # Design System: OwnChar
@@ -179,6 +179,7 @@ The palette is three values on a quiet ground: ink, white, and one lime field. E
 The system is dense and tool-like in the stage and calm in the rail. It avoids paper or stationery imitation, the white-and-blue SaaS tool shell, and a dark technical look; those were ruled out by the user when this world was chosen.
 
 **Key Characteristics:**
+
 - Ink, white, one lime field, on a warm-neutral ground; one red for destruction and errors only.
 - A fixed frame for the main flow: lime rail at the left, white stage for the rest, primary action at the rail's bottom.
 - Solid ink is the single mark of "selected / current / primary".
@@ -191,17 +192,21 @@ The system is dense and tool-like in the stage and calm in the rail. It avoids p
 Three working values (ink, white, lime) on a neutral ground, with greys only for secondary text and hairlines, and a single functional red.
 
 ### Primary
+
 - **Ink** (`ink`, #101114): text, 1px structural lines, and every solid mark of state: primary buttons, the current row in a rail list, the pressed segment, the selected glyph cell, progress and slider fill, the focus outline, the user's strokes. On hover a solid ink button lifts to **Ink Hover** (`ink-hover`, #2c2e34).
 
 ### Secondary
+
 - **Lime Field** (`lime`, #c6f432): the colour of the surface that frames the work. Full-bleed on the flow rail and the phone-size notice. Smaller uses are all "this is live": text selection, the characters picked in the preview text, the source-cell highlight on the writing grid (40% tint), the wash of a finished cell (24% tint) and a done jamo in the cell popover (40% tint), the dashed placeholder for a jamo not yet written (22% tint), a source link on hover, the film's live jamo zone, the medial tiles, finished cells, raw-trace and outline fill of the home film, raw-trace line, outline fill, worker fronts and finish box, and the action button on an ink bar.
 - **Lime Deep** (`lime-deep`, #b2e016): hover state of a lime button only.
 - **Lime Ink** (`lime-ink`, #3c4a0a): secondary text on lime (labels, notes, counts, steps not yet reached, the rail list's scrollbar). 7.5:1 on lime.
 
 ### Tertiary
+
 - **Functional Red** (`danger`, #c2261a): the destructive button, the error panel's border and heading, and the boundary warning. Nothing else.
 
 ### Neutral
+
 - **White** (`white`, #ffffff): the stage, the writing canvas, inputs, cards, dialogs, the specimen tile on lime. Text on solid ink.
 - **Ground** (`ground`, #ecede8): the page behind everything: header, the editor's glyph preview well, an inset list inside a dialog, glyph-cell hover.
 - **Rule** (`rule`, #d9dad5): quiet hairlines inside white: writing-grid cell lines, input and card borders at rest, the line over the size dials, toolbar dividers, the film's specimen boxes, trail tiles and unfilled lanes.
@@ -211,6 +216,7 @@ Three working values (ink, white, lime) on a neutral ground, with greys only for
 Translucent ink is used for three things only: hover wash on transparent controls (8%, 9% on rail rows), unfilled track (15% progress, 18% slider), and the dialog scrim (45%).
 
 ### Named Rules
+
 **The Solid Ink Rule.** Selection, the live step, progress, and the primary action are solid ink with white text. If two things on one surface are solid ink, one of them is wrong, unless one is a toggle that is on.
 
 **The Lime Is A Field Rule.** Lime is a surface or a tint, never a text colour on white or ground (1.3:1). Lime text exists only on solid ink: the number of the current step, the count in the current rail row, the dot in the logo mark.
@@ -226,6 +232,7 @@ Translucent ink is used for three things only: hover wash on transparent control
 **Character:** One heavy, tight Korean grotesque doing everything by weight. Headings are 800 and tightly tracked; the interface underneath is 14px at 600. The only expressive letterforms on screen are the writer's own.
 
 ### Hierarchy
+
 - **Display** (800, clamp(34px, 4vw, 52px), 1.16, -0.035em): the help page title, at this role's floor (34px, -0.03em).
 - **Headline** (800, 26px, 1.25, -0.03em): the one heading of a rail, a workspace, or the home panel. The sentence being written uses the same size at 700 / 1.3, because it is content to copy, not a title.
 - **Figure** (800, 44px, 1, -0.03em, tabular): the single big number in a rail (collected count, percent), with its unit at 14px / 600 in lime-ink.
@@ -235,6 +242,7 @@ Translucent ink is used for three things only: hover wash on transparent control
 - **Label** (600, 12px, 1.6 for notes): field labels, rail labels and notes, counts, captions. 12px is the floor.
 
 ### Named Rules
+
 **The Few Sizes Rule.** 12, 14, 16, 18, 26, 44 and the display clamp. A new level of hierarchy is a weight change or an ink/lime reversal before it is a new size.
 
 **The Tabular Rule.** Every number that changes (counts, percent, px values, slider readouts) is tabular and non-wrapping.
@@ -254,6 +262,7 @@ Translucent ink is used for three things only: hover wash on transparent control
 **Responsive.** At ≤1100px the rail narrows to 244px, toolbar dividers drop, and the editor keeps the specimen: the browser narrows to 300px and the specimen lies over the inspector. At ≤767px the app is replaced by a lime full-height notice ("더 넓은 화면이 필요해요"); writing needs a tablet or desktop. Minimum width is 320px.
 
 **Route motion.** Navigations inside the flow use view transitions with two named parts:
+
 - `rail`: the lime field holds still (the group is painted lime for 420ms); the old contents leave upward 8px over 150ms ease-in, then the new rise 10px into place over 320ms.
 - `stage`: the white field holds still for 420ms; its contents cross-fade.
 - The first sentence of the preview does not travel: generation ends with it standing exactly where the preview shows it, so the stage cross-fade leaves it still.
@@ -264,6 +273,7 @@ All of it eases with one curve, `cubic-bezier(.16, 1, .3, 1)`. Entrances are sho
 **Reduced motion.** With `prefers-reduced-motion`, all transitions and animations collapse to instant and view transitions are disabled. The generation film is not played: the stage shows only the worker lanes filling from real progress, with no skip control, no trail and no hand-over. The home film is not played: the stage shows one still of the last scene, and a scene row shows the still of its scene.
 
 ### Named Rules
+
 **The Same Place Rule.** A page in the write → generate → preview flow uses the rail-and-stage frame, puts its primary action at the rail's bottom, and names its rail `rail` and its stage `stage` so the frame holds across the navigation.
 
 **The Never Cut Rule.** Waiting is shown on the user's own strokes, driven by real progress. No spinner, no skeleton, no stand-in illustration.
@@ -275,6 +285,7 @@ Flat. There is no elevation: no drop shadows, no blur, no glass. The home panel 
 `box-shadow` appears only as a zero-blur line: the 2px ink ring on a focused text input, and a 1px inset outline on an empty tile. `linear-gradient` appears only to draw the half-pixel centre guides of a writing cell. Neither is ever used for tone or lift.
 
 ### Named Rules
+
 **The Flat Field Rule.** Depth is a change of field or a hairline. If a surface needs a shadow to read as separate, give it a border in ink or rule instead.
 
 ## Shapes
@@ -282,6 +293,7 @@ Flat. There is no elevation: no drop shadows, no blur, no glass. The home panel 
 One corner: 6px on every control and container (buttons, inputs, rows, cards, dialogs, the canvas frame, tiles). Nested controls step down to 4px (the options inside the segmented control). Full rounding is reserved for things that are tracks or points: progress and slider tracks, the slider thumb, the logo dot, the "modified" dot on a glyph cell. Inside the film, boxes are square-cornered and drawn on half-pixels: they are measurements, not controls.
 
 Lines carry meaning by weight and dash:
+
 - 1px ink: only the cell being written and its popover, and the hover edge of a link row. A field change (lime to white) needs no line.
 - 1px rule: every structural division (header, tool rail, sentence row, editor panes) and the edge of dialogs, menus and popovers, which also carry one soft lift.
 - 2px ink, 2px offset: keyboard focus, everywhere.
@@ -293,7 +305,9 @@ Icons are 1.5–2px line icons (Lucide) at 14–16px, always beside a text label
 ## Components
 
 ### Buttons
+
 Compact, square-shouldered, weight 600. Height 40px with 16px side padding (32px / 12px small, 48px / 20px / 16px text large, 36px square for icons); 8px between icon and label.
+
 - **Primary:** solid ink, white text; hover lifts to ink-hover. One per surface, at the rail's bottom in the flow.
 - **Secondary:** transparent with a 1px ink border; hover is an 8% ink wash. The alternative next to a primary.
 - **Ghost:** no border; same hover wash. Toolbar tools, cancel, back links. A tool that is on switches to the primary style (`aria-pressed`).
@@ -303,27 +317,34 @@ Compact, square-shouldered, weight 600. Height 40px with 16px side padding (32px
 - **States:** pressing scales to .97; disabled is 40% opacity with no pointer events; transitions are 150ms on colour, border and transform.
 
 ### Inputs / Fields
+
 - **Text input:** 38px high, white, 1px rule border, 6px corner, 14px text, 11px side padding. Hover darkens the border to ink-3; focus turns it ink with a 3px 14% ink halo. On lime it has no border at rest. The typed sentence on the preview is a canvas: its caret is the focus mark, with no ring.
 - **Label:** 12px / 600 above the field with 6px between, ink-2 on white and lime-ink on lime.
 - **Slider:** 4px track in 18% ink, ink range, 16px round ink thumb that grows to 1.1 on hover; disabled 40%. Always paired with a tabular readout.
 - **Progress:** 6px rounded track in 15% ink with a solid ink fill, 200ms.
 
 ### Rail rows (sentence list, step list)
+
 A row with a 23px leading column, then the name at 14px / 600. In the step list the column holds the number (12px / 700, tabular) or a 14px check when done. In the sentence list it holds a progress ring (18px, 3px stroke: a 20% track and an ink arc filling clockwise) that becomes a check when the sentence is fully collected; the count ("43 / 44 자모") shows as a hint on hover or focus. 6px corner, 8px padding, bleeding 8px past the rail's text edge so the current row's ink block aligns with the text. With the write rail closed only the ring column remains, in the same place.
+
 - **Rest:** ink text (steps not yet reached: lime-ink).
 - **Hover (when clickable):** 9% ink wash.
 - **Current:** solid ink, white text, the number, ring arc or check in lime; `aria-current="step"`.
 
 ### Segmented control
+
 Two or more options inside a 1px ink border with 2px padding and a 6px corner; each option is 14px / 600 with 6px / 12px padding and a 4px corner. The pressed option is solid ink with white text. Used for the kind of glyph in the browser and the glyph width mode.
 
 ### Dialogs
+
 White, 1px ink border, 6px corner, 24px padding, max 448px, centred on a 45% ink scrim; a ghost close button at top right. Title 18px / 700, description 14px with a 24px line in ink-2, an optional inset list on ground. Actions sit at the bottom right (secondary, then primary), or stacked full-width when there are three choices (primary, destructive, ghost cancel). A destructive choice is confirmed in one.
 
 ### Ink bar
+
 A solid ink strip with white text for a state that needs an answer now: the "변경됨" banner under the size dials of the preview stage, with a small lime "변경 적용" button.
 
 ### Writing canvas
+
 The hero surface, and everything to the right of the tool rail. Under the sentence row (the sentence alone at 26px / 700; at its right end a 22px progress ring for this sentence and the help and GitHub links; closed by a 1px ink line) the grid runs edge to edge: square cells (112–184px) divided by rule lines with faint centre guides (6% ink) and the target character at 12px in the cell's bottom-right corner. As many columns as fit; the grid is centred and only it scrolls. Strokes are solid ink; an unwritten jamo's slot is a dashed, lime-tinted box; the cursor is a crosshair.
 
 - **Finished cell:** a 24% lime wash, 240ms. A cell is finished when every jamo it collects is done; a cell that collects nothing (a space, a jamo fixed elsewhere) is finished once a later cell has a stroke. Cells still to write stay white.
@@ -331,47 +352,55 @@ The hero surface, and everything to the right of the tool rail. Under the senten
 - **Corner character:** in a written cell it is a 24px button (hover: solid ink) that opens that cell's popover again.
 
 ### Hint
+
 A note for something that does not need to be on screen all the time: a count behind a progress ring, the reason a control is disabled, the name of an icon-only control in the closed rail. Solid ink, white text at 12px / 600 (tabular), 4px corner, 5px / 8px padding, 8px from what it describes, to its right or below it; it fades in over 140ms on hover or focus, and a touch or pen press shows it for about two seconds. It never carries an action.
 
 ### Write rail
+
 232px (216px at ≤1100px), padding 15 / 16 / 16. Its top hangs on one leading column, 23px wide and centred 27.5px from the rail's left edge: the logo mark and each sentence's ring or check. From the top: the logo; the collected figure with its progress bar; the sentence list; then a 40px secondary icon button for the previous sentence beside the primary "다음 문장" (or "폰트 만들기" on the last sentence), with the ghost "지금 폰트 만들기" and the secondary existing-font button beneath. Pressing the logo mark closes the rail to 56px over 320ms: nothing in the leading column moves, sentence names are cut off by the rail's edge, text with no icon (the wordmark, the figure, the list's heading) fades out in 100ms, and the collected progress stands upright in the space the figure and the list heading leave (a 6px track from the top of that block down to 6px above the list, filling from the bottom). The two sentence buttons stack as icons and the two buttons beneath them are not shown. Closed, a hint names each row. The state is kept on the device.
 
 ### Tool rail
+
 A 56px white column at the stage's left with a 1px ink right edge. It does not scroll. Icon buttons only, 40px, 18px Lucide icons, each with an aria-label and title: pen, eraser, a rule divider, undo, redo, a divider, clear sentence; writing settings sits at the bottom. The tool in use is solid ink. Writing settings opens a 248px white panel with a 1px ink border to the right of its button (cell size, stroke width, hand-shake correction, the three-way choice of how collected jamo are shown; the cell size is disabled once strokes exist and says why in a hint); it closes on a press anywhere else or Escape.
 
 ### Cell popover
+
 A 148px white panel with a 1px ink border, attached to the right edge of the cell being written (to the left edge in the last column), its two inner corners square. From the top: the jamo the cell collects as a segmented control (the one being written solid ink, a done one on a 40% lime tint with a 10px check, one not yet reachable at 40%), the jamo's role and "남은 획 N" (the number at 18px / 800, tabular), then a small secondary button that ends the jamo early. Pressing another jamo moves collection to it. When the cell finishes the popover closes, so the next cell is free; reopened from the corner character it shows "수집 완료" and a close button.
 
 ### Cards and glyph cells
+
 - **Example card:** white, 1px rule border, 6px corner; a square canvas over a caption row separated by a rule line. No shadow, no hover lift.
 - **Glyph cell:** 52px high, 22px glyph in the user's font, no border; hover is ground, selected is solid ink with a white glyph, a modified glyph carries a 6px dot at top right (ink, or lime when selected).
 - **Source link:** a full-width row with a rule border and a chevron; on hover the border turns ink and the row fills lime.
 
 ### Filter chips (editor)
+
 In the glyph browser, under the segmented control, the Hangul syllables are narrowed by the jamo they hold. A row per part (초성, 중성, 받침) puts its label in a 30px column and its jamo as 24px-wide, 28px-high chips at 13px / 600 with a 4px corner; a chip that is on is solid ink. A row of the three vowel shapes sits above them, and the result count with a 모두 선택 button sits beside the 조합별 / 전체 보기 switch. The chips scroll inside their own region (at most 252px high), so the glyph list under them keeps its room.
 
 ### Glyph specimen (editor)
+
 One glyph drawn large on a white card over the ground well, at the scale of its font units. The glyph of the current font stands in rule grey; the glyph with the pending adjustments stands over it in ink. A dashed rule line marks the baseline and a legend at the top left names the two glyphs. Three dashed ink-3 lines run edge to edge of the card and are the handles: the left and right margin lines, each 55 units from the ink at a value of 0, and a top line 55 units above the ink (drag sideways: margins; drag up or down: height). There is no frame. A handle under the pointer, or being dragged, turns solid ink at 2px. The values of the three stand in 12px / 600 labels beside their lines. A drag changes a draft; one undoable step is written when the pointer lifts. With several glyphs selected the card shows only their count.
 
 ### The generation film (signature)
+
 One canvas filling the stage, redrawn every frame from a clock and from the worker's real progress. The rail carries the headline, one sentence explaining the live step, the twelve-step list (it scrolls inside the rail when the rail is short, keeping the live step in view), the percent figure with progress and the worker's message, then skip (secondary) and cancel (ghost).
 
 The specimens are up to three syllables the writer wrote whole, of different layouts (vowel beside, vowel below, with a final), from the sentence they just left. They stand in a row of equal square boxes (46% of stage height, max 340px, 32px apart) centred at 43% of the stage height, and go through every step together, each 5% behind the one before. Their strokes change pose in place:
 
-| # | Step | Starts at | What the strokes do |
-|---|------|-----------|---------------------|
-| 1 | 원본 필기 | 0s | The sentence sits exactly where it was on the writing page; the other cells fade and the specimens' cells travel into their boxes. |
-| 2 | 간격·비율 학습 | 1.4s | Ink fades to 35%. Dimension lines with end ticks grow on each specimen: the height of the syllable at its left, and the space between its jamo on a 7px lime band. Then two dotted lines (1 4) mark the height every syllable is brought to and the height dimension settles onto them. Each dimension carries its measure as a share of the cell (12px, 700). A caption gives the number of syllables measured. |
-| 3 | 손떨림 보정 | 3.1s | Ink fades to 10%; the sampled path shows as a thin ink line with dots, the raw path stays behind as a 5px lime trace while the line settles. A round glass at the box's top right (17% of the box, 1px ink ring) shows, four times larger, the place the correction moves the path most; a small ring marks that place on the specimen. |
-| 4 | 윤곽선 만들기 | 4.6s | The line swells to pen width, becomes a lime shape with a 2px ink contour, then fills ink. |
-| 5 | 자모 분리 | 5.3s | Each stroke first shows its place in the writing order in a 9px ink disc with a white number; then each jamo drifts apart into its own labelled 1px box: initial outlined, medial on a lime fill, final dashed. |
-| 6 | 크기 정규화 | 6.1s | The boxed jamo move into a row of equal tiles. |
-| 7 | 문맥형 선택 | 7.2s | Under each tile, one small square per context form of that jamo (8 for an initial, 2 for a medial, 1 for a final): ink for a form that was written, a dashed outline that fills lime for one borrowed from the nearest form. Beneath, "8벌 중 5벌 씀" in ink-2. A caption gives the share of all placements that use a written form. |
-| 8 | 문맥별 조합 | 8.7s | The jamo fly into the zones of a composed syllable, then the same jamo are shown in up to three sibling syllables, with a caption. |
-| 9 | 받침 가운데 맞춤 | 9.9s | Each box shows a syllable with the same upper jamo and a final placed by rule. A dimension line grows above it from the left of the upper pair to the right of the vowel's stem (to the right of the pair when there is no stem); a dot and a dotted line (1 4) mark the target, labelled 60% or 가운데. Under the final, a rule line shows its whole width, a 6px lime band the bulk of its ink and a 2px ink tick the middle of that band; the final then slides from where centring its box would put it to where centring its ink puts it. See `docs/decision/final-optical-centre`. |
-| 10 | 윤곽 병합 | 12.3s | The syllable as separate overlapping closed lines (lime, 2px ink contour) becomes one merged outline, then fills ink. |
-| 11 | 11,172자 조합 | 13.0s | The first specimen's box shrinks into a window at the top showing the syllable being composed, over a running count. Below it, one lane per worker (12px, 22px apart, labelled with its run of initials) fills in ink with a 6px lime front. |
-| 12 | OTF 묶기 | when done, no earlier than 13.7s | Over 0.6s the lanes slide into one strip in code order, 가 at its left and 힣 at its right. |
+| #   | Step             | Starts at                        | What the strokes do                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| --- | ---------------- | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | 원본 필기        | 0s                               | The sentence sits exactly where it was on the writing page; the other cells fade and the specimens' cells travel into their boxes.                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| 2   | 간격·비율 학습   | 1.4s                             | Ink fades to 35%. Dimension lines with end ticks grow on each specimen: the height of the syllable at its left, and the space between its jamo on a 7px lime band. Then two dotted lines (1 4) mark the height every syllable is brought to and the height dimension settles onto them. Each dimension carries its measure as a share of the cell (12px, 700). A caption gives the number of syllables measured.                                                                                                                                                                         |
+| 3   | 손떨림 보정      | 3.1s                             | Ink fades to 10%; the sampled path shows as a thin ink line with dots, the raw path stays behind as a 5px lime trace while the line settles. A round glass at the box's top right (17% of the box, 1px ink ring) shows, four times larger, the place the correction moves the path most; a small ring marks that place on the specimen.                                                                                                                                                                                                                                                  |
+| 4   | 윤곽선 만들기    | 4.6s                             | The line swells to pen width, becomes a lime shape with a 2px ink contour, then fills ink.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| 5   | 자모 분리        | 5.3s                             | Each stroke first shows its place in the writing order in a 9px ink disc with a white number; then each jamo drifts apart into its own labelled 1px box: initial outlined, medial on a lime fill, final dashed.                                                                                                                                                                                                                                                                                                                                                                          |
+| 6   | 크기 정규화      | 6.1s                             | The boxed jamo move into a row of equal tiles.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| 7   | 문맥형 선택      | 7.2s                             | Under each tile, one small square per context form of that jamo (8 for an initial, 2 for a medial, 1 for a final): ink for a form that was written, a dashed outline that fills lime for one borrowed from the nearest form. Beneath, "8벌 중 5벌 씀" in ink-2. A caption gives the share of all placements that use a written form.                                                                                                                                                                                                                                                     |
+| 8   | 문맥별 조합      | 8.7s                             | The jamo fly into the zones of a composed syllable, then the same jamo are shown in up to three sibling syllables, with a caption.                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| 9   | 받침 가운데 맞춤 | 9.9s                             | Each box shows a syllable with the same upper jamo and a final placed by rule. A dimension line grows above it from the left of the upper pair to the right of the vowel's stem (to the right of the pair when there is no stem); a dot and a dotted line (1 4) mark the target, labelled 60% or 가운데. Under the final, a rule line shows its whole width, a 6px lime band the bulk of its ink and a 2px ink tick the middle of that band; the final then slides from where centring its box would put it to where centring its ink puts it. See `docs/decision/final-optical-centre`. |
+| 10  | 윤곽 병합        | 12.3s                            | The syllable as separate overlapping closed lines (lime, 2px ink contour) becomes one merged outline, then fills ink.                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| 11  | 11,172자 조합    | 13.0s                            | The first specimen's box shrinks into a window at the top showing the syllable being composed, over a running count. Below it, one lane per worker (12px, 22px apart, labelled with its run of initials) fills in ink with a 6px lime front.                                                                                                                                                                                                                                                                                                                                             |
+| 12  | OTF 묶기         | when done, no earlier than 13.7s | Over 0.6s the lanes slide into one strip in code order, 가 at its left and 힣 at its right.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 
 - **Result trail:** a row of ten small tiles at the bottom of the stage, one per specimen step. Steps not reached are dashed rule outlines, the live one is a 1px ink outline. When a step ends its result leaves the first specimen's box and docks in its tile over 0.4s, so what is done stays on screen and the next step starts from it.
 - **Hand-over:** after the strip, each syllable of the preview's first sentence rises from its own place on the strip (25ms apart, 450ms each) and lands at the exact position and size the preview sets it at, while the window, the strip and the trail fade. The preview then opens with that sentence already standing there; only its controls arrive.
@@ -384,17 +413,18 @@ The specimens are up to three syllables the writer wrote whole, of different lay
 - **Failure:** a white panel with a 1px red border replaces the centre of the stage, with a red heading, the message, and a primary retry.
 
 ### The home film
+
 One canvas that fills the home stage, redrawn every frame from a clock. Its strokes come from `src/features/samples/home-film.json`, which `tools/sample/home-film.mjs` makes from the example handwriting with the app's own composer. The film keeps above the foot row.
 
-| # | Scene | Starts at | What the strokes do |
-|---|-------|-----------|---------------------|
-| 1 | 문장 쓰기 | 0s | A row of writing cells holds the start of the first sentence. The pen writes each stroke in order at one speed. Between two strokes the pen leaves a thin line that fades in 0.5s. The cell in work has a 1px ink outline, and a finished cell gets the 24% lime wash. |
-| 2 | 간격 학습 | 5.4s | The row rises and its ink fades to 35%. Three written syllables of different layouts go to three large white boxes under the row: a thin line leaves each cell, and the syllable is written again in its box. In the boxes, in this order: a thin box is drawn around each jamo, a lime block fills the space between the boxes, and a dimension line with end ticks grows at the left of the syllable. Under each box stand "간격" and "높이" with their values as a share of the cell (12px, 700). The same lime blocks and dimension lines then show on every syllable of the row. Last, two dotted lines (1 4) run along the row and through the boxes at the top and bottom most syllables share. |
-| 3 | 획 다듬기 | 10.4s | In the same three boxes the ink fades to 8%. The points of the pen run along the raw path, which stays as a lime trace. The points settle onto the corrected path. The path swells to the width of the pen as a lime shape with an ink contour. Ink then fills the shape the way the pen went. The ink of the row comes back, and the boxes fade. |
-| 4 | 자모 수집 | 15.4s | Each stroke shows its place in the writing order in an ink disc. The row rises, and one tile for each jamo stands under it: outlined for an initial, lime for a medial, dashed for a final. A thin line leaves each written jamo, goes to its tile, and the jamo is written again there. The written jamo fades to 20%. |
-| 5 | 문맥형 | 19.4s | Under each tile, one small square for each context form of the jamo (8 for an initial, 2 for a medial, 1 for a final): ink for a written form, a dashed outline that fills lime for a borrowed one. A key under the squares names the two. |
-| 6 | 글자 조합 | 22.8s | The row of cells fades and the tiles rise. Three white boxes show the zones of syllables that were not written. A thin line leaves the tile of each source jamo, and the jamo is written in its zone. The source tile has a 2px ink outline while its jamo is in work. At 4.3s the three boxes shrink into the first places of a field under a count, and the tiles stay. From then on lines leave the tiles without a stop: every 0.07s one more syllable is composed in the field the same way, several at a time. The places are taken in a scattered order, so the lines cross the field. When the places are full, a new syllable is composed over an earlier one, which fades to 12%. The count runs up to the number of syllables the written cells compose. A line under the count says "쓴 9글자의 자모로 만든 글자". |
-| 7 | 폰트 완성 | 30.4s | The background fades to white in 0.6s. The lines from the tiles and the syllables in the field go on for 1.3s while the count goes on to 11,172, its progress track fills, and the line under it changes to "문장 8개를 다 썼을 때". Then the tiles and the field fade, the first places first. A line goes from the count to the start of a sentence, and the sentence is typed one character at a time behind a caret. It holds about 2s, then fades in 0.4s. |
+| #   | Scene     | Starts at | What the strokes do                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| --- | --------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | 문장 쓰기 | 0s        | A row of writing cells holds the start of the first sentence. The pen writes each stroke in order at one speed. Between two strokes the pen leaves a thin line that fades in 0.5s. The cell in work has a 1px ink outline, and a finished cell gets the 24% lime wash.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| 2   | 간격 학습 | 5.4s      | The row rises and its ink fades to 35%. Three written syllables of different layouts go to three large white boxes under the row: a thin line leaves each cell, and the syllable is written again in its box. In the boxes, in this order: a thin box is drawn around each jamo, a lime block fills the space between the boxes, and a dimension line with end ticks grows at the left of the syllable. Under each box stand "간격" and "높이" with their values as a share of the cell (12px, 700). The same lime blocks and dimension lines then show on every syllable of the row. Last, two dotted lines (1 4) run along the row and through the boxes at the top and bottom most syllables share.                                                                                                                         |
+| 3   | 획 다듬기 | 10.4s     | In the same three boxes the ink fades to 8%. The points of the pen run along the raw path, which stays as a lime trace. The points settle onto the corrected path. The path swells to the width of the pen as a lime shape with an ink contour. Ink then fills the shape the way the pen went. The ink of the row comes back, and the boxes fade.                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| 4   | 자모 수집 | 15.4s     | Each stroke shows its place in the writing order in an ink disc. The row rises, and one tile for each jamo stands under it: outlined for an initial, lime for a medial, dashed for a final. A thin line leaves each written jamo, goes to its tile, and the jamo is written again there. The written jamo fades to 20%.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| 5   | 문맥형    | 19.4s     | Under each tile, one small square for each context form of the jamo (8 for an initial, 2 for a medial, 1 for a final): ink for a written form, a dashed outline that fills lime for a borrowed one. A key under the squares names the two.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| 6   | 글자 조합 | 22.8s     | The row of cells fades and the tiles rise. Three white boxes show the zones of syllables that were not written. A thin line leaves the tile of each source jamo, and the jamo is written in its zone. The source tile has a 2px ink outline while its jamo is in work. At 4.3s the three boxes shrink into the first places of a field under a count, and the tiles stay. From then on lines leave the tiles without a stop: every 0.07s one more syllable is composed in the field the same way, several at a time. The places are taken in a scattered order, so the lines cross the field. When the places are full, a new syllable is composed over an earlier one, which fades to 12%. The count runs up to the number of syllables the written cells compose. A line under the count says "쓴 9글자의 자모로 만든 글자". |
+| 7   | 폰트 완성 | 30.4s     | The background fades to white in 0.6s. The lines from the tiles and the syllables in the field go on for 1.3s while the count goes on to 11,172, its progress track fills, and the line under it changes to "문장 8개를 다 썼을 때". Then the tiles and the field fade, the first places first. A line goes from the count to the start of a sentence, and the sentence is typed one character at a time behind a caret. It holds about 2s, then fades in 0.4s.                                                                                                                                                                                                                                                                                                                                                                |
 
 - **Loop:** the film is 37s long and starts again. Each loop ends on the next of three closing sentences.
 - **Camera:** the film is seen through a camera. It comes closer only in scene 1, and only a little: at most 1.06x, with the whole row in view. It then goes back to 1x in one second and stays there. It is never quite still: a slow sway of a few pixels runs under every scene. With reduced motion the camera does not move.
@@ -406,9 +436,11 @@ One canvas that fills the home stage, redrawn every frame from a clock. Its stro
 - **Controls:** a scene row starts the film at that scene. The pause button stops the clock and keeps the frame.
 
 ### Arrival in the preview
+
 Arriving from generation, the first sentence is already in place: the film ends with its glyphs standing exactly where the text area shows them, so the stage cross-fade leaves them still. The rows of the dial panel settle in below (520ms each, 60ms apart). Arriving any other way, the page is simply there.
 
 ### Size dials (preview)
+
 Under the typed text, opened by a rule line, at most 760px wide. The first row is the one control that matters: the name "글자 고르게" at 14px / 600, then a slider between its two ends named in words ("쓴 그대로", "고르게", 12px / 600 in ink-2), then a tabular percent. The second row holds one line of explanation in ink-2 and two small ghost buttons: "세부 조정", whose chevron turns over when it is open, and "기본값으로", disabled while every dial is at its default. The sliders run from 0% to 200% and start at 100%. Open, a third row shows the four dials in four columns (two at ≤1100px), each a 12px label with its percent over a slider. Whether it is open is kept on the device.
 
 - **The text is the feedback.** Moving a dial composes the typed characters again with the new value and swaps the font under them; the text area keeps its caret, selection and line breaks. There is no chart and no before-and-after pair.
@@ -416,6 +448,7 @@ Under the typed text, opened by a rule line, at most 760px wide. The first row i
 - **Nothing above the dials moves.** The ink bar that asks for "변경 적용" appears under the panel, not over the text.
 
 ### Source popover (preview)
+
 Selecting characters in the typed text shows where their ink was written. The picked characters stand on a lime block; under the first line of the selection, 8px away, a white panel with a 1px ink border and a 6px corner (at most 540px wide, no shadow) lists up to four of them. Its heading line is "원본 필기" at 12px / 600 with the instruction after it in ink-3, and a 24px ghost close button. Each character is a row: the character at 34px in the user's font, then one chip for each jamo. A chip is a 38px square drawing of the cell the jamo was written in (the jamo in ink, the rest of that cell at 22%), the role and jamo at 12px / 600, and the sentence's name in ink-3, with a rule border; on hover the border turns ink and the chip fills lime, as a source link does. Pressing it opens that cell on the writing page. A jamo that was never written has a dashed, lime-tinted square and says so; it is not a button.
 
 On arrival the first two syllables are already picked, so the writer finds the popover without being told. They are marked by the lime block only: the text area is not focused, so a tablet does not open its keyboard. Escape, the close button, typing, or a click that selects nothing closes it.
@@ -423,6 +456,7 @@ On arrival the first two syllables are already picked, so the writer finds the p
 ## Do's and Don'ts
 
 ### Do:
+
 - **Do** build a flow page from the frame: lime rail (280px, 1px ink right edge), white stage, primary action in solid ink at the rail's bottom.
 - **Do** mark the selected, current or pressed thing with solid ink and white text, and use lime text only on that ink.
 - **Do** use lime-ink for secondary text on lime and ink-2 / ink-3 for secondary text on white and ground.
@@ -434,6 +468,7 @@ On arrival the first two syllables are already picked, so the writer finds the p
 - **Do** put a destructive choice in a dialog, in the destructive button style.
 
 ### Don't:
+
 - **Don't** add a colour. No blue, no second accent, no status greens or ambers; state is ink, lime, or red for failure.
 - **Don't** set lime text on white or ground, or use lime for a button outside a solid ink surface.
 - **Don't** use shadows for lift, blur, glass, or gradients for tone. `box-shadow` is a zero-blur line or nothing.

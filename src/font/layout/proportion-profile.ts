@@ -1,26 +1,26 @@
-import type { HangulRole, VowelKind } from '@/font/hangul'
+import type { HangulRole, VowelKind } from '@/font/hangul';
 
 /** Jamo sizes relative to the initial consonant of the same syllable. */
 export interface RoleRatios {
-  medial?: number
-  final?: number
-  sampleCount: number
+	medial?: number;
+	final?: number;
+	sampleCount: number;
 }
 
 export interface ProportionProfile {
-  contexts: Record<string, RoleRatios>
-  pairs: Record<string, RoleRatios>
-  syllables: Record<string, RoleRatios>
+	contexts: Record<string, RoleRatios>;
+	pairs: Record<string, RoleRatios>;
+	syllables: Record<string, RoleRatios>;
 }
 
-export const EMPTY_PROPORTIONS: ProportionProfile = { contexts: {}, pairs: {}, syllables: {} }
+export const EMPTY_PROPORTIONS: ProportionProfile = { contexts: {}, pairs: {}, syllables: {} };
 
 export function proportionContext(kind: VowelKind, hasFinal: boolean) {
-  return `${kind}:${hasFinal ? 'final' : 'open'}`
+	return `${kind}:${hasFinal ? 'final' : 'open'}`;
 }
 
 export function proportionPair(initial: string, medial: string, final?: string) {
-  return `${initial}:${medial}:${final ?? ''}`
+	return `${initial}:${medial}:${final ?? ''}`;
 }
 
 /**
@@ -29,15 +29,15 @@ export function proportionPair(initial: string, medial: string, final?: string) 
  * Consonants use their area; a vowel uses the length of its main stroke.
  */
 export function jamoSize(role: HangulRole, kind: VowelKind, width: number, height: number) {
-  const w = Math.max(1, width)
-  const h = Math.max(1, height)
-  if (role !== 'medial') return Math.sqrt(w * h)
-  if (kind === 'vertical') return h
-  if (kind === 'mixed') return Math.max(w, h)
-  return w
+	const w = Math.max(1, width);
+	const h = Math.max(1, height);
+	if (role !== 'medial') return Math.sqrt(w * h);
+	if (kind === 'vertical') return h;
+	if (kind === 'mixed') return Math.max(w, h);
+	return w;
 }
 
 /** The most specific ratios learned for a syllable: its own, its jamo pair's, or its context's. */
 export function learnedRatios(profile: ProportionProfile, char: string, pair: string, context: string): RoleRatios | undefined {
-  return profile.syllables[char] ?? profile.pairs[pair] ?? profile.contexts[context]
+	return profile.syllables[char] ?? profile.pairs[pair] ?? profile.contexts[context];
 }

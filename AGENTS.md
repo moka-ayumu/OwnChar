@@ -46,20 +46,20 @@ Dependency direction: `font` ← `collection` ← `generation` ← `project` ←
 
 ## Where to Change Things
 
-| Change | Look first in |
-|---|---|
-| Position of initial, medial, and final inside a syllable | `src/font/layout/syllable-layout.ts`, `src/font/hangul.ts` |
-| Gap between jamo | `src/font/layout/gap-profile.ts` |
-| Size ratio between jamo | `src/font/layout/proportion-profile.ts` |
-| Visual centring and optical correction | `src/font/geometry/optical.ts`, `src/font/geometry/shape.ts` |
-| Collisions and overlaps | `src/font/geometry/collision.ts`, `src/font/layout/overlap-policy.ts` |
+| Change                                                                  | Look first in                                                                                                                                                                                  |
+| ----------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Position of initial, medial, and final inside a syllable                | `src/font/layout/syllable-layout.ts`, `src/font/hangul.ts`                                                                                                                                     |
+| Gap between jamo                                                        | `src/font/layout/gap-profile.ts`                                                                                                                                                               |
+| Size ratio between jamo                                                 | `src/font/layout/proportion-profile.ts`                                                                                                                                                        |
+| Visual centring and optical correction                                  | `src/font/geometry/optical.ts`, `src/font/geometry/shape.ts`                                                                                                                                   |
+| Collisions and overlaps                                                 | `src/font/geometry/collision.ts`, `src/font/layout/overlap-policy.ts`                                                                                                                          |
 | Size dials (jamo size and syllable width toward the mean of the layout) | `docs/decision/0002-size-dials-on-the-preview.md` first, then the end of `layoutSyllable` in `src/font/layout/syllable-layout.ts`, `learnSizeTargets` in `src/font/layout/compose-syllable.ts` |
-| Preview screen, live font of the typed text | `src/routes/preview.tsx`, `src/features/preview/`, `src/generation/use-live-font.ts`, `src/generation/live-font.worker.ts` |
-| Learning values from handwriting | `src/generation/learning/` |
-| Writing screen and stroke input | `src/features/writing/` |
-| Edit screen | `src/features/editor/` |
-| Saving and autosave | `src/project/` |
-| Switching sentence, drawing latency, save stalls | `docs/performance.md` first, then `src/features/writing/`, `src/generation/use-composition-context.ts`, `src/project/persistence.ts` |
+| Preview screen, live font of the typed text                             | `src/routes/preview.tsx`, `src/features/preview/`, `src/generation/use-live-font.ts`, `src/generation/live-font.worker.ts`                                                                     |
+| Learning values from handwriting                                        | `src/generation/learning/`                                                                                                                                                                     |
+| Writing screen and stroke input                                         | `src/features/writing/`                                                                                                                                                                        |
+| Edit screen                                                             | `src/features/editor/`                                                                                                                                                                         |
+| Saving and autosave                                                     | `src/project/`                                                                                                                                                                                 |
+| Switching sentence, drawing latency, save stalls                        | `docs/performance.md` first, then `src/features/writing/`, `src/generation/use-composition-context.ts`, `src/project/persistence.ts`                                                           |
 
 ## Performance
 
