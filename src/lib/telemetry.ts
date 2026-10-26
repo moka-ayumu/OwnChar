@@ -39,7 +39,7 @@ export function initializeTelemetry() {
 		integrations: spotlight ? [Sentry.spotlightBrowserIntegration()] : [],
 		environment: import.meta.env.MODE,
 		release: __APP_RELEASE__,
-		dataCollection: { userInfo: false },
+		dataCollection: { userInfo: false, cookies: false, urlQueryParams: false },
 		ignoreErrors: ['ResizeObserver loop'],
 		beforeSend: (event) => (isTelemetryOptedOut() ? null : event),
 		beforeBreadcrumb: (breadcrumb) => (isTelemetryOptedOut() ? null : breadcrumb),
