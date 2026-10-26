@@ -644,8 +644,8 @@ button.app-logo-mark:active {
 	animation: hint-in 140ms var(--ease-out-expo) backwards;
 }
 .hint[data-side='right'] {
+	width: max-content;
 	translate: 0 -50%;
-	white-space: nowrap;
 }
 .hint[data-side='bottom'] {
 	width: max-content;
