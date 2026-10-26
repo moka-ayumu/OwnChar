@@ -16,21 +16,21 @@ const List = ({ items }: { items: string[] }) => (
 	</ul>
 );
 
-/** Refuses collection on this browser, at once. */
-function TelemetryOptOut() {
-	const [optedOut, setOptedOut] = useState(isTelemetryOptedOut);
+/** Turns collection on or off on this browser, at once. Collection is on by default. */
+function TelemetryCollection() {
+	const [collecting, setCollecting] = useState(() => !isTelemetryOptedOut());
 	const change = (next: boolean) => {
-		setTelemetryOptOut(next);
-		setOptedOut(next);
+		setTelemetryOptOut(!next);
+		setCollecting(next);
 	};
 	return (
 		<div className="mt-6 flex items-center justify-between gap-4 rounded-md border border-rule px-4 py-3">
-			<span id="opt-out" className="font-bold text-ink">
-				Sentry 수집 거부
+			<span id="telemetry-collection" className="font-bold text-ink">
+				Sentry 수집
 			</span>
 			<span className="flex items-center gap-3">
-				<span className={cn('text-sm font-semibold', optedOut ? 'text-ink' : 'text-ink-3')}>{optedOut ? '거부 중' : '허용 중'}</span>
-				<Switch checked={optedOut} onCheckedChange={change} aria-labelledby="opt-out" />
+				<span className={cn('text-sm font-semibold', collecting ? 'text-ink' : 'text-ink-3')}>{collecting ? '수집 중' : '수집 안 함'}</span>
+				<Switch checked={collecting} onCheckedChange={change} aria-labelledby="telemetry-collection" />
 			</span>
 		</div>
 	);
@@ -66,7 +66,7 @@ const PRIVACY: Array<[string, ReactNode]> = [
 					'이전 시기와 방법: 오류가 발생할 때, 폰트 생성이 완료될 때 정보통신망을 통해 전송',
 					'이전 항목: 2항의 오류 정보, 오류 직전의 이용 기록, 이용 횟수, 기기·접속 환경',
 					'이용 목적과 보유 기간: 1항과 3항과 같습니다.',
-					'거부 방법: 위의 Sentry 수집 거부를 켭니다. 거부해도 서비스 이용에는 제한이 없습니다.'
+					'거부 방법: 위의 Sentry 수집을 끕니다. 수집을 꺼도 서비스 이용에는 제한이 없습니다.'
 				]}
 			/>
 			<p className="pt-2 font-bold text-ink">Cloudflare, Inc. (웹사이트 제공, 접속 통계)</p>
@@ -88,7 +88,7 @@ const PRIVACY: Array<[string, ReactNode]> = [
 		'6. 이용자의 권리와 행사 방법',
 		<>
 			<p>이용자는 개인정보의 열람, 정정·삭제, 처리정지를 요청할 수 있습니다. 서비스는 이름이나 연락처를 수집하지 않으며, 수집한 정보를 이러한 정보와 연계하여 관리하지 않습니다.</p>
-			<p>Sentry로 수집하는 정보는 위의 Sentry 수집 거부로 중단할 수 있습니다. 그 밖의 요청은 아래 개인정보 보호책임자에게 하시기 바랍니다.</p>
+			<p>Sentry로 수집하는 정보는 위의 Sentry 수집을 끄면 중단할 수 있습니다. 그 밖의 요청은 아래 개인정보 보호책임자에게 하시기 바랍니다.</p>
 		</>
 	],
 	['7. 쿠키 등 자동 수집 장치', <p key="k">서비스는 쿠키를 사용하지 않습니다.</p>],
@@ -107,7 +107,7 @@ function PrivacyPage() {
 			<p className="mt-6 text-base leading-7 text-ink-2">
 				OwnChar(이하 &quot;서비스&quot;)는 「개인정보 보호법」에 따라 이용자의 개인정보를 보호하고 관련 고충을 처리하기 위해 다음과 같이 처리방침을 공개합니다. 손글씨와 프로젝트는 이용자의 브라우저에만 저장되며 서버로 전송되지 않습니다.
 			</p>
-			<TelemetryOptOut />
+			<TelemetryCollection />
 			<div className="mt-10 space-y-6 border-t border-rule pt-6 text-base leading-7 text-ink-2">
 				{PRIVACY.map(([title, body]) => (
 					<section key={title}>
