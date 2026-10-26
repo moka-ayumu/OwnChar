@@ -166,19 +166,19 @@ export function EditPage({ glyph, query, custom }: EditSearch) {
 				</div>
 
 				<div className="mt-auto grid gap-2 pt-6">
-					<div className="grid grid-cols-2 gap-2">
-						<Link to="/preview" viewTransition className={cn(buttonVariants({ variant: 'secondary' }), 'px-2')}>
-							미리보기
-						</Link>
-						<Link to="/write" className={cn(buttonVariants({ variant: 'secondary' }), 'px-2')}>
-							<PenLine className="size-4" /> 글자 다시 쓰기
-						</Link>
-					</div>
 					<Hint className="block" side="right" label={editorMode === 'composition' ? '예시는 즉시 바뀌고, OTF는 변경 적용 후 바뀝니다.' : editorMode === 'custom' ? '직접 쓴 글자는 변경 적용 후 OTF에 반영됩니다.' : undefined}>
 						<Button className="w-full" size="lg" onClick={() => void navigate({ to: '/generate', viewTransition: true })}>
 							<Save className="size-4" /> 변경 적용
 						</Button>
 					</Hint>
+					<div className="grid grid-cols-2 gap-2">
+						<Link to="/write" className={cn(buttonVariants({ variant: 'secondary' }), 'px-2')}>
+							<PenLine className="size-4" /> 글자 다시 쓰기
+						</Link>
+						<Link to="/preview" viewTransition className={cn(buttonVariants({ variant: 'secondary' }), 'px-2')}>
+							미리보기
+						</Link>
+					</div>
 				</div>
 			</aside>
 
