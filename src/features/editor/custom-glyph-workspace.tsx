@@ -288,7 +288,7 @@ export function CustomWorkspace({ customGlyphs, fontFamily, stabilization, initi
 							글자 입력
 						</label>
 						<div className="custom-add">
-							<input id="custom-text" className="text-input" value={input} maxLength={MAX_CUSTOM_LENGTH * 2} autoComplete="off" autoFocus={initialText === ''} onChange={(event) => setInput(event.target.value)} placeholder="ㅋㅋ" />
+							<input id="custom-text" className="text-input" value={input} maxLength={MAX_CUSTOM_LENGTH * 2} autoComplete="off" autoFocus={initialText === ''} onChange={(event) => setInput(event.target.value)} />
 							<Button type="submit" disabled={!valid} aria-label="글자 추가">
 								<Plus className="size-4" /> 추가
 							</Button>
