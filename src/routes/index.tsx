@@ -1,7 +1,9 @@
 import { useRef, useState } from 'react';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { ArrowRight, Pause, PenLine, Play, RotateCcw } from 'lucide-react';
+import { ArrowRight, ChevronDown, Eye, FolderOpen, Pause, PenLine, Play } from 'lucide-react';
+import { useProjectFile } from '@/components/app-nav';
 import { Button } from '@/components/ui/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Progress } from '@/components/ui/progress';
 import { useProject } from '@/project/use-project';
 import { completedPromptCount, PROMPT_COUNT } from '@/collection/prompts';
@@ -18,6 +20,7 @@ function HomePage() {
 	const state = useProject((project) => project);
 	const completed = completedPromptCount(state.drawings);
 	const canResume = state.status !== 'empty' && (completed > 0 || state.generatedFont);
+	const file = useProjectFile();
 	const [loadingSample, setLoadingSample] = useState(false);
 	const canvas = useRef<HTMLCanvasElement>(null);
 	const foot = useRef<HTMLDivElement>(null);
@@ -48,9 +51,31 @@ function HomePage() {
 				<div className="home-panel">
 					<h1>문장 8개로 나만의 손글씨 폰트를 만드세요.</h1>
 					<div className="home-actions">
-						<Button onClick={start}>
-							<PenLine className="size-4" /> 새 폰트 시작하기
-						</Button>
+						<DropdownMenu>
+							<DropdownMenuTrigger asChild>
+								<Button disabled={loadingSample}>
+									{loadingSample ? (
+										'불러오는 중…'
+									) : (
+										<>
+											<PenLine className="size-4" /> 시작하기 <ChevronDown className="size-4" />
+										</>
+									)}
+								</Button>
+							</DropdownMenuTrigger>
+							<DropdownMenuContent align="start">
+								<DropdownMenuItem onSelect={() => void start()}>
+									<PenLine className="size-4" /> 새로 만들기
+								</DropdownMenuItem>
+								<DropdownMenuItem onSelect={file.pick}>
+									<FolderOpen className="size-4" /> 불러오기
+								</DropdownMenuItem>
+								<DropdownMenuItem onSelect={() => void openSample()}>
+									<Eye className="size-4" /> 예시 손글씨 구경하기
+								</DropdownMenuItem>
+							</DropdownMenuContent>
+						</DropdownMenu>
+						{file.fileInput}
 						{canResume && (
 							<Button variant="secondary" onClick={() => void navigate({ to: state.status === 'ready' ? '/preview' : '/write' })}>
 								이어서 만들기 <ArrowRight className="size-4" />
@@ -65,17 +90,8 @@ function HomePage() {
 							<span className="tnum font-semibold text-ink-2">
 								{completed} / {PROMPT_COUNT}
 							</span>
-							<button onClick={start}>
-								<RotateCcw className="size-3.5" /> 처음부터 다시 만들기
-							</button>
 						</div>
 					)}
-
-					<div className="home-samples">
-						<Button variant="secondary" size="sm" disabled={loadingSample} onClick={() => void openSample()}>
-							{loadingSample ? '불러오는 중…' : '예시 손글씨'}
-						</Button>
-					</div>
 				</div>
 
 				<nav className="home-scenes" aria-label="만드는 과정">

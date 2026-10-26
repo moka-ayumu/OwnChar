@@ -1490,36 +1490,6 @@ button.source-chip:hover small {
 	margin-top: 20px;
 	font-size: 14px;
 }
-.home-resume button {
-	display: inline-flex;
-	grid-column: 1 / -1;
-	align-items: center;
-	justify-self: start;
-	gap: 6px;
-	border: 0;
-	border-radius: 6px;
-	background: transparent;
-	color: var(--color-ink-2);
-	font-size: 12px;
-	font-weight: 600;
-	transition: color 150ms;
-}
-.home-samples {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: 16px;
-	margin-top: 20px;
-	border-top: 1px solid rgb(16 17 20 / 15%);
-	padding-top: 16px;
-}
-.home-samples p {
-	margin: 0;
-	color: var(--color-ink-2);
-	font-size: 12px;
-	font-weight: 600;
-	line-height: 1.6;
-}
 .home-scenes {
 	width: 288px;
 	flex: none;
@@ -1582,9 +1552,6 @@ button.source-chip:hover small {
 	line-height: 24px;
 }
 @media (hover: hover) and (pointer: fine) {
-	.home-resume button:hover {
-		color: var(--color-ink);
-	}
 	.home-scenes li button:not([aria-current]):hover {
 		background: rgb(16 17 20 / 8%);
 	}

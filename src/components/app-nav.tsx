@@ -28,7 +28,7 @@ function SaveIndicator() {
 }
 
 /** Save, open and delete of the project, kept together. */
-function useProjectFile() {
+export function useProjectFile() {
 	const input = useRef<HTMLInputElement>(null);
 	const navigate = useNavigate();
 	const empty = useProject((state) => state.status === 'empty');
