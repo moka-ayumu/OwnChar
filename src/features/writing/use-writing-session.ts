@@ -240,6 +240,10 @@ export function useWritingSession(exercise: WritingExercise, viewport: RefObject
 	const guidesRef = useRef(storedGuides);
 	const saveTimer = useRef<number | undefined>(undefined);
 	const lastRevision = useRef('');
+	/** The division of jamo each set of strokes was saved with, so undo and redo bring it back with the strokes. */
+	const divisions = useRef(new WeakMap<readonly RawStroke[], { boundaries: Boundaries; holds: Holds }>());
+	const shownStrokes = useRef(strokes);
+	const opened = useRef({ strokes, division: { boundaries, holds } });
 	const columns = Math.max(1, Math.min(requestedColumns, exercise.cells.length));
 	const grid = useMemo<CanvasGrid>(() => ({ cellSize, columns }), [cellSize, columns]);
 	const cellCount = exercise.cells.length;
@@ -345,9 +349,17 @@ export function useWritingSession(exercise: WritingExercise, viewport: RefObject
 	}, [writtenCells, cellGuides, released, exercise, drawings, fixedRule]);
 
 	const save = (nextStrokes: readonly RawStroke[], confirmedBoundaries = boundariesRef.current, target: CanvasGrid = grid) => {
+		const restored = nextStrokes !== shownStrokes.current ? (divisions.current.get(nextStrokes) ?? (nextStrokes === opened.current.strokes ? opened.current.division : undefined)) : undefined;
+		if (restored) {
+			confirmedBoundaries = restored.boundaries;
+			holdsRef.current = restored.holds;
+			setHolds(restored.holds);
+		}
+		shownStrokes.current = nextStrokes;
 		const requestedBoundaries = holdBoundaries(confirmedBoundaries, holdsRef.current, nextStrokes, target, exercise, drawings, fixedRule);
 		const assigned = assignStrokes(nextStrokes, target, exercise, drawings, requestedBoundaries, fixedRule);
-		if (JSON.stringify(assigned.boundaries) !== JSON.stringify(boundaries)) {
+		divisions.current.set(nextStrokes, { boundaries: assigned.boundaries, holds: holdsRef.current });
+		if (JSON.stringify(assigned.boundaries) !== JSON.stringify(boundariesRef.current)) {
 			if (countBoundaries(assigned.boundaries) < countBoundaries(requestedBoundaries)) setBoundaryWarning('나눠 둔 획이 지워졌습니다.');
 			boundariesRef.current = assigned.boundaries;
 			setBoundaries(assigned.boundaries);
