@@ -39,11 +39,9 @@ const CustomRow = memo(function CustomRow({
 				<span className="custom-row-text">{text}</span>
 				<span className="custom-tag">{tagOf(text)}</span>
 			</button>
-			{glyph && (
-				<Button size="icon" variant="ghost" className="custom-remove" aria-label={`${text} 삭제`} onClick={() => onRemove(text)}>
-					<Trash2 className="size-4" />
-				</Button>
-			)}
+			<Button size="icon" variant="ghost" className="custom-remove" aria-label={`${text} 삭제`} onClick={() => onRemove(text)}>
+				<Trash2 className="size-4" />
+			</Button>
 		</li>
 	);
 });
@@ -265,7 +263,10 @@ export function CustomWorkspace({ customGlyphs, fontFamily, stabilization, initi
 	}
 
 	const select = useStableCallback((text: string) => setSelected(text));
-	const remove = useStableCallback((text: string) => setRemoving(text));
+	const remove = useStableCallback((text: string) => {
+		if (text in customGlyphs) setRemoving(text);
+		else if (selected === text) setSelected(null);
+	});
 	const add = (text: string) => {
 		if (!isCustomText(text)) return;
 		setSelected(text);
