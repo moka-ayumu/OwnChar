@@ -27,7 +27,29 @@ function SourceCell({ record, session, drawings }: { record: DrawingRecord; sess
 	);
 }
 
-function Source({ source, drawings, sessions }: { source: GlyphSource; drawings: Drawings; sessions: Sessions }) {
+/** Where the write page sends its way back to, when a source is opened from the editor. */
+export interface WriteReturn {
+	returnGlyph: number;
+	returnQuery?: string;
+}
+
+/** The sources a hovered part of a glyph stands for: a role key (`final`) or one part of a role (`final:1`). No key keeps all. */
+export function pickSources(sources: GlyphSource[], keys?: string[]) {
+	const seen: Record<string, number> = {};
+	return sources.filter((source) => {
+		const role = source.role ?? '';
+		const index = (seen[role] = (seen[role] ?? -1) + 1);
+		return !keys?.length || keys.includes(role) || keys.includes(`${role}:${index}`);
+	});
+}
+
+/** The cell of the write page a source was written in. */
+export function writeTarget(source: GlyphSource, drawings: Drawings) {
+	const record = drawings[source.originPromptId];
+	return record && WRITING_EXERCISES.some((item) => item.id === record.capture.exerciseId) ? { exerciseId: record.capture.exerciseId, cellIndex: record.capture.cellIndex } : undefined;
+}
+
+function Source({ source, drawings, sessions, writeReturn }: { source: GlyphSource; drawings: Drawings; sessions: Sessions; writeReturn?: WriteReturn }) {
 	const navigate = useNavigate();
 	const record = drawings[source.originPromptId];
 	const session = record && sessions[record.capture.exerciseId];
@@ -46,7 +68,7 @@ function Source({ source, drawings, sessions }: { source: GlyphSource; drawings:
 	}
 	const note = source.match === 'derived' ? ' · 다른 문맥에서 파생' : source.match === 'compound' ? ' · 자모 합성' : '';
 	return (
-		<button type="button" className="source-chip" onClick={() => void navigate({ to: '/write', search: { exerciseId: exercise.id, cellIndex: record.capture.cellIndex } })}>
+		<button type="button" className="source-chip" onClick={() => void navigate({ to: '/write', search: { exerciseId: exercise.id, cellIndex: record.capture.cellIndex, ...writeReturn } })}>
 			<SourceCell record={record} session={session} drawings={drawings} />
 			<span>
 				<strong>{label}</strong>
@@ -73,6 +95,36 @@ function CustomSource({ glyph, stabilization }: { glyph: CustomGlyph; stabilizat
 	);
 }
 
+/** The sources of one item: each chip leads to the cell it was written in. `keys` keeps the chips of those parts (see `pickSources`). */
+export function SourceChips({
+	item,
+	keys,
+	drawings,
+	sessions,
+	settings,
+	writeReturn,
+	className = 'flex flex-wrap gap-1.5'
+}: {
+	item: SourceItem;
+	keys?: string[];
+	drawings: Drawings;
+	sessions: Sessions;
+	settings: CompositionSettings;
+	writeReturn?: WriteReturn;
+	className?: string;
+}) {
+	const sources = item.custom ? [] : glyphSources(item.text.codePointAt(0)!, drawings, compositionShapes(drawings, sessions, settings));
+	return (
+		<div className={className}>
+			{item.custom ? (
+				<CustomSource glyph={item.custom} stabilization={settings.endpointStabilization} />
+			) : (
+				pickSources(sources, keys).map((source, part) => <Source key={part} source={source} drawings={drawings} sessions={sessions} writeReturn={writeReturn} />)
+			)}
+		</div>
+	);
+}
+
 /** Where the handwriting of the selected characters came from. Each source leads to the cell it was written in. */
 export function SourcePopover({
 	items,
@@ -94,7 +146,6 @@ export function SourcePopover({
 	style: CSSProperties;
 	onClose(): void;
 }) {
-	const shapes = compositionShapes(drawings, sessions, settings);
 	return (
 		<div className="source-popover" role="dialog" aria-label="원본 필기" style={style}>
 			<div className="flex items-center justify-between gap-4">
@@ -108,13 +159,7 @@ export function SourcePopover({
 					<span className="source-glyph" style={{ fontFamily }}>
 						{item.text}
 					</span>
-					<div className="flex flex-wrap gap-1.5">
-						{item.custom ? (
-							<CustomSource glyph={item.custom} stabilization={settings.endpointStabilization} />
-						) : (
-							glyphSources(item.text.codePointAt(0)!, drawings, shapes).map((source, part) => <Source key={part} source={source} drawings={drawings} sessions={sessions} />)
-						)}
-					</div>
+					<SourceChips item={item} drawings={drawings} sessions={sessions} settings={settings} />
 				</div>
 			))}
 		</div>

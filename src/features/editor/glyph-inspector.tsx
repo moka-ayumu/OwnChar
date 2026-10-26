@@ -1,12 +1,9 @@
-import { useMemo, useState } from 'react';
-import { ChevronRight, RotateCcw } from 'lucide-react';
-import { WRITING_EXERCISES } from '@/collection/exercises';
-import { ROLE_LABELS } from '@/collection/prompts';
+import { useMemo, useState, type ReactNode } from 'react';
+import { RotateCcw } from 'lucide-react';
 import { Hint } from '@/components/hint';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { DEFAULT_GLYPH_OVERRIDE, type GlyphOverride } from '@/generation/request';
-import type { GlyphSource } from '@/generation/provenance';
 import { projectActions } from '@/project/store';
 import { NumberField } from './number-field';
 
@@ -23,25 +20,19 @@ const metricFields = [
 	['y', '높이']
 ] as const;
 
-function sourceLabel(source: GlyphSource) {
-	const name = source.symbol ? '기호' : source.role ? ROLE_LABELS[source.role] : '글자';
-	return source.match === 'derived' ? `${name} · 다른 문맥에서 파생` : source.match === 'compound' ? `${name} · 자모 합성` : name;
-}
-
-/** The values of the selected glyphs, the sources of one glyph, and the values that apply to every glyph. */
+/** The sources of one glyph, the values of the selected glyphs, and the values that apply to every glyph. */
 export function GlyphInspector({
 	selected,
 	overrides,
 	globalMetrics,
-	sources,
-	onOpenSource,
+	source,
 	onFitHeight
 }: {
 	selected: number[];
 	overrides: Record<number, GlyphOverride>;
 	globalMetrics: { left: number; right: number; y: number };
-	sources: GlyphSource[];
-	onOpenSource(capture: NonNullable<GlyphSource['capture']>): void;
+	/** The sources of the selected glyph, shown when one glyph is selected. */
+	source: ReactNode;
 	onFitHeight(): void;
 }) {
 	const [askReset, setAskReset] = useState(false);
@@ -62,6 +53,13 @@ export function GlyphInspector({
 	return (
 		<aside className="edit-inspector" aria-label="글리프 설정">
 			<section>
+				<Hint className="block" side="left" label={single ? undefined : '글자 하나를 선택하면 출처를 볼 수 있습니다.'}>
+					<h2 className="text-sm font-bold">원본 필기</h2>
+					{single && <div className="mt-3">{source}</div>}
+				</Hint>
+			</section>
+
+			<section className="edit-group">
 				<h2 className="text-sm font-bold">선택한 글자</h2>
 				<div className="mt-4 grid grid-cols-2 gap-3">
 					{glyphFields.map(([key, label]) => (
@@ -78,33 +76,6 @@ export function GlyphInspector({
 						<RotateCcw className="size-3.5" /> 선택 초기화
 					</Button>
 				</div>
-			</section>
-
-			<section className="edit-group">
-				<Hint className="block" side="left" label={single ? undefined : '글자 하나를 선택하면 출처를 볼 수 있습니다.'}>
-					<h2 className="text-sm font-bold">원본 필기</h2>
-					{single &&
-						(sources.length === 0 ? (
-							<p className="mt-2 text-xs text-ink-2">원본 없음</p>
-						) : (
-							<div className="mt-3 space-y-2">
-								{sources.map((source, index) => {
-									const capture = source.capture;
-									const label = `${sourceLabel(source)} ${source.char}`;
-									return capture && WRITING_EXERCISES.some((item) => item.id === capture.exerciseId) ? (
-										<button key={`${source.originPromptId}-${index}`} type="button" className="source-link" onClick={() => onOpenSource(capture)}>
-											<span>{label}</span>
-											<ChevronRight className="size-4" aria-hidden="true" />
-										</button>
-									) : (
-										<div key={`${source.originPromptId}-${index}`} className="rounded-md border border-rule px-3 py-2 text-sm text-ink-2">
-											{label} · 원본 없음
-										</div>
-									);
-								})}
-							</div>
-						))}
-				</Hint>
 			</section>
 
 			<section className="edit-group">

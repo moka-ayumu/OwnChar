@@ -1758,13 +1758,13 @@ button.source-chip:hover small {
 	min-width: 0;
 	min-height: 0;
 	flex: 1;
-	overflow: hidden;
 	border-radius: 6px;
 	background: #fff;
 }
 .specimen-svg {
 	position: absolute;
 	inset: 0;
+	border-radius: 6px;
 	touch-action: none;
 	user-select: none;
 }
@@ -1783,8 +1783,24 @@ button.source-chip:hover small {
 .specimen-ghost {
 	fill: var(--color-rule);
 }
+.source-hover {
+	position: absolute;
+	top: 0;
+	left: 0;
+	z-index: 5;
+	display: grid;
+	gap: 6px;
+	pointer-events: none;
+	filter: drop-shadow(0 8px 12px rgb(16 17 20 / 18%));
+	will-change: transform;
+}
 .specimen-ink {
+	cursor: pointer;
 	fill: var(--color-ink);
+	transition: fill 150ms;
+}
+.specimen-ink[data-hover] {
+	fill: var(--color-lime-ink);
 }
 .specimen-grip-hit {
 	stroke: transparent;
@@ -1828,24 +1844,6 @@ button.source-chip:hover small {
 	margin-top: 20px;
 	border-top: 1px solid var(--color-rule);
 	padding-top: 20px;
-}
-.source-link {
-	display: flex;
-	width: 100%;
-	align-items: center;
-	justify-content: space-between;
-	border: 1px solid var(--color-rule);
-	border-radius: 6px;
-	background: #fff;
-	padding: 9px 12px;
-	color: var(--color-ink);
-	font-size: 14px;
-	font-weight: 600;
-	text-align: left;
-}
-.source-link:hover {
-	border-color: var(--color-ink);
-	background: var(--color-lime);
 }
 .composition-workspace {
 	display: grid;

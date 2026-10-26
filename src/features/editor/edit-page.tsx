@@ -5,11 +5,15 @@ import { Combine, PenLine, PenTool, Redo2, Save, Type, Undo2 } from 'lucide-reac
 import { Hint } from '@/components/hint';
 import { RailBrand } from '@/components/rail-brand';
 import { Button, buttonVariants } from '@/components/ui/button';
-import { HANGUL_BASE } from '@/font/hangul';
+import { HANGUL_ROLES, HANGUL_BASE, isHangulSyllable, type HangulRole } from '@/font/hangul';
+import type { Box } from '@/font/geometry/path-ops';
+import { composeHangulParts } from '@/font/layout/compose-syllable';
 import { mergedOverride } from '@/generation/font-builder';
+import { DEFAULT_GLYPH_OVERRIDE } from '@/generation/request';
 import { glyphSources } from '@/generation/provenance';
 import { compositionShapes } from '@/generation/use-composition-context';
-import { DEFAULT_GLYPH_OVERRIDE } from '@/generation/request';
+import { SourceChips, pickSources, writeTarget } from '@/features/preview/source-popover';
+import { sourceItems } from '@/features/preview/source-items';
 import { useCompact } from '@/lib/use-compact';
 import { useFontFace } from '@/lib/use-font-face';
 import { cn } from '@/lib/utils';
@@ -86,7 +90,26 @@ export function EditPage({ glyph, query, custom }: EditSearch) {
 		return category === 'hangul' && hangulView === 'filter' && isFiltering(filter) ? filterHangul(filter) : CODE_POINTS[category];
 	}, [search, category, hangulView, filter]);
 
-	const selectedSources = useMemo(() => (selected.length === 1 ? glyphSources(selected[0], drawings, compositionShapes(drawings, sessions, compositionSettings)) : []), [selected, drawings, sessions, compositionSettings]);
+	const single = selected.length === 1 ? selected[0] : null;
+	const sources = useMemo(() => {
+		if (single === null) return [];
+		const char = String.fromCodePoint(single);
+		return sourceItems(char, 0, char.length, customGlyphs, drawings);
+	}, [single, customGlyphs, drawings]);
+	const shapes = useMemo(() => compositionShapes(drawings, sessions, compositionSettings), [drawings, sessions, compositionSettings]);
+	const glyphParts = useMemo(() => (single === null || sources[0]?.custom ? [] : glyphSources(single, drawings, shapes)), [single, sources, drawings, shapes]);
+	const partCounts = useMemo(() => {
+		const counts: Partial<Record<HangulRole, number>> = {};
+		for (const part of glyphParts) if (part.role && part.match === 'compound') counts[part.role] = (counts[part.role] ?? 0) + 1;
+		return counts;
+	}, [glyphParts]);
+	const roleBoxes = useMemo(() => {
+		if (single === null || !isHangulSyllable(single)) return undefined;
+		const { parts } = composeHangulParts(single, shapes, compositionSettings);
+		const boxes: Partial<Record<HangulRole, Box>> = {};
+		for (const role of HANGUL_ROLES) if (parts[role].commands.length) boxes[role] = parts[role].getBoundingBox();
+		return boxes;
+	}, [single, shapes, compositionSettings]);
 	const overrideCount = Object.keys(overrides).length;
 	const previewFont = fontReady ? 'OwnCharPreview' : 'inherit';
 	const madeSource = useMemo(() => ({ overrides: generatedWith?.glyphOverrides ?? {}, globalMetrics: generatedWith?.globalMetrics ?? NO_METRICS }), [generatedWith]);
@@ -104,7 +127,15 @@ export function EditPage({ glyph, query, custom }: EditSearch) {
 
 	if (!buffer || !font) return null;
 
-	const single = selected.length === 1 ? selected[0] : null;
+	const writeReturn = single === null ? undefined : { returnGlyph: single, returnQuery: search || undefined };
+	const openSource = (keys: string[]) => {
+		const custom = sources[0]?.custom;
+		if (custom) return void navigate({ to: '/edit', search: { custom: custom.text } });
+		const target = pickSources(glyphParts, keys)
+			.map((part) => writeTarget(part, drawings))
+			.find(Boolean);
+		if (target) void navigate({ to: '/write', search: { ...target, ...writeReturn } });
+	};
 
 	return (
 		<div className="flow edit-flow">
@@ -176,6 +207,10 @@ export function EditPage({ glyph, query, custom }: EditSearch) {
 									globalMetrics={globalMetrics}
 									made={mergedOverride(madeSource, single)}
 									proportional={compositionSettings.widthMode === 'proportional'}
+									roleBoxes={roleBoxes}
+									partCounts={partCounts}
+									renderSource={(keys) => sources.length > 0 && <SourceChips item={sources[0]} keys={keys} drawings={drawings} sessions={sessions} settings={compositionSettings} className="grid gap-1.5" />}
+									onOpenSource={openSource}
 									onCommit={(patch) => projectActions.applyGlyphTransform([single], patch)}
 								/>
 							) : (
@@ -188,9 +223,14 @@ export function EditPage({ glyph, query, custom }: EditSearch) {
 							selected={selected}
 							overrides={overrides}
 							globalMetrics={globalMetrics}
-							sources={selectedSources}
+							source={
+								sources.length > 0 ? (
+									<SourceChips item={sources[0]} drawings={drawings} sessions={sessions} settings={compositionSettings} writeReturn={writeReturn} className="grid gap-2" />
+								) : (
+									<p className="text-xs text-ink-2">원본 없음</p>
+								)
+							}
 							onFitHeight={fitHeight}
-							onOpenSource={(capture) => void navigate({ to: '/write', search: { exerciseId: capture.exerciseId, cellIndex: capture.cellIndex, returnGlyph: selected[0], returnQuery: search || undefined } })}
 						/>
 					</div>
 				) : editorMode === 'composition' ? (

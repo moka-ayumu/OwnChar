@@ -1,6 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type opentype from 'opentype.js';
+import type { Box } from '@/font/geometry/path-ops';
+import type { HangulRole } from '@/font/hangul';
 import type { GlyphOverride } from '@/generation/request';
+import { glyphRegions } from './glyph-regions';
 
 type Edge = 'left' | 'right' | 'y';
 type Adjustment = Pick<GlyphOverride, 'left' | 'right' | 'y' | 'scale' | 'rotation'>;
@@ -58,7 +61,7 @@ function adjust(box: opentype.BoundingBox, advance: number, current: Adjustment,
 	};
 }
 
-/** One glyph drawn large, over a ghost of what the font holds now, with its margins and height as lines to drag. */
+/** One glyph drawn large, over a ghost of what the font holds now, with its margins and height as lines to drag. Each jamo of the ink shows where it was written while the pointer is on it, and opens it when pressed. */
 export function GlyphSpecimen({
 	font,
 	codePoint,
@@ -66,6 +69,10 @@ export function GlyphSpecimen({
 	globalMetrics,
 	made,
 	proportional,
+	roleBoxes,
+	partCounts,
+	renderSource,
+	onOpenSource,
 	onCommit
 }: {
 	font: opentype.Font;
@@ -74,12 +81,27 @@ export function GlyphSpecimen({
 	globalMetrics: { left: number; right: number; y: number };
 	made: Adjustment;
 	proportional: boolean;
+	/** Where the composer laid out each jamo role of the glyph; the ink is told apart by it. */
+	roleBoxes?: Partial<Record<HangulRole, Box>>;
+	/** How many jamo each role is built from, where more than one. */
+	partCounts?: Partial<Record<HangulRole, number>>;
+	/** What floats after the pointer, given the parts of the glyph under it (see `GlyphRegion`). */
+	renderSource(keys: string[]): ReactNode;
+	onOpenSource(keys: string[]): void;
 	onCommit(patch: Partial<GlyphOverride>): void;
 }) {
 	const wrap = useRef<HTMLDivElement>(null);
 	const drag = useRef<{ edge: Edge; x: number; y: number; from: number } | null>(null);
 	const [size, setSize] = useState({ w: 0, h: 0 });
 	const [draft, setDraft] = useState<Partial<GlyphOverride> | null>(null);
+	const [hover, setHover] = useState<number | null>(null);
+	const tip = useRef<HTMLDivElement>(null);
+	const pointer = useRef({ x: 0, y: 0 });
+	const tipAt = useRef({ x: 0, y: 0 });
+	const frame = useRef(0);
+
+	useEffect(() => setHover(null), [codePoint]);
+	useEffect(() => () => cancelAnimationFrame(frame.current), []);
 
 	useEffect(() => {
 		const element = wrap.current;
@@ -96,9 +118,10 @@ export function GlyphSpecimen({
 	const glyph = useMemo(() => {
 		const source = font.charToGlyph(String.fromCodePoint(codePoint));
 		const path = source.path;
-		return { d: pathData(path.commands), box: path.getBoundingBox(), advance: source.advanceWidth ?? 0, empty: path.commands.length === 0 };
+		return { commands: path.commands, d: pathData(path.commands), box: path.getBoundingBox(), advance: source.advanceWidth ?? 0, empty: path.commands.length === 0 };
 	}, [font, codePoint]);
 
+	const regions = useMemo(() => glyphRegions(glyph.commands, roleBoxes, partCounts).map((region) => ({ ...region, d: pathData(region.commands) })), [glyph, roleBoxes, partCounts]);
 	const shown = { ...specific, ...draft };
 	const current: Adjustment = { left: globalMetrics.left + shown.left, right: globalMetrics.right + shown.right, y: globalMetrics.y + shown.y, scale: shown.scale, rotation: shown.rotation };
 	const placed = adjust(glyph.box, glyph.advance, current, made, proportional);
@@ -108,6 +131,37 @@ export function GlyphSpecimen({
 	const baselineY = size.h / 2 + ((glyph.box.y1 + glyph.box.y2) / 2) * k;
 	const toX = (x: number) => originX + x * k;
 	const toY = (y: number) => baselineY - y * k;
+
+	/** Moves the tip a share of the way to the pointer each frame, to the side of it that has room. */
+	const placeTip = () => {
+		frame.current = 0;
+		const element = tip.current;
+		const wrapBox = wrap.current;
+		if (!element || !wrapBox) return;
+		const at = tipAt.current;
+		const to = pointer.current;
+		at.x += (to.x - at.x) * 0.3;
+		at.y += (to.y - at.y) * 0.3;
+		const left = at.x > wrapBox.clientWidth / 2 ? 'calc(-100% - 14px)' : '14px';
+		const top = at.y > wrapBox.clientHeight / 2 ? 'calc(-100% - 14px)' : '14px';
+		element.style.transform = `translate(${at.x}px, ${at.y}px) translate(${left}, ${top})`;
+		if (Math.abs(to.x - at.x) + Math.abs(to.y - at.y) > 0.5) frame.current = requestAnimationFrame(placeTip);
+	};
+	const track = (event: React.PointerEvent<SVGPathElement>) => {
+		const box = wrap.current!.getBoundingClientRect();
+		pointer.current = { x: event.clientX - box.left, y: event.clientY - box.top };
+		if (!frame.current) frame.current = requestAnimationFrame(placeTip);
+	};
+	const enterInk = (region: number) => (event: React.PointerEvent<SVGPathElement>) => {
+		if (drag.current) return;
+		track(event);
+		if (hover === null) tipAt.current = { ...pointer.current };
+		setHover(region);
+	};
+	useLayoutEffect(() => {
+		if (hover !== null) placeTip();
+	}, [hover]);
+	const hoverKeys = hover === null ? [] : (regions[hover]?.keys ?? []);
 
 	const begin = (edge: Edge) => (event: React.PointerEvent<SVGGElement>) => {
 		event.currentTarget.setPointerCapture(event.pointerId);
@@ -144,11 +198,20 @@ export function GlyphSpecimen({
 					{!glyph.empty && (
 						<g transform={`matrix(${k} 0 0 ${-k} ${originX} ${baselineY})`}>
 							<path d={glyph.d} className="specimen-ghost" />
-							<path
-								d={glyph.d}
-								className="specimen-ink"
-								transform={`translate(0 ${placed.dy}) translate(${placed.centerX} ${placed.centerY}) rotate(${placed.rotation}) scale(${placed.scale}) translate(${-placed.centerX} ${-placed.centerY})`}
-							/>
+							<g transform={`translate(0 ${placed.dy}) translate(${placed.centerX} ${placed.centerY}) rotate(${placed.rotation}) scale(${placed.scale}) translate(${-placed.centerX} ${-placed.centerY})`}>
+								{regions.map((region, index) => (
+									<path
+										key={index}
+										d={region.d}
+										className="specimen-ink"
+										data-hover={hover !== null && (index === hover || region.keys.some((key) => hoverKeys.includes(key))) ? '' : undefined}
+										onPointerEnter={enterInk(index)}
+										onPointerMove={track}
+										onPointerLeave={() => setHover(null)}
+										onClick={() => onOpenSource(region.keys)}
+									/>
+								))}
+							</g>
 						</g>
 					)}
 					{!glyph.empty && (
@@ -178,6 +241,11 @@ export function GlyphSpecimen({
 						</text>
 					</g>
 				</svg>
+			)}
+			{hover !== null && (
+				<div ref={tip} className="source-hover">
+					{renderSource(hoverKeys)}
+				</div>
 			)}
 		</div>
 	);
