@@ -842,7 +842,6 @@ button.app-logo-mark:active {
 	pointer-events: none;
 	position: absolute;
 	inset: 0;
-	z-index: 3;
 	display: flex;
 	flex-wrap: wrap;
 	align-content: flex-start;
@@ -883,6 +882,7 @@ button.app-logo-mark:active {
 /* The corner character of a written cell opens its jamo again. */
 .writing-grid button {
 	pointer-events: auto;
+	z-index: 3;
 	right: 3px;
 	bottom: 3px;
 	min-width: 24px;
