@@ -19,6 +19,7 @@ import { GenerationDialogs, type GenerationDialog } from './generation-dialogs';
 import { ToolRail, type CanvasTool } from './tool-rail';
 import { useWritingSession, warmSentence } from './use-writing-session';
 import { WriteRail } from './write-rail';
+import { tutorialPending, WriteTutorial } from './write-tutorial';
 import { WritingGrid } from './writing-grid';
 import { WritingSurface, type WritingSurfaceHandle } from './writing-surface';
 
@@ -81,6 +82,7 @@ function WriteSentence({ currentIndex, exerciseId: sourceExerciseId, cellIndex: 
 	const [tool, setTool] = useState<CanvasTool>('pen');
 	const [generationDialog, setGenerationDialog] = useState<GenerationDialog>(null);
 	const [railClosed, setRailClosed] = useState(readRailCollapsed);
+	const [tutorialOpen, setTutorialOpen] = useState(() => status !== 'empty' && Object.keys(drawings).length === 0 && !strokes.length && !sourceExerciseId && tutorialPending());
 	// A narrow screen lays the rail under the canvas as a bar, so it has no closed state there.
 	const compact = useCompact();
 	const railCollapsed = railClosed && !compact;
@@ -297,6 +299,7 @@ function WriteSentence({ currentIndex, exerciseId: sourceExerciseId, cellIndex: 
 									tool={tool}
 									onChange={(next) => session.save(next)}
 								/>
+								{tutorialOpen && <WriteTutorial exercise={exercise} grid={grid} width={canvasWidth} height={canvasHeight} written={strokes.length > 0} onClose={() => setTutorialOpen(false)} />}
 								{active.cellIndex !== null && popoverOpen && (
 									<CellPopover
 										key={active.cellIndex}

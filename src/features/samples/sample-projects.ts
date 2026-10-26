@@ -7,7 +7,7 @@ import { clearPersistedProject } from '@/project/persistence';
 import { projectActions, projectStore } from '@/project/store';
 
 /** The strokes of one sentence of an example handwriting, on the grid they were made for. */
-interface SampleSession {
+export interface SampleSession {
 	exerciseId: string;
 	cellSize: number;
 	columns: number;
@@ -17,6 +17,12 @@ interface SampleSession {
 }
 
 const files = import.meta.glob<{ sessions: SampleSession[] }>('./example.json', { import: 'default' });
+
+/** The strokes of one sentence of the example handwriting, or null when it has none. */
+export async function loadSampleSession(exerciseId: string) {
+	const { sessions } = await files['./example.json']();
+	return sessions.find((session) => session.exerciseId === exerciseId) ?? null;
+}
 
 /** Replaces the project with the example handwriting. Its strokes go through the same save path as written strokes. */
 export async function loadSampleProject() {

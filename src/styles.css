@@ -2168,6 +2168,54 @@ button.source-chip:hover small {
 	font-weight: 700;
 }
 
+/* The tutorial: the example's pen writes in a light ink on the real grid; a popover under the first cell says what to do. */
+.tutorial-ink {
+	position: absolute;
+	inset: 0;
+	opacity: 0.25;
+	pointer-events: none;
+}
+.tutorial-stroke {
+	fill: none;
+	stroke: var(--color-ink);
+	stroke-linecap: round;
+	stroke-linejoin: round;
+	stroke-dasharray: 1 2;
+	stroke-dashoffset: 0;
+}
+.tutorial-stroke[data-writing='true'] {
+	stroke-dashoffset: 1;
+	animation: tutorial-draw var(--duration) linear var(--start) forwards;
+}
+@keyframes tutorial-draw {
+	to {
+		stroke-dashoffset: 0;
+	}
+}
+.tutorial-card {
+	position: absolute;
+	z-index: 5;
+	display: grid;
+	justify-items: start;
+	gap: 8px;
+	width: 240px;
+	border: 1px solid var(--color-rule);
+	border-radius: 6px;
+	background: #fff;
+	padding: 12px 16px;
+	box-shadow: 0 16px 40px -16px rgb(16 17 20 / 35%);
+}
+.tutorial-card strong {
+	font-size: 14px;
+	font-weight: 700;
+}
+.tutorial-card p {
+	margin: 0;
+	font-size: 14px;
+	line-height: 22px;
+	color: var(--color-ink-2);
+}
+
 /* Route changes keep the rail and the stage in place and cross-fade what is inside them. */
 /* The lime field holds while the rail changes what it says: the old contents leave before the new arrive. */
 ::view-transition-group(rail) {
