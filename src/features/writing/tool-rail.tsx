@@ -1,7 +1,7 @@
 import { memo, useEffect, useRef, useState } from 'react';
 import { Eraser, Hand, PenLine, Redo2, SlidersHorizontal, Trash2, Undo2 } from 'lucide-react';
 import type { GuideMode } from '@/collection/exercises';
-import { Hint } from '@/components/hint';
+import { Hint, HintGroup } from '@/components/hint';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 
@@ -69,73 +69,89 @@ export const ToolRail = memo(function ToolRail({
 
 	return (
 		<div className="tool-rail" role="toolbar" aria-orientation="vertical" aria-label="쓰기 도구">
-			<Button size="icon" variant={tool === 'pen' ? 'default' : 'ghost'} aria-pressed={tool === 'pen'} aria-label="펜" title="펜" onClick={() => onTool('pen')}>
-				<PenLine className="size-[18px]" />
-			</Button>
-			<Button size="icon" variant={tool === 'eraser' ? 'default' : 'ghost'} aria-pressed={tool === 'eraser'} aria-label="지우개" title="지우개" onClick={() => onTool('eraser')}>
-				<Eraser className="size-[18px]" />
-			</Button>
-			<Button className="tool-pan" size="icon" variant={tool === 'pan' ? 'default' : 'ghost'} aria-pressed={tool === 'pan'} aria-label="화면 이동" title="화면 이동" onClick={() => onTool('pan')}>
-				<Hand className="size-[18px]" />
-			</Button>
-			<span className="tool-rail-divider" aria-hidden="true" />
-			<Button size="icon" variant="ghost" aria-label="실행 취소" title="실행 취소" onClick={onUndo}>
-				<Undo2 className="size-[18px]" />
-			</Button>
-			<Button size="icon" variant="ghost" aria-label="다시 실행" title="다시 실행" onClick={onRedo}>
-				<Redo2 className="size-[18px]" />
-			</Button>
-			<span className="tool-rail-divider" aria-hidden="true" />
-			<Button size="icon" variant="ghost" aria-label="문장 모두 지우기" title="문장 모두 지우기" onClick={onClear}>
-				<Trash2 className="size-[18px]" />
-			</Button>
+			<HintGroup>
+				<Hint contents label="펜">
+					<Button size="icon" variant={tool === 'pen' ? 'default' : 'ghost'} aria-pressed={tool === 'pen'} aria-label="펜" onClick={() => onTool('pen')}>
+						<PenLine className="size-[18px]" />
+					</Button>
+				</Hint>
+				<Hint contents label="지우개">
+					<Button size="icon" variant={tool === 'eraser' ? 'default' : 'ghost'} aria-pressed={tool === 'eraser'} aria-label="지우개" onClick={() => onTool('eraser')}>
+						<Eraser className="size-[18px]" />
+					</Button>
+				</Hint>
+				<Hint contents label="화면 이동">
+					<Button className="tool-pan" size="icon" variant={tool === 'pan' ? 'default' : 'ghost'} aria-pressed={tool === 'pan'} aria-label="화면 이동" onClick={() => onTool('pan')}>
+						<Hand className="size-[18px]" />
+					</Button>
+				</Hint>
+				<span className="tool-rail-divider" aria-hidden="true" />
+				<Hint contents label="실행 취소">
+					<Button size="icon" variant="ghost" aria-label="실행 취소" onClick={onUndo}>
+						<Undo2 className="size-[18px]" />
+					</Button>
+				</Hint>
+				<Hint contents label="다시 실행">
+					<Button size="icon" variant="ghost" aria-label="다시 실행" onClick={onRedo}>
+						<Redo2 className="size-[18px]" />
+					</Button>
+				</Hint>
+				<span className="tool-rail-divider" aria-hidden="true" />
+				<Hint contents label="문장 모두 지우기">
+					<Button size="icon" variant="ghost" aria-label="문장 모두 지우기" onClick={onClear}>
+						<Trash2 className="size-[18px]" />
+					</Button>
+				</Hint>
 
-			<div className="tool-rail-settings" ref={settings}>
-				<Button size="icon" variant={settingsOpen ? 'default' : 'ghost'} aria-expanded={settingsOpen} aria-controls="pen-settings" aria-label="쓰기 설정" title="쓰기 설정" onClick={() => setSettingsOpen(!settingsOpen)}>
-					<SlidersHorizontal className="size-[18px]" />
-				</Button>
-				{settingsOpen && (
-					<div className="pen-settings" id="pen-settings" role="group" aria-label="쓰기 설정">
-						<div className="pen-setting">
-							<div>
-								<span>글자 칸 크기</span>
-								<output>{cellSize}px</output>
+				<div className="tool-rail-settings" ref={settings}>
+					<Hint contents label={!settingsOpen && '쓰기 설정'}>
+						<Button size="icon" variant={settingsOpen ? 'default' : 'ghost'} aria-expanded={settingsOpen} aria-controls="pen-settings" aria-label="쓰기 설정" onClick={() => setSettingsOpen(!settingsOpen)}>
+							<SlidersHorizontal className="size-[18px]" />
+						</Button>
+					</Hint>
+					{settingsOpen && (
+						<div className="pen-settings" id="pen-settings" role="group" aria-label="쓰기 설정">
+							<div className="pen-setting">
+								<div>
+									<span>글자 칸 크기</span>
+									<output>{cellSize}px</output>
+								</div>
+								<Hint className="block" side="bottom" label={cellSizeLocked && '작성 후에는 변경할 수 없습니다.'}>
+									<Slider aria-label="글자 칸 크기" min={112} max={184} step={4} disabled={cellSizeLocked} value={[cellSize]} onValueChange={([value]) => onCellSize(value)} />
+								</Hint>
 							</div>
-							<Hint className="block" side="bottom" label={cellSizeLocked && '작성 후에는 변경할 수 없습니다.'}>
-								<Slider aria-label="글자 칸 크기" min={112} max={184} step={4} disabled={cellSizeLocked} value={[cellSize]} onValueChange={([value]) => onCellSize(value)} />
-							</Hint>
+							<div className="pen-setting">
+								<div>
+									<span>획 굵기</span>
+									<output>{strokeWidth.toFixed(1)}</output>
+								</div>
+								<Slider aria-label="획 굵기" min={1} max={5} step={0.1} value={[strokeWidth]} onValueChange={([value]) => onStrokeWidth(value)} />
+							</div>
+							<div className="pen-setting">
+								<div>
+									<span>손떨림 보정</span>
+									<output>{endpointStabilization.toFixed(2)}</output>
+								</div>
+								<Slider aria-label="손떨림 보정" min={0} max={1} step={0.01} value={[endpointStabilization]} onValueChange={([value]) => onEndpointStabilization(value)} />
+							</div>
+							<div className="pen-setting">
+								<div>
+									<span>수집한 자모 보기</span>
+								</div>
+								<div className="grid grid-cols-3 gap-1" role="group" aria-label="수집한 자모 보기">
+									{GUIDE_MODES.map(({ mode, label, hint }) => (
+										<Hint key={mode} className="block" side="bottom" label={hint}>
+											<Button className="w-full px-1 text-[13px]" size="sm" variant={guideMode === mode ? 'default' : 'secondary'} aria-pressed={guideMode === mode} onClick={() => onGuideMode(mode)}>
+												{label}
+											</Button>
+										</Hint>
+									))}
+								</div>
+							</div>
 						</div>
-						<div className="pen-setting">
-							<div>
-								<span>획 굵기</span>
-								<output>{strokeWidth.toFixed(1)}</output>
-							</div>
-							<Slider aria-label="획 굵기" min={1} max={5} step={0.1} value={[strokeWidth]} onValueChange={([value]) => onStrokeWidth(value)} />
-						</div>
-						<div className="pen-setting">
-							<div>
-								<span>손떨림 보정</span>
-								<output>{endpointStabilization.toFixed(2)}</output>
-							</div>
-							<Slider aria-label="손떨림 보정" min={0} max={1} step={0.01} value={[endpointStabilization]} onValueChange={([value]) => onEndpointStabilization(value)} />
-						</div>
-						<div className="pen-setting">
-							<div>
-								<span>수집한 자모 보기</span>
-							</div>
-							<div className="grid grid-cols-3 gap-1" role="group" aria-label="수집한 자모 보기">
-								{GUIDE_MODES.map(({ mode, label, hint }) => (
-									<Hint key={mode} className="block" side="bottom" label={hint}>
-										<Button className="w-full px-1 text-[13px]" size="sm" variant={guideMode === mode ? 'default' : 'secondary'} aria-pressed={guideMode === mode} onClick={() => onGuideMode(mode)}>
-											{label}
-										</Button>
-									</Hint>
-								))}
-							</div>
-						</div>
-					</div>
-				)}
-			</div>
+					)}
+				</div>
+			</HintGroup>
 		</div>
 	);
 });

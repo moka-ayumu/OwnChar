@@ -1,6 +1,7 @@
 import { Check, X } from 'lucide-react';
 import type { WritingCell } from '@/collection/exercises';
 import { ROLE_LABELS } from '@/collection/prompts';
+import { Hint } from '@/components/hint';
 import { Button } from '@/components/ui/button';
 import type { CanvasGrid, SlotProgress } from './stroke-assignment';
 
@@ -54,24 +55,19 @@ export function CellPopover({
 		<div className={`cell-popover ${below ? 'is-below' : flipped ? 'is-flipped' : ''}`} style={position} role="group" aria-label={`${cell.char} 칸 자모 수집`} data-testid="cell-popover">
 			<div className="cell-popover-tabs" role="group" aria-label="수집할 자모">
 				{slots.map((slot, index) => (
-					<button
-						key={slot.slotIndex}
-						type="button"
-						aria-pressed={index === current}
-						aria-label={slotName(slot)}
-						title={slotName(slot)}
-						disabled={index !== current && !reachable(index)}
-						className={slot.done ? 'is-done' : undefined}
-						onClick={() => onCollect(index)}
-					>
-						{slot.slot.char}
-						{slot.done && <Check className="size-2.5" strokeWidth={3.5} aria-hidden="true" />}
-					</button>
+					<Hint key={slot.slotIndex} contents side="top" label={slotName(slot)}>
+						<button type="button" aria-pressed={index === current} aria-label={slotName(slot)} disabled={index !== current && !reachable(index)} className={slot.done ? 'is-done' : undefined} onClick={() => onCollect(index)}>
+							{slot.slot.char}
+							{slot.done && <Check className="size-2.5" strokeWidth={3.5} aria-hidden="true" />}
+						</button>
+					</Hint>
 				))}
 				{reopened && (
-					<button type="button" className="cell-popover-close" aria-label="닫기" title="닫기" onClick={onClose}>
-						<X className="size-3.5" />
-					</button>
+					<Hint contents side="top" label="닫기">
+						<button type="button" className="cell-popover-close" aria-label="닫기" onClick={onClose}>
+							<X className="size-3.5" />
+						</button>
+					</Hint>
 				)}
 			</div>
 			{target ? (

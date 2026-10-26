@@ -80,18 +80,24 @@ export const WriteRail = memo(function WriteRail({
 				</div>
 			</div>
 			<div className="write-actions">
-				<Button size="icon" variant="secondary" aria-label="이전 문장" title="이전 문장" disabled={currentIndex === 0} onClick={() => onGo(currentIndex - 1)}>
-					<ArrowLeft className="size-4" />
-				</Button>
+				<Hint contents label="이전 문장">
+					<Button size="icon" variant="secondary" aria-label="이전 문장" disabled={currentIndex === 0} onClick={() => onGo(currentIndex - 1)}>
+						<ArrowLeft className="size-4" />
+					</Button>
+				</Hint>
 				{isLast ? (
-					<Button aria-label="폰트 만들기" title={collapsed ? '폰트 만들기' : undefined} onClick={onRequestGeneration}>
-						{collapsed ? <Type className="size-4" /> : '폰트 만들기'}
-					</Button>
+					<Hint contents label={collapsed && '폰트 만들기'}>
+						<Button aria-label="폰트 만들기" onClick={onRequestGeneration}>
+							{collapsed ? <Type className="size-4" /> : '폰트 만들기'}
+						</Button>
+					</Hint>
 				) : (
-					<Button aria-label="다음 문장" title={collapsed ? '다음 문장' : undefined} onClick={() => onGo(currentIndex + 1)}>
-						{!collapsed && '다음 문장'}
-						<ArrowRight className="size-4" />
-					</Button>
+					<Hint contents label={collapsed && '다음 문장'}>
+						<Button aria-label="다음 문장" onClick={() => onGo(currentIndex + 1)}>
+							{!collapsed && '다음 문장'}
+							<ArrowRight className="size-4" />
+						</Button>
+					</Hint>
 				)}
 			</div>
 			{!collapsed && !isLast && (

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Hint } from '@/components/hint';
 import { Segmented } from '@/components/segmented';
@@ -110,22 +110,29 @@ export function GlyphBrowser({
 				<div style={{ height: virtualizer.getTotalSize(), position: 'relative' }}>
 					{virtualizer.getVirtualItems().map((row) => (
 						<div key={row.key} className="grid gap-1 px-3" style={{ position: 'absolute', transform: `translateY(${row.start}px)`, width: '100%', height: row.size, gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
-							{visible.slice(row.index * columns, row.index * columns + columns).map((codePoint) => (
-								<button
-									key={codePoint}
-									type="button"
-									data-cp={codePoint}
-									tabIndex={codePoint === tabStop ? 0 : -1}
-									aria-pressed={selectedSet.has(codePoint)}
-									data-modified={overrides[codePoint] ? '' : undefined}
-									title={overrides[codePoint] ? '고급 편집에서 수정됨' : undefined}
-									className="glyph-pick"
-									style={{ fontFamily }}
-									onClick={(event) => choose(codePoint, event.shiftKey ? 'range' : event.ctrlKey || event.metaKey ? 'toggle' : 'one')}
-								>
-									{String.fromCodePoint(codePoint)}
-								</button>
-							))}
+							{visible.slice(row.index * columns, row.index * columns + columns).map((codePoint) => {
+								const pick = (
+									<button
+										type="button"
+										data-cp={codePoint}
+										tabIndex={codePoint === tabStop ? 0 : -1}
+										aria-pressed={selectedSet.has(codePoint)}
+										data-modified={overrides[codePoint] ? '' : undefined}
+										className="glyph-pick"
+										style={{ fontFamily }}
+										onClick={(event) => choose(codePoint, event.shiftKey ? 'range' : event.ctrlKey || event.metaKey ? 'toggle' : 'one')}
+									>
+										{String.fromCodePoint(codePoint)}
+									</button>
+								);
+								return overrides[codePoint] ? (
+									<Hint key={codePoint} contents side="top" label="고급 편집에서 수정됨">
+										{pick}
+									</Hint>
+								) : (
+									<Fragment key={codePoint}>{pick}</Fragment>
+								);
+							})}
 						</div>
 					))}
 				</div>

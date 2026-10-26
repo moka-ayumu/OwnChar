@@ -606,12 +606,12 @@ button.app-logo-mark:active {
 	gap: 8px;
 	padding-top: 16px;
 }
-.write-actions > :first-child {
+.write-actions > :first-child > button {
 	width: 40px;
 	height: 40px;
 	flex: none;
 }
-.write-actions > :last-child {
+.write-actions > :last-child > button {
 	min-width: 0;
 	flex: 1;
 }
@@ -619,7 +619,7 @@ button.app-logo-mark:active {
 	flex-direction: column;
 	margin-inline: -8px;
 }
-.write-flow[data-collapsed] .write-actions > * {
+.write-flow[data-collapsed] .write-actions > .hint-anchor > button {
 	width: auto;
 	height: 40px;
 	flex: none;
@@ -701,8 +701,8 @@ button.app-logo-mark:active {
 	border-right: 1px solid var(--color-rule);
 	padding: 10px 0;
 }
-.tool-rail > button,
-.tool-rail-settings > button {
+.tool-rail > .hint-anchor > button,
+.tool-rail-settings > .hint-anchor > button {
 	width: 40px;
 	height: 40px;
 }

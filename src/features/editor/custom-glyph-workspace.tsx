@@ -1,7 +1,7 @@
 import { memo, useEffect, useMemo, useRef, useState, type PointerEvent } from 'react';
 import { CircleHelp, Crosshair, Eraser, Hand, PenLine, Plus, Redo2, Trash2, Undo2 } from 'lucide-react';
 import { customChars, customKind, CUSTOM_CELL_SIZE, CUSTOM_KIND_LABELS, isCustomText, MAX_CUSTOM_LENGTH, RECOMMENDED_CUSTOM, type CustomGlyph } from '@/collection/custom-glyphs';
-import { Hint } from '@/components/hint';
+import { Hint, HintGroup } from '@/components/hint';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { WritingSurface, type WritingSurfaceHandle } from '@/features/writing/writing-surface';
@@ -193,26 +193,40 @@ function CustomCanvas({ text, glyph, stabilization }: { text: string; glyph: Cus
 				onPointerCancel={endPan}
 			>
 				<div className="custom-tools" role="toolbar" aria-orientation="vertical" aria-label="쓰기 도구" onPointerDown={(event) => event.stopPropagation()}>
-					<Button size="icon" variant={active === 'pen' ? 'default' : 'ghost'} aria-pressed={active === 'pen'} aria-label="펜" title="펜" onClick={() => setTool('pen')}>
-						<PenLine className="size-[18px]" />
-					</Button>
-					<Button size="icon" variant={active === 'eraser' ? 'default' : 'ghost'} aria-pressed={active === 'eraser'} aria-label="지우개" title="지우개" onClick={() => setTool('eraser')}>
-						<Eraser className="size-[18px]" />
-					</Button>
-					<Button size="icon" variant={active === 'pan' ? 'default' : 'ghost'} aria-pressed={active === 'pan'} aria-label="화면 이동" title="화면 이동" onClick={() => setTool('pan')}>
-						<Hand className="size-[18px]" />
-					</Button>
-					<span className="tool-rail-divider" aria-hidden="true" />
-					<Button size="icon" variant="ghost" aria-label="실행 취소" title="실행 취소" onClick={() => surface.current?.undo()}>
-						<Undo2 className="size-[18px]" />
-					</Button>
-					<Button size="icon" variant="ghost" aria-label="다시 실행" title="다시 실행" onClick={() => surface.current?.redo()}>
-						<Redo2 className="size-[18px]" />
-					</Button>
-					<span className="tool-rail-divider" aria-hidden="true" />
-					<Button size="icon" variant="ghost" aria-label="모두 지우기" title="모두 지우기" onClick={() => surface.current?.clear()}>
-						<Trash2 className="size-[18px]" />
-					</Button>
+					<HintGroup>
+						<Hint contents label="펜">
+							<Button size="icon" variant={active === 'pen' ? 'default' : 'ghost'} aria-pressed={active === 'pen'} aria-label="펜" onClick={() => setTool('pen')}>
+								<PenLine className="size-[18px]" />
+							</Button>
+						</Hint>
+						<Hint contents label="지우개">
+							<Button size="icon" variant={active === 'eraser' ? 'default' : 'ghost'} aria-pressed={active === 'eraser'} aria-label="지우개" onClick={() => setTool('eraser')}>
+								<Eraser className="size-[18px]" />
+							</Button>
+						</Hint>
+						<Hint contents label="화면 이동">
+							<Button size="icon" variant={active === 'pan' ? 'default' : 'ghost'} aria-pressed={active === 'pan'} aria-label="화면 이동" onClick={() => setTool('pan')}>
+								<Hand className="size-[18px]" />
+							</Button>
+						</Hint>
+						<span className="tool-rail-divider" aria-hidden="true" />
+						<Hint contents label="실행 취소">
+							<Button size="icon" variant="ghost" aria-label="실행 취소" onClick={() => surface.current?.undo()}>
+								<Undo2 className="size-[18px]" />
+							</Button>
+						</Hint>
+						<Hint contents label="다시 실행">
+							<Button size="icon" variant="ghost" aria-label="다시 실행" onClick={() => surface.current?.redo()}>
+								<Redo2 className="size-[18px]" />
+							</Button>
+						</Hint>
+						<span className="tool-rail-divider" aria-hidden="true" />
+						<Hint contents label="모두 지우기">
+							<Button size="icon" variant="ghost" aria-label="모두 지우기" onClick={() => surface.current?.clear()}>
+								<Trash2 className="size-[18px]" />
+							</Button>
+						</Hint>
+					</HintGroup>
 				</div>
 				{view && away && (
 					<Button className="custom-home" variant="secondary" onPointerDown={(event) => event.stopPropagation()} onClick={() => setView({ ...view, origin: centeredOrigin(lookAt(), view.size) })}>
@@ -292,9 +306,11 @@ export function CustomWorkspace({ customGlyphs, fontFamily, stabilization, initi
 							<Button type="submit" disabled={!valid} aria-label="글자 추가">
 								<Plus className="size-4" /> 추가
 							</Button>
-							<Button type="button" size="icon" variant="ghost" aria-label="사용 안내" title="사용 안내" onClick={onOpenGuide}>
-								<CircleHelp className="size-[18px]" />
-							</Button>
+							<Hint contents side="bottom" label="사용 안내">
+								<Button type="button" size="icon" variant="ghost" aria-label="사용 안내" onClick={onOpenGuide}>
+									<CircleHelp className="size-[18px]" />
+								</Button>
+							</Hint>
 						</div>
 					</form>
 				</Hint>

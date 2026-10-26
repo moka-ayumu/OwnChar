@@ -1,5 +1,6 @@
 import { memo } from 'react';
 import type { WritingExercise } from '@/collection/exercises';
+import { Hint } from '@/components/hint';
 
 /**
  * The characters of the sentence, one box per cell. `finished` and `written`
@@ -32,9 +33,11 @@ export const WritingGrid = memo(function WritingGrid({
 				return (
 					<div key={index} data-source-cell={sourceCell === index ? 'true' : undefined} data-complete={isFinished ? 'true' : undefined} className={state || undefined} style={{ width: cellSize }}>
 						{written[index] === '1' && !isActive ? (
-							<button type="button" aria-label={`${cell.char} 칸의 자모 나누기 고치기`} title="자모 나누기 고치기" onClick={() => onReopen(index)}>
-								{cell.char}
-							</button>
+							<Hint contents side="top" label="자모 나누기 고치기">
+								<button type="button" aria-label={`${cell.char} 칸의 자모 나누기 고치기`} onClick={() => onReopen(index)}>
+									{cell.char}
+								</button>
+							</Hint>
 						) : (
 							<span aria-hidden="true">{cell.char}</span>
 						)}

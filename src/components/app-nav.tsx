@@ -1,6 +1,7 @@
 import { useRef, type ReactNode } from 'react';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { ChevronDown, CircleHelp, ExternalLink, FolderOpen, Menu, Save, ShieldCheck, Trash2 } from 'lucide-react';
+import { Hint } from '@/components/hint';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ARCHIVE_EXTENSION, downloadProjectArchive, loadProjectArchive } from '@/project/archive';
 import { deletePersistedProject, type SaveStatus } from '@/project/persistence';
@@ -95,11 +96,13 @@ export function AppNav({
 						<Menu className="size-5" />
 					</DropdownMenuTrigger>
 				) : (
-					<DropdownMenuTrigger className="save-trigger" aria-label={`작업 저장 메뉴, ${SAVE_LABEL[status]}`} title={SAVE_LABEL[status]}>
-						<SaveIndicator />
-						{file.empty && <Save className="size-4" />}
-						<ChevronDown className="size-3.5" />
-					</DropdownMenuTrigger>
+					<Hint contents side="bottom" label={SAVE_LABEL[status]}>
+						<DropdownMenuTrigger className="save-trigger" aria-label={`작업 저장 메뉴, ${SAVE_LABEL[status]}`}>
+							<SaveIndicator />
+							{file.empty && <Save className="size-4" />}
+							<ChevronDown className="size-3.5" />
+						</DropdownMenuTrigger>
+					</Hint>
 				)}
 				<DropdownMenuContent align={isMenu ? 'start' : undefined}>
 					{compactItems && (
