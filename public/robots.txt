@@ -1,2 +1,8 @@
 User-agent: *
-Disallow: / 
+Allow: /
+Disallow: /write
+Disallow: /generate
+Disallow: /preview
+Disallow: /edit
+
+Sitemap: https://ownchar.mokaayumu.com/sitemap.xml

@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Link, Outlet, useRouterState } from '@tanstack/react-router';
+import { HeadContent, Link, Outlet, useRouterState } from '@tanstack/react-router';
 import { saveStatusStore } from '@/project/persistence';
 import { projectStore } from '@/project/store';
 import { useProject } from '@/project/use-project';
@@ -29,6 +29,7 @@ export function AppShell() {
 
 	return (
 		<div className="app-shell min-h-svh bg-ground text-ink" data-flow={inFlow ? 'true' : undefined} data-write={onWrite ? 'true' : undefined}>
+			<HeadContent />
 			<header className="app-header">
 				<Link to="/" className="app-logo">
 					<span className="app-logo-mark" aria-hidden="true">

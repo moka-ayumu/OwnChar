@@ -3,7 +3,7 @@ import { ArrowLeft } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
-export const Route = createFileRoute('/license')({ component: LicensePage });
+export const Route = createFileRoute('/license')({ component: LicensePage, head: () => ({ meta: [{ title: '도움말 및 오픈소스 — OwnChar' }, { name: 'robots', content: 'noindex' }] }) });
 
 function LicensePage() {
 	return (

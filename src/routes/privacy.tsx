@@ -6,7 +6,7 @@ import { Switch } from '@/components/ui/switch';
 import { isTelemetryOptedOut, setTelemetryOptOut } from '@/lib/telemetry';
 import { cn } from '@/lib/utils';
 
-export const Route = createFileRoute('/privacy')({ component: PrivacyPage });
+export const Route = createFileRoute('/privacy')({ component: PrivacyPage, head: () => ({ meta: [{ title: '개인정보처리방침 — OwnChar' }, { name: 'robots', content: 'noindex' }] }) });
 
 const List = ({ items }: { items: string[] }) => (
 	<ul className="list-disc space-y-1 pl-5">
