@@ -12,6 +12,7 @@ import { SourcePopover } from '@/features/preview/source-popover';
 import { sourceItems } from '@/features/preview/source-items';
 import { isHangulSyllable } from '@/font/hangul';
 import { useLiveFont } from '@/generation/use-live-font';
+import { useOpenEdit } from '@/features/editor/use-open-edit';
 import { FontSummary } from '@/features/preview/font-summary';
 import { GlyphSheet } from '@/features/preview/glyph-sheet';
 import { LEAD_SENTENCE, LEAD_SIZE, SAMPLE_SENTENCES } from '@/lib/flow';
@@ -45,6 +46,7 @@ function leadingSyllables(text: string): Picked | null {
 
 function PreviewPage() {
 	const navigate = useNavigate();
+	const openEdit = useOpenEdit();
 	const buffer = useProject((state) => state.generatedFont);
 	const revision = useProject((state) => state.fontRevision);
 	const metadata = useProject((state) => state.metadata);
@@ -189,7 +191,7 @@ function PreviewPage() {
 						<Link to="/write" viewTransition className={cn(buttonVariants({ variant: 'secondary' }), 'px-2')}>
 							<PenLine className="size-4" /> 글자 다시 쓰기
 						</Link>
-						<Link to="/edit" className={cn(buttonVariants({ variant: 'secondary' }), 'px-2')}>
+						<Link to="/edit" viewTransition className={cn(buttonVariants({ variant: 'secondary' }), 'px-2')}>
 							<Settings2 className="size-4" /> 고급 편집
 						</Link>
 					</div>
@@ -215,7 +217,7 @@ function PreviewPage() {
 				</DialogContent>
 			</Dialog>
 
-			<CustomGuide open={guideOpen} fontFamily={fontReady ? 'OwnCharPreview' : 'inherit'} onOpenChange={setGuideOpen} onPick={(text) => void navigate({ to: '/edit', search: { custom: text } })} />
+			<CustomGuide open={guideOpen} fontFamily={fontReady ? 'OwnCharPreview' : 'inherit'} onOpenChange={setGuideOpen} onPick={(text) => openEdit({ custom: text })} />
 
 			<section className="stage">
 				<div className="preview-stage">
@@ -292,7 +294,7 @@ function PreviewPage() {
 								)}
 							</div>
 
-							{!Object.keys(customGlyphs).length && <CustomIntro fontFamily={fontFamily} onGuide={() => setGuideOpen(true)} onTry={() => void navigate({ to: '/edit', search: { custom: '' } })} />}
+							{!Object.keys(customGlyphs).length && <CustomIntro fontFamily={fontFamily} onGuide={() => setGuideOpen(true)} onTry={() => openEdit({ custom: '' })} />}
 
 							<DialPanel settings={settings} />
 
@@ -310,7 +312,7 @@ function PreviewPage() {
 						</div>
 
 						<aside className="preview-side" aria-label="폰트 살펴보기">
-							<GlyphSheet drawings={drawings} sessions={sessions} settings={settings} fontFamily={fontFamily} />
+							<GlyphSheet fontFamily={fontFamily} />
 							<FontSummary drawings={drawings} sessions={sessions} settings={settings} />
 						</aside>
 					</div>

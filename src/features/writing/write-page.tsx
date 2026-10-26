@@ -186,7 +186,7 @@ function WriteSentence({ currentIndex, exerciseId: sourceExerciseId, cellIndex: 
 		else generate();
 	};
 	const requestGeneration = useStableCallback(() => (remaining.length > 0 ? setGenerationDialog('missing') : proceedToGeneration()));
-	const openExistingFont = useStableCallback(() => void (returnGlyph === undefined ? navigate({ to: '/preview', viewTransition: true }) : navigate({ to: '/edit', search: { glyph: returnGlyph, query: returnQuery } })));
+	const openExistingFont = useStableCallback(() => void (returnGlyph === undefined ? navigate({ to: '/preview', viewTransition: true }) : navigate({ to: '/edit', search: { glyph: returnGlyph, query: returnQuery }, viewTransition: true })));
 
 	return (
 		<div className="flow write-flow" data-collapsed={railCollapsed ? 'true' : undefined}>
