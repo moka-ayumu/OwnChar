@@ -74,7 +74,7 @@ function distanceToStroke(stroke: RawStroke, x: number, y: number) {
 }
 
 export const WritingSurface = forwardRef<WritingSurfaceHandle, Props>(function WritingSurface({ initialStrokes, cellSize, width, height, strokeWidth, endpointStabilization, tool, origin = ORIGIN, onChange }, ref) {
-	const [strokes, setStrokes] = useState<RawStroke[]>(() => initialStrokes.map((stroke) => ({ ...stroke })));
+	const [strokes, setStrokes] = useState<RawStroke[]>(() => initialStrokes as RawStroke[]);
 	const current = useRef(strokes);
 	const past = useRef<RawStroke[][]>([]);
 	const future = useRef<RawStroke[][]>([]);
