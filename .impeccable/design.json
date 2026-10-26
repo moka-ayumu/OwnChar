@@ -147,7 +147,7 @@
       "A fixed frame for the main flow: lime rail at the left, white stage for the rest, primary action at the rail's bottom.",
       "Solid ink is the single mark of \"selected / current / primary\".",
       "Flat: no elevation shadows, no tonal gradients, 1px hairlines, 6px corners.",
-      "One sans family (Wanted Sans); the user's handwriting font is the only other typeface that ever appears.",
+      "Two sans families: IBM Plex Sans KR for the page h1 only, Noto Sans KR for all other interface text; the user's handwriting font is the only other typeface that ever appears.",
       "Motion keeps things in place and changes their pose; route changes hold the rail and stage and move one glyph across."
     ],
     "rules": [
@@ -178,7 +178,7 @@
       "Don't use shadows for lift, blur, glass, or gradients for tone. `box-shadow` is a zero-blur line or nothing.",
       "Don't replace the handwriting with a spinner, skeleton, or stock progress illustration.",
       "Don't imitate paper, notebooks or stationery, and don't drift toward a white-and-blue SaaS shell or a dark technical theme.",
-      "Don't introduce a second interface typeface, or set interface text in the user's font.",
+      "Don't introduce a third interface typeface, or use IBM Plex Sans KR below h1, or set interface text in the user's font.",
       "Don't move the primary action out of the rail's bottom on a flow page.",
       "Don't let an animation bounce, loop, or run longer than the thing it explains; the film's length is set by the steps, not by decoration."
     ]

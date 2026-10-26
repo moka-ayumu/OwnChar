@@ -3,6 +3,8 @@ import { createRouter, RouterProvider } from '@tanstack/react-router';
 import { initializeTelemetry, reportError, reportRenderError, setView } from '@/lib/telemetry';
 import { initializePersistence } from '@/project/persistence';
 import { routeTree } from './routeTree.gen';
+import '@fontsource-variable/noto-sans-kr/wght.css';
+import '@fontsource/ibm-plex-sans-kr/700.css';
 import './styles.css';
 
 const router = createRouter({

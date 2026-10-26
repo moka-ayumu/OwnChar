@@ -1,5 +1,4 @@
 @import 'tailwindcss';
-@import 'wanted-sans/fonts/webfonts/variable/split/WantedSansVariable.css';
 
 @theme {
 	--color-ink: #101114;
@@ -11,7 +10,8 @@
 	--color-lime-deep: #b2e016;
 	--color-lime-ink: #3c4a0a;
 	--color-danger: #c2261a;
-	--font-sans: 'Wanted Sans Variable', 'Wanted Sans', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', 'Segoe UI', sans-serif;
+	--font-sans: 'Noto Sans KR Variable', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', 'Segoe UI', sans-serif;
+	--font-heading: 'IBM Plex Sans KR', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', 'Segoe UI', sans-serif;
 	--ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -57,6 +57,9 @@ button {
 :focus-visible {
 	outline: 2px solid var(--color-ink);
 	outline-offset: 2px;
+}
+h1 {
+	font-family: var(--font-heading);
 }
 h1,
 h2,
@@ -120,6 +123,7 @@ a {
 	align-items: center;
 	gap: 2px;
 	font-size: 14px;
+	line-height: 20px;
 	font-weight: 500;
 }
 .app-nav a,
@@ -148,6 +152,7 @@ a {
 	white-space: nowrap;
 	padding-inline: 8px;
 	font-size: 13px;
+	line-height: 19px;
 	font-weight: 600;
 	color: var(--color-ink-2);
 }

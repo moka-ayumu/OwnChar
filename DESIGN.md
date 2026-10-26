@@ -15,44 +15,44 @@ colors:
   danger: '#c2261a'
 typography:
   display:
-    fontFamily: 'Wanted Sans Variable, Wanted Sans, -apple-system, BlinkMacSystemFont, Apple SD Gothic Neo, Malgun Gothic, Segoe UI, sans-serif'
+    fontFamily: 'IBM Plex Sans KR, -apple-system, BlinkMacSystemFont, Apple SD Gothic Neo, Malgun Gothic, Segoe UI, sans-serif'
     fontSize: 'clamp(34px, 4vw, 52px)'
     fontWeight: 800
     lineHeight: 1.16
     letterSpacing: '-0.035em'
   headline:
-    fontFamily: 'Wanted Sans Variable, Wanted Sans, -apple-system, BlinkMacSystemFont, Apple SD Gothic Neo, Malgun Gothic, Segoe UI, sans-serif'
+    fontFamily: 'IBM Plex Sans KR, -apple-system, BlinkMacSystemFont, Apple SD Gothic Neo, Malgun Gothic, Segoe UI, sans-serif'
     fontSize: '26px'
     fontWeight: 800
     lineHeight: 1.25
     letterSpacing: '-0.03em'
   figure:
-    fontFamily: 'Wanted Sans Variable, Wanted Sans, -apple-system, BlinkMacSystemFont, Apple SD Gothic Neo, Malgun Gothic, Segoe UI, sans-serif'
+    fontFamily: 'Noto Sans KR Variable, -apple-system, BlinkMacSystemFont, Apple SD Gothic Neo, Malgun Gothic, Segoe UI, sans-serif'
     fontSize: '44px'
     fontWeight: 800
     lineHeight: 1
     letterSpacing: '-0.03em'
     fontFeature: 'tnum'
   title:
-    fontFamily: 'Wanted Sans Variable, Wanted Sans, -apple-system, BlinkMacSystemFont, Apple SD Gothic Neo, Malgun Gothic, Segoe UI, sans-serif'
+    fontFamily: 'Noto Sans KR Variable, -apple-system, BlinkMacSystemFont, Apple SD Gothic Neo, Malgun Gothic, Segoe UI, sans-serif'
     fontSize: '18px'
     fontWeight: 700
     lineHeight: 1.55
     letterSpacing: '-0.02em'
   body:
-    fontFamily: 'Wanted Sans Variable, Wanted Sans, -apple-system, BlinkMacSystemFont, Apple SD Gothic Neo, Malgun Gothic, Segoe UI, sans-serif'
+    fontFamily: 'Noto Sans KR Variable, -apple-system, BlinkMacSystemFont, Apple SD Gothic Neo, Malgun Gothic, Segoe UI, sans-serif'
     fontSize: '16px'
     fontWeight: 400
     lineHeight: 1.75
     letterSpacing: 'normal'
   ui:
-    fontFamily: 'Wanted Sans Variable, Wanted Sans, -apple-system, BlinkMacSystemFont, Apple SD Gothic Neo, Malgun Gothic, Segoe UI, sans-serif'
+    fontFamily: 'Noto Sans KR Variable, -apple-system, BlinkMacSystemFont, Apple SD Gothic Neo, Malgun Gothic, Segoe UI, sans-serif'
     fontSize: '14px'
     fontWeight: 600
     lineHeight: 1.43
     letterSpacing: 'normal'
   label:
-    fontFamily: 'Wanted Sans Variable, Wanted Sans, -apple-system, BlinkMacSystemFont, Apple SD Gothic Neo, Malgun Gothic, Segoe UI, sans-serif'
+    fontFamily: 'Noto Sans KR Variable, -apple-system, BlinkMacSystemFont, Apple SD Gothic Neo, Malgun Gothic, Segoe UI, sans-serif'
     fontSize: '12px'
     fontWeight: 600
     lineHeight: 1.6
@@ -184,7 +184,7 @@ The system is dense and tool-like in the stage and calm in the rail. It avoids p
 - A fixed frame for the main flow: lime rail at the left, white stage for the rest, primary action at the rail's bottom.
 - Solid ink is the single mark of "selected / current / primary".
 - Flat: no elevation shadows, no tonal gradients, 1px hairlines, 6px corners.
-- One sans family (Wanted Sans); the user's handwriting font is the only other typeface that ever appears.
+- Two sans families: IBM Plex Sans KR for the page h1 only, Noto Sans KR for everything else; the user's handwriting font is the only other typeface that ever appears.
 - Motion keeps things in place and changes their pose; route changes hold the rail and stage and move one glyph across.
 
 ## Colors
@@ -225,8 +225,8 @@ Translucent ink is used for three things only: hover wash on transparent control
 
 ## Typography
 
-**Display Font:** Wanted Sans Variable (with Wanted Sans, -apple-system, Apple SD Gothic Neo, Malgun Gothic, Segoe UI, sans-serif)
-**Body Font:** the same family
+**Display Font:** IBM Plex Sans KR, page h1 only (with -apple-system, Apple SD Gothic Neo, Malgun Gothic, Segoe UI, sans-serif)
+**Body Font:** Noto Sans KR Variable (with -apple-system, Apple SD Gothic Neo, Malgun Gothic, Segoe UI, sans-serif)
 **Specimen Font:** the user's generated font (`OwnCharPreview`), only for their own text: the preview sentence, the characters in the source popover, glyph cells.
 
 **Character:** One heavy, tight Korean grotesque doing everything by weight. Headings are 800 and tightly tracked; the interface underneath is 14px at 600. The only expressive letterforms on screen are the writer's own.

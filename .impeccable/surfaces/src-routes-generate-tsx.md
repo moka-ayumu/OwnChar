@@ -21,7 +21,7 @@ Confirmed constraints (user, 2026-10-04):
 
 THESIS: One stroke, never cut. The same handwriting stays on screen from the writing cell to the finished font, changing pose at each algorithm instead of being replaced by a loading screen. Refused: the spinner-and-progress-bar interstitial and the white/blue tool shell.
 
-OWN-WORLD: Three values: ink `#101114`, white, lime `#C6F432`, on a quiet neutral ground `#ECEDE8`; one functional red `#C2261A` for destructive and error states only. Flat fields, no shadows, no gradients. Selection, the live step, progress and primary actions are solid ink. Lime is the field colour of whatever frames the work (the flow rail, the editor bar, the home demonstration) and the mark of the live jamo inside the film; it is never a text colour on white. One sans family (Wanted Sans); hierarchy by weight and ink/lime reversal, few sizes. 6px corners. 1px ink hairlines.
+OWN-WORLD: Three values: ink `#101114`, white, lime `#C6F432`, on a quiet neutral ground `#ECEDE8`; one functional red `#C2261A` for destructive and error states only. Flat fields, no shadows, no gradients. Selection, the live step, progress and primary actions are solid ink. Lime is the field colour of whatever frames the work (the flow rail, the editor bar, the home demonstration) and the mark of the live jamo inside the film; it is never a text colour on white. Two sans families (IBM Plex Sans KR for the page h1 only, Noto Sans KR for the rest); hierarchy by weight and ink/lime reversal, few sizes. 6px corners. 1px ink hairlines.
 
 STORY: The writer sees their own letter lifted from the sentence, steadied, outlined, split into jamo, normalised, recombined into other syllables, multiplied to 11,172, and then typed back to them as a sentence in their font.
 

@@ -32,7 +32,7 @@ const INK = '#101114';
 const INK_2 = '#4a4c52';
 const LIME = '#C6F432';
 const RULE = '#D9DAD5';
-const FONT = '"Wanted Sans Variable", "Wanted Sans", sans-serif';
+const FONT = '"Noto Sans KR Variable", sans-serif';
 /** Share of the specimen box a 1000-unit em takes. */
 const EM_FIT = 0.84;
 /** The steps whose result is kept in the trail: every step shown on the specimens. */

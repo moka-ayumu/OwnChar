@@ -10,8 +10,22 @@ const { SENTRY_AUTH_TOKEN: authToken, SENTRY_ORG: org, SENTRY_PROJECT: project }
 /** Source maps go to Sentry only when the build can upload them, and never ship with the site. */
 const uploadSourceMaps = Boolean(authToken && org && project);
 
+/** Vertical metrics that centre the Hangul ink in the line box, so an icon next to the text lines up. */
+const fontMetrics: Record<string, string> = {
+	'noto-sans-kr': 'ascent-override: 110%; descent-override: 35%; line-gap-override: 0%;',
+	'ibm-plex-sans-kr': 'ascent-override: 107%; descent-override: 44%; line-gap-override: 0%;'
+};
+
 export default defineConfig({
 	plugins: [
+		{
+			name: 'centre-hangul-fonts',
+			enforce: 'pre',
+			transform(code, id) {
+				const family = Object.keys(fontMetrics).find((name) => id.includes(`/${name}/`) && id.endsWith('.css'));
+				if (family) return code.replaceAll('font-display: swap;', `font-display: swap; ${fontMetrics[family]}`);
+			}
+		},
 		{
 			name: 'isolate-module-server-cache',
 			config(config) {

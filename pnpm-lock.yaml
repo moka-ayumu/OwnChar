@@ -8,6 +8,12 @@ importers:
 
   .:
     dependencies:
+      '@fontsource-variable/noto-sans-kr':
+        specifier: ^5.3.1
+        version: 5.3.1
+      '@fontsource/ibm-plex-sans-kr':
+        specifier: ^5.3.0
+        version: 5.3.0
       '@radix-ui/react-dialog':
         specifier: latest
         version: 1.1.23(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -62,9 +68,6 @@ importers:
       tailwind-merge:
         specifier: latest
         version: 3.7.0
-      wanted-sans:
-        specifier: ^1.0.3
-        version: 1.0.3
     devDependencies:
       '@eslint/js':
         specifier: latest
@@ -258,6 +261,12 @@ packages:
 
   '@floating-ui/utils@0.2.12':
     resolution: {integrity: sha512-HpCo8tmWzLVad5s2d19EhAz5zqrrQ6s69qd6moPMQvkOuSwDT1YgRfWSVuc4ennqrgv3OHppiOGMQ7oC13yIww==}
+
+  '@fontsource-variable/noto-sans-kr@5.3.1':
+    resolution: {integrity: sha512-f5aty6Qgk2LVU5TjCtXHxiYHqUWYW8f75ll0Chn8ucCqoOlIomcACUwf1V47yUt6wTdWZiGr3dcbQk+zlOspMA==}
+
+  '@fontsource/ibm-plex-sans-kr@5.3.0':
+    resolution: {integrity: sha512-Malq1TQAnpPHASG76fAthnCY0E41py2r7pZ5JEjgmGfA5tVGz7gwBfvrkhPvT3ZmyMobQrJakHhKZVuXQp7FjQ==}
 
   '@hono/mcp@0.2.5':
     resolution: {integrity: sha512-JsaJes7VlNvUrUQ9j2b9C13xjFLvyKQY515aWtsdJ9cwhBmWz5od2yUCbDu7cX38GeADmlLmpu4BKNNAV6G27w==}
@@ -2660,9 +2669,6 @@ packages:
       jsdom:
         optional: true
 
-  wanted-sans@1.0.3:
-    resolution: {integrity: sha512-YU+mQRJMc97zMGFmxFjOvjdrF5Hi2zagc69bNP9n//i77Dlf9AWGfziZWYKdhQzPK5tw+e0iHcjLrZXDatxRTQ==}
-
   web-vitals@6.2.3:
     resolution: {integrity: sha512-Dmy+vdO1UPMqXiAtZSNayhl4f794Bxfd94W4HIj2HlYtczEQfEOon969memlcpcHrTuOKLa5baFjX7WbgmOq+A==}
 
@@ -2876,6 +2882,10 @@ snapshots:
       react-dom: 19.3.0(react@19.3.0)
 
   '@floating-ui/utils@0.2.12': {}
+
+  '@fontsource-variable/noto-sans-kr@5.3.1': {}
+
+  '@fontsource/ibm-plex-sans-kr@5.3.0': {}
 
   '@hono/mcp@0.2.5(@modelcontextprotocol/sdk@1.32.2(zod@4.6.5))(hono-rate-limiter@0.4.2(hono@4.13.13))(hono@4.13.13)(zod@4.6.5)':
     dependencies:
@@ -5040,8 +5050,6 @@ snapshots:
       '@types/node': 26.6.2
     transitivePeerDependencies:
       - msw
-
-  wanted-sans@1.0.3: {}
 
   web-vitals@6.2.3: {}
 

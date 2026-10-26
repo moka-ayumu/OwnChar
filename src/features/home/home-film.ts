@@ -44,7 +44,7 @@ const INK_2 = '#4a4c52';
 const INK_3 = '#666970';
 const LIME = '#C6F432';
 const RULE = '#D9DAD5';
-const FONT = '"Wanted Sans Variable", "Wanted Sans", sans-serif';
+const FONT = '"Noto Sans KR Variable", sans-serif';
 /** Share of a slot a 1000-unit em takes. */
 const EM_FIT = 0.84;
 const SYLLABLES = 11172;

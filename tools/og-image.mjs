@@ -4,7 +4,8 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const root = new URL('../', import.meta.url);
-const fontDir = pathToFileURL(fileURLToPath(new URL('node_modules/wanted-sans/fonts/ttf/', root))).href;
+const plexDir = new URL('node_modules/@fontsource/ibm-plex-sans-kr/', root);
+const fontCss = readFileSync(new URL('700.css', plexDir), 'utf8').replaceAll('./files/', pathToFileURL(fileURLToPath(new URL('files/', plexDir))).href);
 const example = JSON.parse(readFileSync(new URL('src/features/samples/example.json', root), 'utf8'));
 const strokes = example.sessions[0].elements.filter((element) => element.points?.length > 1);
 
@@ -33,18 +34,17 @@ const pad = 6;
 const viewBox = `${box.x0 - pad} ${box.y0 - pad} ${box.x1 - box.x0 + pad * 2} ${box.y1 - box.y0 + pad * 2}`;
 const paths = strokes.map(({ x, y, points }) => `<path d="M${points.map(([px, py]) => `${(x + px).toFixed(1)} ${(y + py).toFixed(1)}`).join('L')}"/>`).join('');
 
-const face = (weight, file) => `@font-face{font-family:'Wanted';font-weight:${weight};src:url('${fontDir}${file}')}`;
 const html = `<!doctype html><meta charset="utf-8"><style>
-${face(500, 'WantedSans-Medium.ttf')}${face(700, 'WantedSans-Bold.ttf')}${face(800, 'WantedSans-ExtraBold.ttf')}
+${fontCss}
 *{box-sizing:border-box;margin:0}
-body{width:1200px;height:630px;background:#ecede8;color:#101114;font-family:Wanted,sans-serif;position:relative;overflow:hidden}
-.brand{position:absolute;left:72px;top:64px;display:flex;align-items:center;gap:14px;font-size:30px;font-weight:800;letter-spacing:-0.03em}
+body{width:1200px;height:630px;background:#ecede8;color:#101114;font-family:'IBM Plex Sans KR',sans-serif;position:relative;overflow:hidden}
+.brand{position:absolute;left:72px;top:64px;display:flex;align-items:center;gap:14px;font-size:30px;font-weight:700;letter-spacing:-0.03em}
 .mark{width:44px;height:44px;border-radius:11px;background:#101114;display:grid;place-items:center}
 .mark i{width:18px;height:18px;border-radius:50%;background:#c6f432}
-h1{position:absolute;left:72px;top:232px;font-size:76px;line-height:1.38;font-weight:800;letter-spacing:-0.03em}
+h1{position:absolute;left:72px;top:232px;font-size:76px;line-height:1.38;font-weight:700;letter-spacing:-0.03em}
 h1 em{font-style:normal;position:relative;display:inline-block;margin-right:0.04em}
 h1 em .rule{position:absolute;left:-0.04em;right:-0.06em;bottom:-0.2em;width:calc(100% + 0.1em);height:0.3em;overflow:visible;fill:none;stroke:#c6f432;stroke-width:9;stroke-linecap:round}
-h1 em .hand{width:1.26em;height:1.26em;margin:-0.3em -0.2em -0.3em -0.12em;vertical-align:0.06em;overflow:visible;fill:none;stroke:#101114;stroke-width:9;stroke-linecap:round;stroke-linejoin:round}
+h1 em .hand{width:1.26em;height:1.26em;margin:-0.3em -0.2em -0.3em -0.12em;vertical-align:-0.01em;overflow:visible;fill:none;stroke:#101114;stroke-width:9;stroke-linecap:round;stroke-linejoin:round}
 .card{position:absolute;right:64px;top:64px;width:420px;height:502px;background:#fff;border-radius:28px;border:2px solid #d9dad5;padding:36px 30px;display:grid;place-items:center}
 .card svg{width:100%;height:auto;max-height:100%;fill:none;stroke:#101114;stroke-width:7.5;stroke-linecap:round;stroke-linejoin:round}
 </style>
