@@ -660,6 +660,18 @@ button.app-logo-mark:active {
 	translate: -50% -100%;
 	text-align: center;
 }
+.hint[data-group] {
+	transition:
+		left 200ms var(--ease-out-expo),
+		top 200ms var(--ease-out-expo),
+		opacity 140ms var(--ease-out-expo);
+}
+.hint[data-open='false'] {
+	opacity: 0;
+}
+.hint-contents {
+	display: contents;
+}
 @keyframes hint-in {
 	from {
 		opacity: 0;
