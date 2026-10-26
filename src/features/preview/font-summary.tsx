@@ -15,7 +15,7 @@ const ROWS = [
 const format = (value: number) => value.toLocaleString('ko-KR');
 
 /** What the 11,172 syllables stand on: the part of the font that is the handwriting itself, and the part that is fitted from it. */
-export const FontSummary = memo(function FontSummary({ drawings, sessions, settings, size }: { drawings: Record<string, DrawingRecord>; sessions: Record<string, WritingSessionRecord>; settings: CompositionSettings; size: string }) {
+export const FontSummary = memo(function FontSummary({ drawings, sessions, settings }: { drawings: Record<string, DrawingRecord>; sessions: Record<string, WritingSessionRecord>; settings: CompositionSettings }) {
 	const [coverage, setCoverage] = useState<GlyphCoverage | null>(null);
 
 	useEffect(() => {
@@ -44,7 +44,6 @@ export const FontSummary = memo(function FontSummary({ drawings, sessions, setti
 					</div>
 				))}
 			</dl>
-			<p className="text-xs text-ink-3">OTF 파일 크기 {size}</p>
 		</section>
 	);
 });

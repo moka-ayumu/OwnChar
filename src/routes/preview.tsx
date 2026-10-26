@@ -43,10 +43,6 @@ function leadingSyllables(text: string): Picked | null {
 	return { start, end: start + (isHangulSyllable(text.codePointAt(start + 1) ?? 0) ? 2 : 1) };
 }
 
-function formatFileSize(bytes: number) {
-	return bytes < 1024 * 1024 ? `${Math.round(bytes / 1024)}KB` : `${(bytes / 1024 / 1024).toFixed(1)}MB`;
-}
-
 function PreviewPage() {
 	const navigate = useNavigate();
 	const buffer = useProject((state) => state.generatedFont);
@@ -315,7 +311,7 @@ function PreviewPage() {
 
 						<aside className="preview-side" aria-label="폰트 살펴보기">
 							<GlyphSheet drawings={drawings} sessions={sessions} settings={settings} fontFamily={fontFamily} />
-							<FontSummary drawings={drawings} sessions={sessions} settings={settings} size={formatFileSize(buffer.byteLength)} />
+							<FontSummary drawings={drawings} sessions={sessions} settings={settings} />
 						</aside>
 					</div>
 				</div>
